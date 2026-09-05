@@ -10,17 +10,21 @@ _Última atualização: 05/09/2026. Ficheiro de continuação de sessão — diz
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 
 ## Base de dados (Neon, 05/09/2026)
-- **Neon Postgres 18.6** ligado e **10/10 migrações aplicadas** (35 tabelas em `public`) — migrações eram SQL puro, sem dependências Supabase
+- **Neon Postgres 18.6** ligado e **11 migrações aplicadas** (35 tabelas + `work_orders.quote_id`)
 - Connection string (pooler) em `.env.local` como `DATABASE_URL` — coberto por `.env*` no `.gitignore` (não commitar)
-- **Seed**: `node scripts/seed.mjs` (idempotente) — org `x-motion`, 5 clientes, 6 viaturas com links de posse
-- **Slice CRM Clientes ligado à BD** (padrão a replicar nos restantes domínios):
-  - `src/lib/db.ts` — pool `pg` singleton (`pg` + `@types/pg` já em package.json)
-  - `src/server/customers.ts` — repositório: `getPrimaryOrganizationId`, `listCustomers` (stats via subqueries: vehicle_count, total_spent, last_interaction), `createCustomer` (transação, cria `b2b_accounts` se business)
-  - `src/app/actions/customers.ts` — server action `createCustomerAction` + `revalidatePath`
-  - `src/app/customers/page.tsx` = server component (force-dynamic) → `CustomersView.tsx` (client, filters/estado local) — modal cria clientes reais na BD
-  - Mapeamento snake_case ↔ camelCase feito nos repositórios; tipos de domínio em `src/domains/*/types.ts` mantêm-se
-- Testado end-to-end no browser (criação persistida). Typecheck, lint e 85/85 testes OK
-- **Pendente**: replicar o padrão noutros domínios (viaturas, orçamentos, stock, produção…); RLS atualmente bypassed (owner) — rever políticas na altura do auth
+- **Seed global**: `node scripts/seed.mjs` (idempotente, truncate manual antes) — org, 5 perfis, 3 baias, catálogo, 6 materiais (3 críticos), 5 clientes, 6 viaturas, 5 orçamentos, 4 ordens com fases/tempos, check-ins, QC, agenda da semana, faturas, garantia+entrega
+
+## Núcleo operacional interligado (05/09/2026, commit 1f53194)
+- **Padrão estabelecido**: `src/server/<domínio>.ts` (repositório pg, snake→camel) + `src/app/actions/<domínio>.ts` (server actions) + página server (`force-dynamic`) → view client
+- **Ligados à BD**: dashboard (KPIs reais + intelligence alerts determinísticos), clientes (listar/criar), viaturas + passaporte/timeline (listar/criar/detalhe), orçamentos (listar/detalhe/aprovar→cria WO draft com 8 fases), produção (kanban + painel da obra: fases, checklist, timesheet, progresso recalculado), agenda (semana + baias, capacidade determinística), stock (materiais/lotões/críticos), o meu dia (tarefa ativa do técnico + marcações do dia)
+- **Pesquisa global (⌘K)** consulta a BD em tempo real (clientes, viaturas, orçamentos, produção, stock)
+- **Interconexões funcionais**: aprovar orçamento cria ordem de trabalho idempotente (migração 11: `work_orders.quote_id`); concluir fases recalcula progresso/horas e muda estado; QC in_rework e atrasos aparecem no dashboard
+- Testado end-to-end no browser (aprovação Q-2026-017 → WO-2026-199 draft com 8 fases). Typecheck, lint, 85/85 testes OK
+
+## Ainda por ligar (usa demo data)
+- `b2b`, `invoices`, `warranties` (lista/detalhe), `tools`, `team`, `checkins` (detalhe/novo), `vision`, `simulator`, `reports`, `passport/[plate]`, portais públicos (`quotes/public`, `portal`, `checkins/report`, `qc/certificate` lê demo; o certificado garantia tem token do seed)
+- Time Book (benchmarks a partir de `work_order_time_entries`) e relatórios agregados
+- Auth/perfis (my-day fixo a "João Martins"), mutações do portal, uploads de fotos; RLS atualmente bypassed (owner) — rever políticas na altura do auth
 
 ## O que foi feito na sessão 04/09/2026 (mudanças visuais)
 1. **Piso tipográfico subido** (83 ficheiros): `9px/10px → 11px` (badges/eyebrows), `11px → 12px` (metadados). Zero texto abaixo de 11px.
