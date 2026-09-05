@@ -11,6 +11,16 @@ import {
 export { getPrimaryOrganizationId };
 
 type CustomerRow = Record<string, unknown>;
+type Row = Record<string, unknown>;
+
+type CommunicationType = Customer["communications"] extends Array<{ type: infer T }>
+  ? T
+  : never;
+type CommunicationDirection = Customer["communications"] extends Array<{
+  direction: infer D;
+}>
+  ? D
+  : never;
 
 function iso(value: unknown): string {
   return value instanceof Date ? value.toISOString() : String(value);
@@ -104,6 +114,58 @@ export interface CustomerCreateInput {
     priorityLevel: "standard" | "high" | "vip";
     commercialNotes?: string;
   };
+}
+
+export async function getCustomerById(
+  organizationId: string,
+  customerId: string
+): Promise<Customer | null> {
+  const db = getDb();
+  const { rows } = await db.query<Row>(
+    `SELECT * FROM customers WHERE organization_id = $1 AND id = $2`,
+    [organizationId, customerId]
+  );
+  if (rows.length === 0) return null;
+  const customer = mapCustomer(rows[0]);
+
+  const { rows: b2bRows } = await db.query<Row>(
+    `SELECT * FROM b2b_accounts WHERE customer_id = $1`,
+    [customerId]
+  );
+  if (b2bRows.length > 0) customer.b2bDetails = mapB2b(b2bRows[0]);
+
+  const { rows: contactRows } = await db.query<Row>(
+    `SELECT * FROM customer_contacts WHERE customer_id = $1 ORDER BY is_primary DESC`,
+    [customerId]
+  );
+  customer.contacts = contactRows.map((r) => ({
+    id: String(r.id),
+    customerId,
+    name: String(r.name),
+    role: (r.role as string) ?? "",
+    email: String(r.email),
+    phone: String(r.phone),
+    isPrimary: Boolean(r.is_primary),
+    canApproveQuotes: Boolean(r.can_approve_quotes),
+  }));
+
+  const { rows: comRows } = await db.query<Row>(
+    `SELECT com.*, p.name AS author_name FROM customer_communications com
+     LEFT JOIN profiles p ON p.id = com.author_id
+     WHERE com.customer_id = $1 ORDER BY com.created_at DESC`,
+    [customerId]
+  );
+  customer.communications = comRows.map((r) => ({
+    id: String(r.id),
+    customerId,
+    type: r.type as CommunicationType,
+    direction: r.direction as CommunicationDirection,
+    summary: String(r.summary),
+    authorName: (r.author_name as string) ?? "Sistema",
+    createdAt: iso(r.created_at),
+  }));
+
+  return customer;
 }
 
 export async function createCustomer(

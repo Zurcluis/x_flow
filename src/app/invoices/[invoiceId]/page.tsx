@@ -1,60 +1,34 @@
-"use client";
-
-import React, { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import {
-  ArrowLeft,
-  Printer,
-  ExternalLink,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { InvoiceSummaryCard } from "@/components/xflow/invoices/InvoiceSummaryCard";
-import { initialInvoicesData } from "@/lib/demo-data/finance-deliveries-data";
+import { InvoiceDetailView } from "./InvoiceDetailView";
+import { getInvoiceById } from "@/server/finance";
+import { getPrimaryOrganizationId } from "@/server/org";
 
-export default function InvoiceDetailPage() {
-  const params = useParams();
-  const invoiceId = params?.invoiceId as string;
+export const dynamic = "force-dynamic";
 
-  const [invoices] = useState(initialInvoicesData);
-  const invoice =
-    invoices.find((inv) => inv.id === invoiceId) || invoices[0];
+export default async function InvoiceDetailPage({
+  params,
+}: {
+  params: Promise<{ invoiceId: string }>;
+}) {
+  const { invoiceId } = await params;
+  const organizationId = await getPrimaryOrganizationId();
+  const invoice = await getInvoiceById(organizationId, invoiceId);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  return (
-    <div className="flex flex-col gap-6 pb-12">
-      {/* Back button & Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <Link
-          href="/invoices"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-[#a9adae] hover:text-[#f7d46d] transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Voltar à Faturação</span>
-        </Link>
-
-        <div className="flex items-center gap-2.5">
-          <Button variant="outline" size="sm" onClick={handlePrint} className="bg-[#15191a]">
-            <Printer className="h-3.5 w-3.5" />
-            <span>Imprimir / PDF</span>
+  if (!invoice) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+        <h2 className="text-2xl font-bold text-[#f1ede5]">Fatura não encontrada</h2>
+        <Link href="/invoices">
+          <Button variant="outline">
+            <ArrowLeft className="h-4 w-4" />
+            <span>Voltar a Faturação</span>
           </Button>
-
-          <Link href={`/passport/${invoice.vehiclePlate}`} target="_blank">
-            <Button variant="primary" size="sm">
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span>Passaporte do Veículo</span>
-            </Button>
-          </Link>
-        </div>
+        </Link>
       </div>
+    );
+  }
 
-      {/* Invoice Card */}
-      <div className="max-w-4xl mx-auto w-full">
-        <InvoiceSummaryCard invoice={invoice} />
-      </div>
-    </div>
-  );
+  return <InvoiceDetailView invoice={invoice} />;
 }

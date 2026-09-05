@@ -9,42 +9,12 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/formatting";
+import { getReportsData } from "@/server/reports";
 
-export default function ReportsPage() {
-  const serviceStats = [
-    {
-      service: "PPF Full Body (Stek DYNOshield)",
-      jobsCount: 14,
-      revenue: 49000.0,
-      directCost: 17500.0,
-      marginPercent: 64.3,
-      avgLaborHours: 34.5,
-    },
-    {
-      service: "Full Body Wrap (3M 2080 / Avery)",
-      jobsCount: 9,
-      revenue: 27900.0,
-      directCost: 11439.0,
-      marginPercent: 59.0,
-      avgLaborHours: 32.0,
-    },
-    {
-      service: "PPF Frontal Completo & Óticas",
-      jobsCount: 18,
-      revenue: 32400.0,
-      directCost: 9720.0,
-      marginPercent: 70.0,
-      avgLaborHours: 14.0,
-    },
-    {
-      service: "Chrome Delete & Detalhes",
-      jobsCount: 22,
-      revenue: 7700.0,
-      directCost: 2002.0,
-      marginPercent: 74.0,
-      avgLaborHours: 3.5,
-    },
-  ];
+export const dynamic = "force-dynamic";
+
+export default async function ReportsPage() {
+  const { serviceStats, quarterlyRevenue, avgMargin, laborEfficiency, scrapRate } = await getReportsData();
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -69,10 +39,10 @@ export default function ReportsPage() {
           </div>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-[#f1ede5]">
-              {formatCurrency(117000.0)}
+{formatCurrency(quarterlyRevenue)}
             </span>
             <span className="block text-[12px] text-[#68a46b] mt-0.5">
-              +24.5% vs trimestre anterior
++24.5% vs trimestre anterior
             </span>
           </div>
         </Card>
@@ -84,10 +54,10 @@ export default function ReportsPage() {
           </div>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-[#68a46b]">
-              65.8%
+{avgMargin.toFixed(1) + "%"}
             </span>
             <span className="block text-[12px] text-[#a9adae] mt-0.5">
-              Acima da meta de 60%
+Acima da meta de 60%
             </span>
           </div>
         </Card>
@@ -99,10 +69,10 @@ export default function ReportsPage() {
           </div>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-[#f7d46d]">
-              148%
+{laborEfficiency + "%"}
             </span>
             <span className="block text-[12px] text-[#a9adae] mt-0.5">
-              X-Motion Time Book benchmarks
+X-Motion Time Book benchmarks
             </span>
           </div>
         </Card>
@@ -114,10 +84,10 @@ export default function ReportsPage() {
           </div>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-[#86abcf]">
-              8.4%
+              {scrapRate.toFixed(1) + '%'}
             </span>
             <span className="block text-[12px] text-[#68a46b] mt-0.5">
-              Meta atingida (&lt; 10%)
+Meta atingida (&lt; 10%)
             </span>
           </div>
         </Card>
@@ -129,7 +99,7 @@ export default function ReportsPage() {
           <div className="flex items-center gap-2.5">
             <Layers className="h-5 w-5 text-[#d3a548]" />
             <h2 className="font-bold text-sm text-[#f1ede5]">
-              Rentabilidade & Margem Real por Categoria de Serviço
+Rentabilidade & Margem Real por Categoria de Serviço
             </h2>
           </div>
 
@@ -149,23 +119,23 @@ export default function ReportsPage() {
 
           {serviceStats.map((item, idx) => (
             <div key={idx} className="grid grid-cols-12 py-3 text-xs items-center">
-              <span className="col-span-4 font-semibold text-[#f1ede5]">
-                {item.service}
-              </span>
-              <span className="col-span-2 text-center font-mono text-[#a9adae]">
-                {item.jobsCount} viaturas
-              </span>
-              <span className="col-span-2 text-right font-mono text-[#f1ede5]">
-                {formatCurrency(item.revenue)}
-              </span>
-              <span className="col-span-2 text-right font-mono text-[#a9adae]">
-                {formatCurrency(item.directCost)}
-              </span>
-              <div className="col-span-2 text-right">
-                <span className="font-mono font-bold text-[#68a46b]">
-                  {item.marginPercent}%
-                </span>
-              </div>
+<span className="col-span-4 font-semibold text-[#f1ede5]">
+  {item.service}
+</span>
+<span className="col-span-2 text-center font-mono text-[#a9adae]">
+  {item.jobsCount} viaturas
+</span>
+<span className="col-span-2 text-right font-mono text-[#f1ede5]">
+  {formatCurrency(item.revenue)}
+</span>
+<span className="col-span-2 text-right font-mono text-[#a9adae]">
+  {formatCurrency(item.directCost)}
+</span>
+<div className="col-span-2 text-right">
+  <span className="font-mono font-bold text-[#68a46b]">
+    {item.marginPercent}%
+  </span>
+</div>
             </div>
           ))}
         </div>

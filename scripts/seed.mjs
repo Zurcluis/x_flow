@@ -416,8 +416,10 @@ async function createWorkOrder(w) {
 }
 
 const woBmw = await createWorkOrder({ number: "WO-2026-101", vehicle: "AB-12-CD", customer: "João Martins", service: "Full PPF — STEK DYNOshield", status: "in_progress", technician: "João Martins", progress: 65, estimatedHours: 36, actualHours: 23.5, startedHoursAgo: 30, phasesDone: 3, checkinId: checkinBmw });
-void woPorsche; const woPorsche = await createWorkOrder({ number: "WO-2026-102", vehicle: "EF-34-GH", customer: "AutoStand Prime Barcelos", service: "Wrap Completo — 3M 2080", status: "in_progress", technician: "Ricardo Almeida", progress: 40, estimatedHours: 38, actualHours: 15, startedHoursAgo: 26, phasesDone: 2, checkinId: checkinPorsche });
-void woMercedes; const woMercedes = await createWorkOrder({ number: "WO-2026-103", vehicle: "MN-78-OP", customer: "AutoStand Prime Barcelos", service: "PPF Frontal", status: "waiting_parts", technician: "Miguel Costa", progress: 20, estimatedHours: 14, actualHours: 3, startedHoursAgo: 20, phasesDone: 1, checkinId: checkinMercedes, material: "Ultimate Plus PPF" });
+const woPorsche = await createWorkOrder({ number: "WO-2026-102", vehicle: "EF-34-GH", customer: "AutoStand Prime Barcelos", service: "Wrap Completo — 3M 2080", status: "in_progress", technician: "Ricardo Almeida", progress: 40, estimatedHours: 38, actualHours: 15, startedHoursAgo: 26, phasesDone: 2, checkinId: checkinPorsche });
+const woMercedes = await createWorkOrder({ number: "WO-2026-103", vehicle: "MN-78-OP", customer: "AutoStand Prime Barcelos", service: "PPF Frontal", status: "waiting_parts", technician: "Miguel Costa", progress: 20, estimatedHours: 14, actualHours: 3, startedHoursAgo: 20, phasesDone: 1, checkinId: checkinMercedes, material: "Ultimate Plus PPF" });
+void woPorsche;
+void woMercedes;
 const woFerrari = await createWorkOrder({ number: "WO-2026-098", vehicle: "UV-12-WX", customer: "Apex Track & Club", service: "Full PPF — STEK DYNOshield", status: "completed", technician: "João Martins", progress: 100, estimatedHours: 40, actualHours: 41.5, startedHoursAgo: 240, completedHoursAgo: 96, phasesDone: 8, checkinId: checkinFerrariExit });
 
 // ── 11. QC �──────────────────────────────────────────────────────────────────
@@ -489,6 +491,35 @@ await client.query(
   [orgId, woFerrari, vehicles["UV-12-WX"], customerIds["Apex Track & Club"], "João Martins",
    "Miguel Torres", "Entrega concluída com checklist e assinatura.", h(72), "dlv-2026-001"]
 );
+
+// ── 15. Ferramentas e Equipa ────────────────────────────────────────────────
+for (const t of [
+  { name: "Plotter de Corte de Película 160cm", category: "corte", brand: "Graphtec", model: "FC9000-160 Pro", serial: "GRP-2024-8891", qr: "QR-TOOL-01", status: "disponivel", assigned: null, location: "Sala de Corte & Plotter", last: "2026-08-01", next: "2026-11-01" },
+  { name: "Lâmpada de Inspeção Ótica CRI+ 96", category: "iluminacao", brand: "Scangrip", model: "Sunmatch 4 High CRI+", serial: "SCN-2025-4412", qr: "QR-TOOL-02", status: "em_uso", assigned: "João Martins", location: "Baia 1 — Sala Limpa PPF", last: "2026-07-15", next: "2026-10-15" },
+  { name: "Pistola de Pós-Aquecimento Térmico", category: "calor", brand: "Leister", model: "Triac ST Digital 1600W", serial: "LEI-2024-0092", qr: "QR-TOOL-03", status: "em_uso", assigned: "Ricardo Almeida", location: "Baia 2 — Desmontagem e Wrap", last: "2026-08-10", next: "2026-11-10" },
+  { name: "Máquina de Vapor Industrial DMF", category: "limpeza", brand: "Optima Steamer", model: "DMF Super Steam", serial: "OPT-2023-7721", qr: "QR-TOOL-04", status: "disponivel", assigned: null, location: "Zona de Lavagem", last: "2026-06-20", next: "2026-09-20" },
+  { name: "Medidor de Espessura de Pintura", category: "medicao", brand: "Elcometer", model: "A456CFI", serial: "ELC-2025-1180", qr: "QR-TOOL-05", status: "disponivel", assigned: null, location: "Gabinete Técnico", last: "2026-09-01", next: "2026-12-01" },
+]) {
+  await client.query(
+    `INSERT INTO tools (organization_id, name, category, brand, model, serial_number, qr_code, status, assigned_to_name, location, last_maintenance, next_maintenance)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+    [orgId, t.name, t.category, t.brand, t.model, t.serial, t.qr, t.status, t.assigned, t.location, t.last, t.next]
+  );
+}
+
+for (const e of [
+  { name: "Luís Gonçalves", role: "Fundador & Gestor", specialty: "Gestão e Orçamentação", level: "Master", status: "disponivel", certs: ["Gestão de Oficina Premium"] },
+  { name: "João Martins", role: "Instalador PPF", specialty: "PPF Integral e Detalhes", level: "Master", status: "em_trabalho", certs: ["STEK Certified Installer", "XPEL PPF Specialist"] },
+  { name: "Ricardo Almeida", role: "Instalador Wrap", specialty: "Wrap Completo e Color PPF", level: "Sénior", status: "em_trabalho", certs: ["3M Preferred Installer"] },
+  { name: "Miguel Costa", role: "Técnico Detailing", specialty: "Detailing e Correção de Pintura", level: "Especialista", status: "disponivel", certs: ["Gtechniq Accredited Detailer"] },
+  { name: "Patrícia Sousa", role: "Responsável de Qualidade", specialty: "QC e Entregas", level: "Sénior", status: "disponivel", certs: ["ISO 9001 Internal Auditor"] },
+]) {
+  await client.query(
+    `INSERT INTO employees (organization_id, profile_id, name, role, specialty, level, status, certifications)
+     VALUES ($1,(SELECT id FROM profiles WHERE name = $2 LIMIT 1),$3,$4,$5,$6,$7,$8)`,
+    [orgId, e.name, e.name, e.role, e.specialty, e.level, e.status, JSON.stringify(e.certs)]
+  );
+}
 
 console.log("Seed concluído: org, 5 perfis, 3 baias, catálogo, 6 materiais, 5 clientes, 6 viaturas, 5 orçamentos, 4 ordens de trabalho, QC, agenda, faturas e garantia.");
 await client.end();

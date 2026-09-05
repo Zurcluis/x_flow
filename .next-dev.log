@@ -1,0 +1,96 @@
+
+> x-flow@0.1.0 dev
+> next dev
+
+▲ Next.js 16.3.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.164.156:3000
+- Environments: .env.local
+✓ Ready in 1342ms
+✓ Running next.config.ts took 112ms
+
+(node:2960) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+⨯ error: column "organization_id" does not exist
+    at async getReportsData (src\server\reports.ts:50:29)
+    at async ReportsPage (src\app\reports\page.tsx:17:85)
+  48 |   }));
+  49 |
+> 50 |   const { rows: kpiRows } = await db.query<Record<string, unknown>>(
+     |                             ^
+  51 |     `SELECT
+  52 |       (SELECT COALESCE(SUM(total_amount),0) FROM invoices
+  53 |         WHERE organization_id = $1 AND issued_at >= date_trunc('quarter', NOW())) AS quarter_revenue, {
+  length: 116,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '754',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3854',
+  routine: 'errorMissingColumn',
+  digest: '1978316253'
+}
+ GET /reports 500 in 2.6s (next.js: 1014ms, application-code: 1592ms)
+[browser] Uncaught error: column "organization_id" does not exist
+    at getReportsData (src\server\reports.ts:50:29)
+    at ReportsPage (src\app\reports\page.tsx:17:85)
+  48 |   }));
+  49 |
+> 50 |   const { rows: kpiRows } = await db.query<Record<string, unknown>>(
+     |                             ^
+  51 |     `SELECT
+  52 |       (SELECT COALESCE(SUM(total_amount),0) FROM invoices
+  53 |         WHERE organization_id = $1 AND issued_at >= date_trunc('quarter', NOW())) AS quarter_revenue,
+ GET /team 200 in 986ms (next.js: 91ms, application-code: 896ms)
+⨯ error: column "organization_id" does not exist
+    at async getReportsData (src\server\reports.ts:50:29)
+    at async ReportsPage (src\app\reports\page.tsx:17:85)
+  48 |   }));
+  49 |
+> 50 |   const { rows: kpiRows } = await db.query<Record<string, unknown>>(
+     |                             ^
+  51 |     `SELECT
+  52 |       (SELECT COALESCE(SUM(total_amount),0) FROM invoices
+  53 |         WHERE organization_id = $1 AND issued_at >= date_trunc('quarter', NOW())) AS quarter_revenue, {
+  length: 116,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '754',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3854',
+  routine: 'errorMissingColumn',
+  digest: '1978316253'
+}
+ GET /reports 500 in 474ms (next.js: 32ms, application-code: 442ms)
+ GET /team 200 in 1833ms (next.js: 18ms, application-code: 1815ms)
+ GET /reports 200 in 2.4s (next.js: 41ms, application-code: 2.4s)
+ GET /reports 200 in 550ms (next.js: 13ms, application-code: 537ms)
+ GET /quotes/new 200 in 524ms (next.js: 78ms, application-code: 446ms)
+[?25h

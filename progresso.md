@@ -24,7 +24,16 @@ _Última atualização: 05/09/2026. Ficheiro de continuação de sessão — diz
 ## Ainda por ligar (usa demo data)
 - `b2b`, `invoices`, `warranties` (lista/detalhe), `tools`, `team`, `checkins` (detalhe/novo), `vision`, `simulator`, `reports`, `passport/[plate]`, portais públicos (`quotes/public`, `portal`, `checkins/report`, `qc/certificate` lê demo; o certificado garantia tem token do seed)
 - Time Book (benchmarks a partir de `work_order_time_entries`) e relatórios agregados
-- Auth/perfis (my-day fixo a "João Martins"), mutações do portal, uploads de fotos; RLS atualmente bypassed (owner) — rever políticas na altura do auth
+- Auth/perfis (my-day fixo a "João Martins"), mutações do portal, uploads de fotos
+
+## Sessão 05/09 (tarde) — sistema operacional completo (commit pendente)
+- **Migração 12**: `tools` + `employees` (equipa); **seed global regenerado** (`scripts/reset.mjs` + `scripts/seed.mjs`): tooling, equipa, materiais com lotes, orçamentos com opções reais, ordens com fases/tempos/checklists, check-ins com danos, QC (passed + in_rework), agenda da semana, faturas, garantia + entrega
+- **Páginas ligadas à BD (leitura)**: faturas, entregas, garantias, ferramentas, equipa, B2B (+ detalhe), time-book (benchmarks reais por modelo/fase a partir de `work_order_time_entries` com confiança por amostras), relatórios (margens por serviço, receita trimestral, eficiência, scrap), detalhe de cliente (tabs), detalhe de check-in
+- **Escritas**: nova viatura (também no detalhe do cliente), aprovação pública por token (`approvePublicQuoteAction`), produção (iniciar/concluir fases, checklist, timesheet)
+- **Páginas públicas por token**: `/quotes/public/[token]` e `/checkins/report/[token]` agora servem dados reais; `/warranties/certificate/wty-2026-001` real
+- **Simulator** lê viaturas reais; **pesquisa global** já na BD
+- Validação: typecheck OK, lint 0 erros, 85/85 testes, 21 rotas a 200 no browser
+- **Ainda demo/fora de âmbito**: `/vision` (fase 8 do blueprint), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo), auth/perfis, uploads de ficheiros, RLS efetiva (owner faz bypass); RLS atualmente bypassed (owner) — rever políticas na altura do auth
 
 ## O que foi feito na sessão 04/09/2026 (mudanças visuais)
 1. **Piso tipográfico subido** (83 ficheiros): `9px/10px → 11px` (badges/eyebrows), `11px → 12px` (metadados). Zero texto abaixo de 11px.
