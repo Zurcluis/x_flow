@@ -10,7 +10,7 @@ import { normalizePlate, formatPlateForDisplay } from "@/domains/vehicles/plate-
 interface VehicleFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (vehicle: Partial<Vehicle>) => void;
+  onSave: (vehicle: Partial<Vehicle>) => void | Promise<void>;
   customers: Customer[];
   initialCustomerId?: string;
 }

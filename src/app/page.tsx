@@ -16,11 +16,13 @@ import {
   BarChartSparkline,
   StarRating,
 } from "@/components/xflow/MetricSparkCard";
-import { initialDashboardData } from "@/lib/demo-data/dashboard-data";
+import { getDashboardData } from "@/server/dashboard";
 import { formatCurrency, formatPercentage } from "@/lib/formatting";
 
-export default function CentroDeComandoPage() {
-  const data = initialDashboardData;
+export const dynamic = "force-dynamic";
+
+export default async function CentroDeComandoPage() {
+  const data = await getDashboardData();
 
   return (
     <div className="flex flex-col gap-6">
@@ -152,12 +154,16 @@ export default function CentroDeComandoPage() {
           <BarChartSparkline data={data.metrics.occupancyRate.barChart} />
         </MetricCard>
 
-        {/* 4. Satisfação do Cliente */}
+        {/* 4. Qualidade (QC) */}
         <MetricCard
-          title="Satisfação do Cliente"
+          title="Aprovações em QC"
           value={`${data.metrics.customerSatisfaction.score} / ${data.metrics.customerSatisfaction.maxScore}`}
-          change={`+${data.metrics.customerSatisfaction.changeScore}`}
-          subtitle={data.metrics.customerSatisfaction.reviewsCount ? `Baseado em ${data.metrics.customerSatisfaction.reviewsCount} avaliações` : ""}
+          change={`${data.metrics.customerSatisfaction.reviewsCount} inspeções`}
+          subtitle={
+            data.metrics.customerSatisfaction.reviewsCount
+              ? `Baseado em ${data.metrics.customerSatisfaction.reviewsCount} inspeções QC`
+              : "Sem inspeções registadas"
+          }
         >
           <StarRating stars={data.metrics.customerSatisfaction.stars} />
         </MetricCard>

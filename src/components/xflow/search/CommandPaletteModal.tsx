@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   searchGlobalIndex,
 } from "@/domains/search/global-search-engine";
+import { searchDatabaseAction } from "@/app/actions/search";
 import { SearchResultItem, SearchCategory } from "@/domains/search/types";
 
 interface CommandPaletteModalProps {
@@ -46,7 +47,34 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const results = searchGlobalIndex(query, activeCategory);
+  const [dbResults, setDbResults] = useState<SearchResultItem[]>([]);
+
+  // Pesquisa live na base de dados (debounce)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (query.trim().length >= 2) {
+        searchDatabaseAction(query)
+          .then((items) => {
+            setDbResults(items);
+            setSelectedIndex(0);
+          })
+          .catch(() => setDbResults([]));
+      } else {
+        setDbResults([]);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Índice estático: apenas páginas e ações (entidades vêm da BD)
+  const results: SearchResultItem[] = React.useMemo(() => {
+    const staticResults: SearchResultItem[] = searchGlobalIndex(query, activeCategory).filter(
+      (r) => r.category === "pages" || r.category === "actions"
+    );
+    if (activeCategory === "all") return [...dbResults, ...staticResults];
+    if (activeCategory === "pages" || activeCategory === "actions") return staticResults;
+    return dbResults.filter((r) => r.category === activeCategory);
+  }, [dbResults, query, activeCategory]);
 
   // Auto-focus input on mount
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { getPrimaryOrganizationId } from "@/server/org";
 import {
   B2BAccountDetails,
   Customer,
@@ -7,21 +8,9 @@ import {
   PreferredChannel,
 } from "@/domains/crm/types";
 
-export const PRIMARY_ORG_SLUG = "x-motion";
+export { getPrimaryOrganizationId };
 
 type CustomerRow = Record<string, unknown>;
-
-const ORG_NOT_FOUND =
-  "Organização não encontrada na base de dados. Corre o seed (scripts/seed.mjs) antes de usar a app.";
-
-export async function getPrimaryOrganizationId(): Promise<string> {
-  const { rows } = await getDb().query<{ id: string }>(
-    "SELECT id FROM organizations WHERE slug = $1 LIMIT 1",
-    [PRIMARY_ORG_SLUG]
-  );
-  if (rows.length === 0) throw new Error(ORG_NOT_FOUND);
-  return rows[0].id;
-}
 
 function iso(value: unknown): string {
   return value instanceof Date ? value.toISOString() : String(value);
