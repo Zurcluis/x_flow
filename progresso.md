@@ -12,8 +12,15 @@ _Última atualização: 05/09/2026. Ficheiro de continuação de sessão — diz
 ## Base de dados (Neon, 05/09/2026)
 - **Neon Postgres 18.6** ligado e **10/10 migrações aplicadas** (35 tabelas em `public`) — migrações eram SQL puro, sem dependências Supabase
 - Connection string (pooler) em `.env.local` como `DATABASE_URL` — coberto por `.env*` no `.gitignore` (não commitar)
-- `pg` instalado com `--no-save` (apenas para o runner de migrações) — decidir cliente/ORM definitivo na integração
-- **Pendente**: app ainda usa demo data (`src/lib/demo-data`) — ligar queries às tabelas; migrations são de `supabase/migrations` (manter pasta ou renomear)
+- **Seed**: `node scripts/seed.mjs` (idempotente) — org `x-motion`, 5 clientes, 6 viaturas com links de posse
+- **Slice CRM Clientes ligado à BD** (padrão a replicar nos restantes domínios):
+  - `src/lib/db.ts` — pool `pg` singleton (`pg` + `@types/pg` já em package.json)
+  - `src/server/customers.ts` — repositório: `getPrimaryOrganizationId`, `listCustomers` (stats via subqueries: vehicle_count, total_spent, last_interaction), `createCustomer` (transação, cria `b2b_accounts` se business)
+  - `src/app/actions/customers.ts` — server action `createCustomerAction` + `revalidatePath`
+  - `src/app/customers/page.tsx` = server component (force-dynamic) → `CustomersView.tsx` (client, filters/estado local) — modal cria clientes reais na BD
+  - Mapeamento snake_case ↔ camelCase feito nos repositórios; tipos de domínio em `src/domains/*/types.ts` mantêm-se
+- Testado end-to-end no browser (criação persistida). Typecheck, lint e 85/85 testes OK
+- **Pendente**: replicar o padrão noutros domínios (viaturas, orçamentos, stock, produção…); RLS atualmente bypassed (owner) — rever políticas na altura do auth
 
 ## O que foi feito na sessão 04/09/2026 (mudanças visuais)
 1. **Piso tipográfico subido** (83 ficheiros): `9px/10px → 11px` (badges/eyebrows), `11px → 12px` (metadados). Zero texto abaixo de 11px.
