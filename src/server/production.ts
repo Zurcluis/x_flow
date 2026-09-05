@@ -186,6 +186,53 @@ async function recalcProgress(client: PgExecutor, workOrderId: string) {
   return { progress, allDone: done === total && total > 0 };
 }
 
+const VALID_STATUSES = ["draft", "in_progress", "waiting_parts", "quality_control", "completed"];
+
+export async function updateWorkOrderStatus(
+  organizationId: string,
+  workOrderId: string,
+  status: WorkOrder["status"]
+): Promise<{ ok: boolean; error?: string }> {
+  if (!VALID_STATUSES.includes(status)) {
+    return { ok: false, error: "Estado inválido." };
+  }
+  const db = getDb();
+  const client = (await db.connect()) as PgExecutor & { release: () => void };
+  try {
+    await client.query("BEGIN");
+    if (status === "completed") {
+      await client.query(
+        `UPDATE work_orders
+         SET status = 'completed', progress_percentage = 100, completed_at = NOW(), updated_at = NOW()
+         WHERE id = $1 AND organization_id = $2`,
+        [workOrderId, organizationId]
+      );
+    } else {
+      await client.query(
+        `UPDATE work_orders
+         SET status = $3, completed_at = NULL,
+             progress_percentage = CASE WHEN progress_percentage = 100 THEN 90 ELSE progress_percentage END,
+             updated_at = NOW()
+         WHERE id = $1 AND organization_id = $2`,
+        [workOrderId, organizationId, status]
+      );
+    }
+    await recalcProgress(client, workOrderId);
+    // reafirmar o estado escolhido (recalcProgress pode alterar)
+    await client.query(
+      `UPDATE work_orders SET status = $3, updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+      [workOrderId, organizationId, status]
+    );
+    await client.query("COMMIT");
+    return { ok: true };
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    return { ok: false, error: e instanceof Error ? e.message : "Erro ao mudar estado." };
+  } finally {
+    client.release();
+  }
+}
+
 export async function completePhase(
   workOrderId: string,
   phaseId: string

@@ -448,12 +448,14 @@ const appointments = [
   { vehicle: "MN-78-OP", customer: "AutoStand Prime Barcelos", bay: "WRAP-2", tech: "Ricardo Almeida", start: h(34), hours: 4, status: "scheduled", quote: null },
 ];
 for (const a of appointments) {
+  const start = a.start;
+  const end = new Date(start.getTime() + a.hours * 3600000);
   await client.query(
     `INSERT INTO appointments
       (organization_id, quote_id, vehicle_id, customer_id, bay_id, technician_id, start_time, end_time, estimated_hours, status, notes)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
     [orgId, a.quote, vehicles[a.vehicle], customerIds[a.customer], bays[a.bay], profiles[a.tech],
-     a.start, h(a.start.getUTCHours() + a.hours), a.hours, a.status, "Marcação criada na agenda."]
+     start, end, a.hours, a.status, "Marcação criada na agenda."]
   );
 }
 
@@ -508,16 +510,16 @@ for (const t of [
 }
 
 for (const e of [
-  { name: "Luís Gonçalves", role: "Fundador & Gestor", specialty: "Gestão e Orçamentação", level: "Master", status: "disponivel", certs: ["Gestão de Oficina Premium"] },
-  { name: "João Martins", role: "Instalador PPF", specialty: "PPF Integral e Detalhes", level: "Master", status: "em_trabalho", certs: ["STEK Certified Installer", "XPEL PPF Specialist"] },
-  { name: "Ricardo Almeida", role: "Instalador Wrap", specialty: "Wrap Completo e Color PPF", level: "Sénior", status: "em_trabalho", certs: ["3M Preferred Installer"] },
-  { name: "Miguel Costa", role: "Técnico Detailing", specialty: "Detailing e Correção de Pintura", level: "Especialista", status: "disponivel", certs: ["Gtechniq Accredited Detailer"] },
-  { name: "Patrícia Sousa", role: "Responsável de Qualidade", specialty: "QC e Entregas", level: "Sénior", status: "disponivel", certs: ["ISO 9001 Internal Auditor"] },
+  { name: "Luís Gonçalves", role: "Fundador & Gestor", specialty: "Gestão e Orçamentação", level: "Master", status: "disponivel", certs: ["Gestão de Oficina Premium"], email: "luis@xmotion.pt", phone: "910000001" },
+  { name: "João Martins", role: "Instalador PPF", specialty: "PPF Integral e Detalhes", level: "Master", status: "em_trabalho", certs: ["STEK Certified Installer", "XPEL PPF Specialist"], email: "joao@xmotion.pt", phone: "910000002" },
+  { name: "Ricardo Almeida", role: "Instalador Wrap", specialty: "Wrap Completo e Color PPF", level: "Sénior", status: "em_trabalho", certs: ["3M Preferred Installer"], email: "ricardo@xmotion.pt", phone: "910000003" },
+  { name: "Miguel Costa", role: "Técnico Detailing", specialty: "Detailing e Correção de Pintura", level: "Especialista", status: "disponivel", certs: ["Gtechniq Accredited Detailer"], email: "miguel@xmotion.pt", phone: "910000004" },
+  { name: "Patrícia Sousa", role: "Responsável de Qualidade", specialty: "QC e Entregas", level: "Sénior", status: "disponivel", certs: ["ISO 9001 Internal Auditor"], email: "patricia@xmotion.pt", phone: "910000005" },
 ]) {
   await client.query(
-    `INSERT INTO employees (organization_id, profile_id, name, role, specialty, level, status, certifications)
-     VALUES ($1,(SELECT id FROM profiles WHERE name = $2 LIMIT 1),$3,$4,$5,$6,$7,$8)`,
-    [orgId, e.name, e.name, e.role, e.specialty, e.level, e.status, JSON.stringify(e.certs)]
+    `INSERT INTO employees (organization_id, profile_id, name, role, specialty, level, status, certifications, email, phone)
+     VALUES ($1,(SELECT id FROM profiles WHERE name = $2 LIMIT 1),$3,$4,$5,$6,$7,$8,$9,$10)`,
+    [orgId, e.name, e.name, e.role, e.specialty, e.level, e.status, JSON.stringify(e.certs), e.email, e.phone]
   );
 }
 

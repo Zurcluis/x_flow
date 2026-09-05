@@ -1,29 +1,51 @@
-import { CalendarView } from "./CalendarView";
-import { listAppointmentsForWeek, listBays } from "@/server/calendar";
+import { CalendarEngine } from "@/components/xflow/calendar/CalendarEngine";
+import { listBays, listAppointmentsBetween, listTechnicians } from "@/server/calendar";
+import { listVehicles } from "@/server/vehicles";
+import { listCustomers } from "@/server/customers";
 import { getPrimaryOrganizationId } from "@/server/org";
 
 export const dynamic = "force-dynamic";
 
-const WEEKDAYS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-
 export default async function CalendarPage() {
   const organizationId = await getPrimaryOrganizationId();
-  const [bays, appointments] = await Promise.all([
-    listBays(organizationId),
-    listAppointmentsForWeek(organizationId),
-  ]);
 
   const now = new Date();
-  const selectedDate = now.toISOString().slice(0, 10);
-  const dayLabel = `${WEEKDAYS[now.getDay()]}, ${now.getDate()} de ${MONTHS[now.getMonth()]} de ${now.getFullYear()}`;
+  const rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+
+  const [bays, technicians, vehicles, customers, appointments] = await Promise.all([
+    listBays(organizationId),
+    listTechnicians(organizationId),
+    listVehicles(organizationId),
+    listCustomers(organizationId),
+    listAppointmentsBetween(organizationId, rangeStart, rangeEnd),
+  ]);
 
   return (
-    <CalendarView
-      bays={bays}
-      appointments={appointments}
-      selectedDate={selectedDate}
-      dayLabel={dayLabel}
-    />
+    <div className="flex flex-col gap-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.04]">
+        <div className="flex flex-col">
+          <span className="text-xs font-medium text-[#a9adae]">
+            Planeamento Operacional & Baias
+          </span>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5]">
+            Agenda & Capacidade da Oficina
+          </h1>
+        </div>
+      </div>
+
+      <CalendarEngine
+        initialAppointments={appointments}
+        bays={bays}
+        technicians={technicians}
+        vehicles={vehicles.map((v) => ({
+          id: v.id,
+          label: `${v.make} ${v.model} (${v.plateDisplay})`,
+          customerId: v.currentOwner?.customerId ?? null,
+        }))}
+        customers={customers.map((c) => ({ id: c.id, name: c.name }))}
+      />
+    </div>
   );
 }

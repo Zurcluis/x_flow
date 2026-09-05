@@ -5,14 +5,22 @@ import {
   Users,
   Award,
   TrendingUp,
+  UserPlus,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { TeamMemberFormModal } from "@/components/xflow/team/TeamMemberFormModal";
 
 import { TeamMember } from "@/lib/demo-data/tools-team-data";
 
 export function TeamView({ initialTeam }: { initialTeam: TeamMember[] }) {
-  const [team] = useState<TeamMember[]>(initialTeam);
+  const [team, setTeam] = useState<TeamMember[]>(initialTeam);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleSaveMember = (member: TeamMember) => {
+    setTeam([member, ...team]);
+  };
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -26,6 +34,10 @@ export function TeamView({ initialTeam }: { initialTeam: TeamMember[] }) {
             Quadro operacional, instaladores certificados Stek/3M, atribuições em tempo real e eficiência técnica.
           </p>
         </div>
+        <Button variant="primary" onClick={() => setIsModalOpen(true)} className="self-start sm:self-auto">
+          <UserPlus className="h-4 w-4" />
+          <span>Adicionar Colaborador</span>
+        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -150,6 +162,13 @@ export function TeamView({ initialTeam }: { initialTeam: TeamMember[] }) {
           </Card>
         ))}
       </div>
+
+      {/* Add Team Member Modal */}
+      <TeamMemberFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveMember}
+      />
     </div>
   );
 }

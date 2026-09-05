@@ -2,12 +2,28 @@
 
 import { revalidatePath } from "next/cache";
 import { PhaseKey } from "@/domains/production/types";
+import { WorkOrder } from "@/domains/checkins/types";
+import { getPrimaryOrganizationId } from "@/server/org";
 import {
   addTimeEntry,
   completePhase,
   startPhase,
   toggleChecklistItem,
+  updateWorkOrderStatus,
 } from "@/server/production";
+
+export async function updateWorkOrderStatusAction(
+  workOrderId: string,
+  status: WorkOrder["status"]
+) {
+  const organizationId = await getPrimaryOrganizationId();
+  const result = await updateWorkOrderStatus(organizationId, workOrderId, status);
+  if (result.ok) {
+    revalidatePath("/production");
+    revalidatePath(`/production/${workOrderId}`);
+  }
+  return result;
+}
 
 export async function completePhaseAction(workOrderId: string, phaseId: string) {
   const result = await completePhase(workOrderId, phaseId);

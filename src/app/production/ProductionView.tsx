@@ -10,25 +10,60 @@ import {
   AlertTriangle,
   Search,
   Plus,
+  Kanban,
+  List,
 } from "lucide-react";
+import { updateWorkOrderStatusAction } from "@/app/actions/production";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { WorkOrder } from "@/domains/checkins/types";
+
+const KANBAN_COLUMNS: Array<{
+  status: WorkOrder["status"];
+  label: string;
+  accent: string;
+}> = [
+  { status: "draft", label: "Rascunho", accent: "text-[#8a9092]" },
+  { status: "in_progress", label: "Em Curso", accent: "text-[#d3a548]" },
+  { status: "waiting_parts", label: "Aguardar Peças", accent: "text-[#f05a50]" },
+  { status: "quality_control", label: "Controlo de Qualidade", accent: "text-[#6e93b5]" },
+  { status: "completed", label: "Concluído", accent: "text-[#68a46b]" },
+];
 
 interface ProductionViewProps {
   initialWorkOrders: WorkOrder[];
 }
 
 export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
-  const [workOrders] = useState<WorkOrder[]>(initialWorkOrders);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [activeTab, setActiveTab] = useState<"all" | "in_progress" | "waiting_parts">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dropColumn, setDropColumn] = useState<string | null>(null);
+
+  const handleMoveCard = async (workOrderId: string, status: WorkOrder["status"]) => {
+    const wo = workOrders.find((w) => w.id === workOrderId);
+    if (!wo || wo.status === status) return;
+    // otimista
+    setWorkOrders((prev) =>
+      prev.map((w) => (w.id === workOrderId ? { ...w, status } : w))
+    );
+    const result = await updateWorkOrderStatusAction(workOrderId, status);
+    if (!result.ok) console.error("Falha ao mudar estado:", result.error);
+  };
+
+  const totalActiveJobs = workOrders.filter((wo) => wo.status === "in_progress").length;
+  const waitingOrders = workOrders.filter((wo) => wo.status === "waiting_parts");
+  const averageProgress = Math.round(
+    workOrders.reduce((acc, wo) => acc + wo.progressPercentage, 0) / (workOrders.length || 1)
+  );
+  const totalHours = workOrders.reduce((acc, wo) => acc + wo.actualHoursSpent, 0);
 
   const filteredOrders = workOrders.filter((wo) => {
     if (activeTab === "in_progress" && wo.status !== "in_progress") return false;
     if (activeTab === "waiting_parts" && wo.status !== "waiting_parts") return false;
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       return (
@@ -40,13 +75,6 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
     }
     return true;
   });
-
-  const totalActiveJobs = workOrders.filter((wo) => wo.status === "in_progress").length;
-  const waitingOrders = workOrders.filter((wo) => wo.status === "waiting_parts");
-  const averageProgress = Math.round(
-    workOrders.reduce((acc, wo) => acc + wo.progressPercentage, 0) / (workOrders.length || 1)
-  );
-  const totalHours = workOrders.reduce((acc, wo) => acc + wo.actualHoursSpent, 0);
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -61,12 +89,38 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
           </h1>
         </div>
 
-        <Link href="/checkins/new">
-          <Button variant="primary">
-            <Plus className="h-4 w-4" />
-            <span>Novo Check-in / Ordem</span>
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 p-1 rounded-[12px] bg-[#101314] border border-white/[0.06]">
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
+                viewMode === "kanban"
+                  ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40"
+                  : "text-[#a9adae] hover:text-[#f1ede5]"
+              }`}
+            >
+              <Kanban className="h-3.5 w-3.5" />
+              <span>Kanban</span>
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
+                viewMode === "list"
+                  ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40"
+                  : "text-[#a9adae] hover:text-[#f1ede5]"
+              }`}
+            >
+              <List className="h-3.5 w-3.5" />
+              <span>Lista</span>
+            </button>
+          </div>
+          <Link href="/checkins/new">
+            <Button variant="primary">
+              <Plus className="h-4 w-4" />
+              <span>Novo Check-in / Ordem</span>
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* KPI Top Cards */}
@@ -126,7 +180,99 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
         </div>
       </div>
 
-      {/* Controls Bar: Search & Tabs */}
+      {/* Kanban Board */}
+      {viewMode === "kanban" && (
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3">
+          {KANBAN_COLUMNS.map((col) => {
+            const columnOrders = workOrders.filter((wo) => wo.status === col.status);
+            const isDropTarget = dropColumn === col.status;
+            return (
+              <div
+                key={col.status}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDropColumn(col.status);
+                }}
+                onDragLeave={() => setDropColumn(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedId) void handleMoveCard(draggedId, col.status);
+                  setDraggedId(null);
+                  setDropColumn(null);
+                }}
+                className={`flex flex-col gap-2 p-2.5 rounded-lg border min-h-[320px] transition-colors ${
+                  isDropTarget
+                    ? "bg-[#1f1b14]/60 border-[#d3a548]/60"
+                    : "bg-[#0d0f10] border-white/[0.06]"
+                }`}
+              >
+                <div className="flex items-center justify-between px-1 pt-1">
+                  <span className={`text-xs font-bold uppercase tracking-wider ${col.accent}`}>
+                    {col.label}
+                  </span>
+                  <span className="text-[11px] font-mono text-[#8a9092]">
+                    {columnOrders.length}
+                  </span>
+                </div>
+
+                {columnOrders.map((wo) => {
+                  const isWaiting = wo.status === "waiting_parts";
+                  return (
+                    <div
+                      key={wo.id}
+                      draggable
+                      onDragStart={() => setDraggedId(wo.id)}
+                      onDragEnd={() => setDraggedId(null)}
+                      className="cursor-grab active:cursor-grabbing p-3 rounded-[12px] bg-[#101314] border border-white/[0.08] hover:border-[#d3a548]/40 transition-all"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="font-mono font-black text-[11px] text-[#f7d46d]">
+                          {wo.workOrderNumber}
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold text-[#f1ede5] block truncate">
+                        {wo.vehicleModel}
+                      </span>
+                      <span className="text-[11px] text-[#8a9092] block truncate">
+                        {wo.serviceTitle}
+                      </span>
+                      <div className="relative h-1.5 w-full rounded-full bg-white/[0.08] overflow-hidden mt-2">
+                        <div
+                          className={`h-full rounded-full ${
+                            isWaiting ? "bg-[#f05a50]" : "bg-gradient-to-r from-[#d3a548] to-[#f7d46d]"
+                          }`}
+                          style={{ width: `${wo.progressPercentage}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between mt-1.5 text-[11px] text-[#8a9092]">
+                        <span className="truncate">{wo.primaryTechnicianName}</span>
+                        <span className="font-mono">{wo.progressPercentage}%</span>
+                      </div>
+                      <Link
+                        href={`/production/${wo.id}`}
+                        className="text-[11px] font-semibold text-[#d3a548] hover:underline mt-1.5 inline-block"
+                      >
+                        Painel da Obra →
+                      </Link>
+                    </div>
+                  );
+                })}
+
+                {columnOrders.length === 0 && (
+                  <div className="flex-1 flex items-center justify-center p-4 text-[11px] text-[#5a6062] border border-dashed border-white/[0.06] rounded-[10px]">
+                    Arrasta ordens para aqui
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* List View */}
+      {viewMode === "list" && (
+        <>
+          {/* Controls Bar: Search & Tabs */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
@@ -277,6 +423,8 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
           );
         })}
       </div>
+        </>
+      )}
     </div>
   );
 }

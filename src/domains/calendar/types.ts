@@ -33,6 +33,8 @@ export interface Appointment {
   startTime: string; // ISO or '09:00'
   endTime: string; // ISO or '17:30'
   date: string; // '2026-08-28'
+  startIso?: string; // ISO completo (calendário)
+  endIso?: string; // ISO completo (calendário)
   estimatedHours: number;
   status: AppointmentStatus;
   notes?: string;

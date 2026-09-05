@@ -15,6 +15,8 @@ export interface WorkshopTool {
 
 export interface TeamMember {
   id: string;
+  email?: string;
+  phone?: string;
   name: string;
   role: string;
   specialty: string;
