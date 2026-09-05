@@ -10,7 +10,7 @@ import { detectDuplicateCustomer, DuplicateMatch } from "@/domains/crm/duplicate
 interface CustomerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (customer: Partial<Customer>) => void;
+  onSave: (customer: Partial<Customer>) => void | Promise<void>;
   existingCustomers: Customer[];
   initialData?: Customer;
 }

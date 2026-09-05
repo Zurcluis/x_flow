@@ -5,7 +5,7 @@ _Última atualização: 05/09/2026. Ficheiro de continuação de sessão — diz
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.3.3, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
 - Health: typecheck OK, lint OK, 85/85 testes a passar
-- **Não é repositório git** — repo GitHub indicado pelo dono: `https://github.com/Zurcluis/x_flow.git` (falta `git init` + remote + push)
+- **Git a funcionar**: repo inicializado, commit inicial `5e3c471` no `main` e push feito para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo)
 - `README.md` ainda é o template default do create-next-app
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 
@@ -32,7 +32,7 @@ _Última atualização: 05/09/2026. Ficheiro de continuação de sessão — diz
 6. Verificação no browser (dev server): sidebar com secções e colapso (80px), topbar global nas páginas, h1 30px, CardTitle 20px, radius 18px, shadow token, certificado com classes print. Validação: typecheck, lint e 85/85 testes OK.
 
 ## Pendente
-- **Médio prazo**: ligar a app às tabelas Neon (substituir demo data), `git init` + remote `https://github.com/Zurcluis/x_flow.git` + primeiro push, README real
+- **Médio prazo**: ligar a app às tabelas Neon (substituir demo data), README real
 - H1s de listagem misturam `text-2xl` e `text-2xl lg:text-3xl` — unificar noutro pass
 - Raios `rounded-[8px]/[10px]/[12px]/[14px]` existem fora dos tokens — mapear para `rounded-sm/md` noutro pass
 - Topbar chrome não aparece em <lg (mobile tem header/drawer/bottom-nav próprios) — avaliar ações rápidas no drawer mobile
