@@ -1,0 +1,106 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+@theme {
+  --color-canvas: #050606;
+  --color-sidebar: #080a0b;
+  --color-surface-1: #101314;
+  --color-surface-2: #15191a;
+  --color-surface-3: #1b2021;
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.15);
+  
+  --color-gold-300: #e7c77c;
+  --color-gold-500: #d3a548;
+  --color-gold-700: #a77c2e;
+  
+  --color-text-primary: #f1ede5;
+  --color-text-secondary: #a9adae;
+  --color-text-muted: #8a9092;
+  
+  --color-success: #68a46b;
+  --color-warning: #d3a548;
+  --color-danger: #f05a50;
+  --color-info: #6e93b5;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+}
+
+/* Base resets & typography */
+html {
+  color-scheme: dark;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Numeric tabular styling */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom gold scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-sidebar);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(211, 165, 72, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(211, 165, 72, 0.4);
+}
+
+/* Focus ring styles */
+:focus-visible {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 2px;
+}
+
+/* Micro-animations */
+@media (prefers-reduced-motion: no-preference) {
+  .transition-micro {
+    transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* Print — certificados públicos (garantia, QC) imprimem em tema claro */
+@media print {
+  .print-light {
+    background: #ffffff !important;
+  }
+
+  .print-light * {
+    color: #1a1d1e !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border-color: rgba(0, 0, 0, 0.25) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
