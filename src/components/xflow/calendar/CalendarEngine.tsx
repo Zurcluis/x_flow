@@ -673,9 +673,18 @@ function AppointmentModal({
     };
   };
 
+  const selectedVehicleHasOwner = vehicles.some(
+    (v) => v.id === vehicleId && v.customerId
+  );
+
   const handleSave = async (force = false) => {
     setSaving(true);
     setError(null);
+    if (!selectedVehicleHasOwner) {
+      setError("A viatura selecionada não tem proprietário associado.");
+      setSaving(false);
+      return;
+    }
     if (force) {
       const r = await forceSaveAppointmentAction(buildInput(), appointment?.id);
       if (!r.ok) {
@@ -758,6 +767,13 @@ function AppointmentModal({
               ))}
             </select>
           </label>
+
+          {!selectedVehicleHasOwner && (
+            <p className="p-3 rounded-[10px] bg-[#2a1210] border border-[#f05a50]/40 text-[11px] font-semibold text-[#f78e85]">
+              Esta viatura não tem proprietário associado. Associa um cliente no
+              CRM (Viaturas) antes de agendar.
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
