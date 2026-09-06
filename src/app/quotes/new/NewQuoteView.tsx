@@ -78,8 +78,8 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
     quoteId,
     optionId: "opt-new-1",
     tier: "essential",
-    name: "Op├º├úo 1: Pack Frontal Standard",
-    description: "Prote├º├úo contra gravilha e impactos frontais de estrada.",
+    name: "Opção 1: Pack Frontal Standard",
+    description: "Proteção contra gravilha e impactos frontais de estrada.",
     isRecommended: false,
     warrantyYears: 5,
     bodyType,
@@ -93,7 +93,7 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
     quoteId,
     optionId: "opt-new-2",
     tier: "recommended",
-    name: "Op├º├úo 2: Pack Highway & Track",
+    name: "Opção 2: Pack Highway & Track",
     description: "Frente completa + Guarda-lamas, Embaladeiras e Soleiras de entrada.",
     isRecommended: true,
     warrantyYears: 10,
@@ -108,8 +108,8 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
     quoteId,
     optionId: "opt-new-3",
     tier: "premium",
-    name: "Op├º├úo 3: Cobertura Integral Full PPF",
-    description: "Prote├º├úo total de 100% da pintura com acabamento de alta espessura.",
+    name: "Opção 3: Cobertura Integral Full PPF",
+    description: "Proteção total de 100% da pintura com acabamento de alta espessura.",
     isRecommended: false,
     warrantyYears: 10,
     bodyType,
@@ -156,7 +156,7 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
           <div className="flex flex-col">
             <span className="text-xs font-medium text-[#a9adae]">Configurador Comercial</span>
             <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
-              Novo Or├ºamento Multi-Op├º├úo
+              Novo Orçamento Multi-Opção
             </h1>
           </div>
         </div>
@@ -173,7 +173,7 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
           {/* Step 1: Vehicle & Customer selection */}
           <Card className="p-5 flex flex-col gap-4">
             <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-              Passo 1 ┬À Viatura & Cliente
+              Passo 1 · Viatura & Cliente
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -186,14 +186,14 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
                 >
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id} className="bg-[#15191a] text-[#f1ede5]">
-                      {v.plateDisplay} ÔÇö {v.make} {v.model} ({v.generationYear})
+                      {v.plateDisplay} — {v.make} {v.model} ({v.generationYear})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="font-semibold text-[#a9adae]">Propriet├írio</label>
+                <label className="font-semibold text-[#a9adae]">Proprietário</label>
                 <div className="h-10 px-3.5 rounded-[10px] bg-[#080a0b] border border-white/[0.04] flex items-center justify-between text-sm text-[#f1ede5]">
                   <span className="truncate">{selectedCustomer.name}</span>
                   <span className="text-[11px] uppercase font-bold text-[#d3a548] shrink-0">
@@ -213,7 +213,7 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
                   className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   <option value="gloss">PPF Ultra Gloss (Transparente Auto-regenerativo)</option>
-                  <option value="matte">PPF Satin / Matte (Transforma├º├úo Acetinada)</option>
+                  <option value="matte">PPF Satin / Matte (Transformação Acetinada)</option>
                   <option value="color_ppf">Color PPF / Vinil Cast</option>
                 </select>
               </div>
@@ -236,10 +236,10 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
           <Card className="p-5 flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
               <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-                Passo 2 ┬À Matriz de Pe├ºas por Op├º├úo da Proposta
+                Passo 2 · Matriz de Peças por Opção da Proposta
               </span>
               <span className="text-[12px] text-[#8a9092]">
-                Personaliza as pe├ºas inclu├¡das em cada n├¡vel
+                Personaliza as peças incluídas em cada nível
               </span>
             </div>
 
@@ -254,7 +254,7 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
                     : "text-[#a9adae] hover:text-[#f1ede5]"
                 }`}
               >
-                Op├º├úo 1: Essencial ({essentialParts.length} pe├ºas)
+                Opção 1: Essencial ({essentialParts.length} peças)
               </button>
               <button
                 type="button"
@@ -265,7 +265,7 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
                     : "text-[#a9adae] hover:text-[#f1ede5]"
                 }`}
               >
-                Op├º├úo 2: Recomendada Ô¡É ({recommendedParts.length} pe├ºas)
+                Opção 2: Recomendada ⭐ ({recommendedParts.length} peças)
               </button>
               <button
                 type="button"
@@ -276,7 +276,7 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
                     : "text-[#a9adae] hover:text-[#f1ede5]"
                 }`}
               >
-                Op├º├úo 3: Premium ({premiumParts.length} pe├ºas)
+                Opção 3: Premium ({premiumParts.length} peças)
               </button>
             </div>
 
@@ -315,7 +315,7 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
                 Dica da Metodologia X-Motion:
               </span>
               <p className="leading-relaxed">
-                Apresentar 3 op├º├Áes estruturadas aumenta a taxa de convers├úo em 40%, permitindo ao cliente escolher o n├¡vel de prote├º├úo adequado ao seu perfil de condu├º├úo.
+                Apresentar 3 opções estruturadas aumenta a taxa de conversão em 40%, permitindo ao cliente escolher o nível de proteção adequado ao seu perfil de condução.
               </p>
             </div>
 

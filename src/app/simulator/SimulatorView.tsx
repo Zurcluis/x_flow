@@ -71,20 +71,20 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
               className="text-[11px] uppercase font-mono tracking-wider flex items-center gap-1"
             >
               <Sparkles className="h-3 w-3" />
-              Est├║dio de Acabamentos 3D & Simula├º├úo
+              Estúdio de Acabamentos 3D & Simulação
             </Badge>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
             Simulador de Acabamentos e Cores
           </h1>
           <p className="text-sm text-[#a9adae]">
-            Simula├º├úo fidedigna de pel├¡cula PPF, vinil e Chrome Delete com an├ílise em direto de contraste e cobertura.
+            Simulação fidedigna de película PPF, vinil e Chrome Delete com análise em direto de contraste e cobertura.
           </p>
         </div>
 
         <Link href="/quotes/new">
           <Button className="bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d] font-bold">
-            <span>Criar Or├ºamento com este Acabamento</span>
+            <span>Criar Orçamento com este Acabamento</span>
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </Link>
@@ -158,7 +158,7 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
         <div className="absolute bottom-4 right-4 hidden sm:flex items-center gap-2 p-2.5 rounded-[12px] bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] text-xs text-[#a9adae]">
           <Shield className="h-4 w-4 text-[#68a46b]" />
           <span>Garantia de {selectedPreset.warrantyYears} Anos</span>
-          <span>ÔÇó</span>
+          <span>•</span>
           <span className="text-[#f1ede5] font-mono">
             {(selectedPreset.costPerMeterCents / 100).toLocaleString("pt-PT", {
               style: "currency",
@@ -175,24 +175,24 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
           <span className="text-xs text-[#a9adae]">Contraste com a Cor de Origem</span>
           <div className="flex items-center justify-between">
             <span className="font-bold text-sm text-[#f1ede5]">
-              {selectedVehicle.originalColorName} ÔåÆ {selectedPreset.name}
+              {selectedVehicle.originalColorName} → {selectedPreset.name}
             </span>
             <Badge
               variant={contrastLevel === "high" ? "danger" : "gold"}
               className="text-[11px] uppercase font-mono"
             >
-              Contraste {contrastLevel === "high" ? "Alto" : "Baixo / M├®dio"}
+              Contraste {contrastLevel === "high" ? "Alto" : "Baixo / Médio"}
             </Badge>
           </div>
           <span className="text-[12px] text-[#a9adae]">
             {contrastLevel === "high"
-              ? "Requer acabamentos profundos nas cavas para disfar├ºar cor de f├íbrica."
-              : "Transi├º├úo crom├ítica suave sem risco de vincos vis├¡veis."}
+              ? "Requer acabamentos profundos nas cavas para disfarçar cor de fábrica."
+              : "Transição cromática suave sem risco de vincos visíveis."}
           </span>
         </Card>
 
         <Card className="p-4 bg-[#101314] border-white/[0.06] flex flex-col justify-between gap-2">
-          <span className="text-xs text-[#a9adae]">N├¡vel de Cobertura Recomendado</span>
+          <span className="text-xs text-[#a9adae]">Nível de Cobertura Recomendado</span>
           <div className="flex items-center gap-2">
             <span className="font-bold text-sm text-[#d3a548]">
               {formatCoverageLabel(recommendedCoverage)}
@@ -226,11 +226,11 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
               })}
             </span>
             <span className="text-xs text-[#68a46b] font-semibold">
-              ~{estimatedMeters}m necess├írios
+              ~{estimatedMeters}m necessários
             </span>
           </div>
           <span className="text-[12px] text-[#a9adae]">
-            Custo material: {materialCost.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })} ÔÇó Margem estimada: ~65%
+            Custo material: {materialCost.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })} • Margem estimada: ~65%
           </span>
         </Card>
       </div>
@@ -239,7 +239,7 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
       <div className="flex flex-col gap-3">
         <h3 className="text-base font-bold text-[#f1ede5] flex items-center gap-2">
           <Sliders className="h-4 w-4 text-[#d3a548]" />
-          <span>Cat├ílogo de Acabamentos e Cores</span>
+          <span>Catálogo de Acabamentos e Cores</span>
         </h3>
 
         <FinishSelector

@@ -51,9 +51,9 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
   >("clean");
   const [belongings, setBelongings] = useState<CheckinBelonging[]>([
     { id: "b1", itemName: "Chave da Viatura", isPresent: true, notes: "Chave original" },
-    { id: "b2", itemName: "Perno de Seguran├ºa de Jantes", isPresent: true, notes: "Na bagageira" },
-    { id: "b3", itemName: "Documento ├Ünico Autom├│vel (DUA)", isPresent: true, notes: "No porta-luvas" },
-    { id: "b4", itemName: "Cabo de Carregamento / Acess├│rios", isPresent: false },
+    { id: "b2", itemName: "Perno de Segurança de Jantes", isPresent: true, notes: "Na bagageira" },
+    { id: "b3", itemName: "Documento Único Automóvel (DUA)", isPresent: true, notes: "No porta-luvas" },
+    { id: "b4", itemName: "Cabo de Carregamento / Acessórios", isPresent: false },
     { id: "b5", itemName: "Objetos de Valor Pessoais", isPresent: false, notes: "Confirmado sem objetos" },
   ]);
 
@@ -74,7 +74,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
       id: "p-init-2",
       photoUrl: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=60",
       angle: "odometer",
-      label: "Od├│metro",
+      label: "Odómetro",
       isMandatory: false,
       createdAt: "2026-08-28 14:16",
     },
@@ -143,7 +143,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
           </Link>
           <div className="flex flex-col">
             <span className="text-xs font-medium text-[#a9adae]">
-              Processo de Rece├º├úo e Inspe├º├úo Fotogr├ífica
+              Processo de Receção e Inspeção Fotográfica
             </span>
             <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
               Novo Check-in de Entrada
@@ -160,7 +160,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
       <div className="grid grid-cols-5 gap-2 select-none">
         {[
           { num: 1, label: "1. Viatura" },
-          { num: 2, label: "2. Od├│metro & Pertences" },
+          { num: 2, label: "2. Odómetro & Pertences" },
           { num: 3, label: "3. Mapa de Danos" },
           { num: 4, label: "4. Fotos (Tejadilho)" },
           { num: 5, label: "5. Assinatura" },
@@ -195,7 +195,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
         <div className="p-4 rounded-[14px] bg-[#2a1210] border border-[#f05a50] text-[#f05a50] flex flex-col gap-1.5 animate-shake">
           <div className="flex items-center gap-2 font-bold text-sm">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>Valida├º├úo Pendente: Corrige os seguintes pontos</span>
+            <span>Validação Pendente: Corrige os seguintes pontos</span>
           </div>
           <ul className="list-disc pl-5 text-xs space-y-1 text-[#f78e85]">
             {validationErrors.map((err, idx) => (
@@ -211,7 +211,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
         {currentStep === 1 && (
           <Card className="p-6 flex flex-col gap-5">
             <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-              Passo 1 ┬À Sele├º├úo da Viatura e Propriet├írio
+              Passo 1 · Seleção da Viatura e Proprietário
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -224,14 +224,14 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                 >
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.plateDisplay} ÔÇö {v.make} {v.model} ({v.generationYear})
+                      {v.plateDisplay} — {v.make} {v.model} ({v.generationYear})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="font-semibold text-[#a9adae]">Propriet├írio / Contacto</label>
+                <label className="font-semibold text-[#a9adae]">Proprietário / Contacto</label>
                 <div className="h-10 px-3.5 rounded-[10px] bg-[#080a0b] border border-white/[0.04] flex items-center justify-between text-sm text-[#f1ede5]">
                   <span className="truncate">{selectedCustomer.name}</span>
                   <span className="text-[11px] text-[#8a9092]">
@@ -252,13 +252,13 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                     {selectedVehicle.make} {selectedVehicle.model} ({selectedVehicle.generationYear})
                   </span>
                   <span className="text-xs text-[#a9adae]">
-                    Cor original: {selectedVehicle.originalColorName} ┬À VIN: {selectedVehicle.vin}
+                    Cor original: {selectedVehicle.originalColorName} · VIN: {selectedVehicle.vin}
                   </span>
                 </div>
               </div>
 
               <Badge variant="gold" className="text-xs">
-                Pronto para Rece├º├úo
+                Pronto para Receção
               </Badge>
             </div>
           </Card>
@@ -268,12 +268,12 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
         {currentStep === 2 && (
           <Card className="p-6 flex flex-col gap-5">
             <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-              Passo 2 ┬À Od├│metro, Combust├¡vel & Pertences a Bordo
+              Passo 2 · Odómetro, Combustível & Pertences a Bordo
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div className="flex flex-col gap-1.5">
-                <label className="font-semibold text-[#a9adae]">Quilometragem (Od├│metro) *</label>
+                <label className="font-semibold text-[#a9adae]">Quilometragem (Odómetro) *</label>
                 <input
                   type="number"
                   value={mileage}
@@ -285,16 +285,16 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="font-semibold text-[#a9adae]">N├¡vel de Combust├¡vel</label>
+                <label className="font-semibold text-[#a9adae]">Nível de Combustível</label>
                 <select
                   value={fuelLevel}
                   onChange={(e) => setFuelLevel(e.target.value as FuelLevel)}
                   className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   <option value="full">100% (Cheio)</option>
-                  <option value="three_quarters">3/4 Dep├│sito</option>
-                  <option value="half">1/2 Dep├│sito</option>
-                  <option value="quarter">1/4 Dep├│sito</option>
+                  <option value="three_quarters">3/4 Depósito</option>
+                  <option value="half">1/2 Depósito</option>
+                  <option value="quarter">1/4 Depósito</option>
                   <option value="empty">Reserva</option>
                 </select>
               </div>
@@ -310,10 +310,10 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                   }
                   className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
-                  <option value="clean">Limpa (Pronta para inspe├º├úo)</option>
+                  <option value="clean">Limpa (Pronta para inspeção)</option>
                   <option value="dusty">Poeira Ligeira</option>
                   <option value="dirty">Suja (Necessita lavagem antes)</option>
-                  <option value="needs_decontamination">Requer Descontamina├º├úo</option>
+                  <option value="needs_decontamination">Requer Descontaminação</option>
                 </select>
               </div>
             </div>
@@ -374,7 +374,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
           <Card className="p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
               <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-                Passo 4 ┬À Galeria Fotogr├ífica de Inspe├º├úo
+                Passo 4 · Galeria Fotográfica de Inspeção
               </span>
               <span className="text-xs text-[#8a9092]">
                 {photos.length} fotografias registadas
@@ -393,7 +393,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
         {currentStep === 5 && (
           <Card className="p-6 flex flex-col gap-5">
             <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-              Passo 5 ┬À Resumo da Rece├º├úo & Assinatura Digital
+              Passo 5 · Resumo da Receção & Assinatura Digital
             </span>
 
             {/* Summary Box */}
@@ -401,17 +401,17 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
               <div className="flex flex-col">
                 <span className="text-[11px] text-[#8a9092]">Viatura</span>
                 <span className="font-bold text-[#f1ede5]">
-                  {selectedVehicle.plateDisplay} ÔÇö {selectedVehicle.make} {selectedVehicle.model}
+                  {selectedVehicle.plateDisplay} — {selectedVehicle.make} {selectedVehicle.model}
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="text-[11px] text-[#8a9092]">Quil├│metros / Danos</span>
+                <span className="text-[11px] text-[#8a9092]">Quilómetros / Danos</span>
                 <span className="font-bold text-[#f1ede5]">
-                  {mileage.toLocaleString("pt-PT")} km ┬À {damages.length} danos assinalados
+                  {mileage.toLocaleString("pt-PT")} km · {damages.length} danos assinalados
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="text-[11px] text-[#8a9092]">Inspe├º├úo de Tejadilho</span>
+                <span className="text-[11px] text-[#8a9092]">Inspeção de Tejadilho</span>
                 <span className="font-bold text-[#68a46b] flex items-center gap-1">
                   <Check className="h-3.5 w-3.5" />
                   Validada com Foto
@@ -438,7 +438,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
             />
 
             <div className="p-3.5 rounded-[12px] bg-[#101314] border border-white/[0.04] text-[12px] text-[#8a9092] leading-relaxed">
-              Ao assinar este documento, o cliente e o t├®cnico confirmam o estado f├¡sico da viatura, o registo de danos pr├®-existentes mapeados e autorizam o in├¡cio dos trabalhos na oficina X-Motion.
+              Ao assinar este documento, o cliente e o técnico confirmam o estado físico da viatura, o registo de danos pré-existentes mapeados e autorizam o início dos trabalhos na oficina X-Motion.
             </div>
           </Card>
         )}
@@ -456,7 +456,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
 
           {currentStep < 5 ? (
             <Button variant="primary" onClick={handleNextStep}>
-              <span>Avan├ºar para Passo {currentStep + 1}</span>
+              <span>Avançar para Passo {currentStep + 1}</span>
             </Button>
           ) : (
             <Button
