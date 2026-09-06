@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useState } from "react";
 import {
   Camera,
   CheckCircle2,
   Trash2,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import { CheckinPhoto, PhotoAngle } from "@/domains/checkins/types";
 import { Badge } from "@/components/ui/badge";
@@ -19,47 +20,58 @@ interface PhotoInspectionGridProps {
 interface PhotoSlotDefinition {
   angle: PhotoAngle;
   label: string;
-  sampleUrl: string;
 }
 
 const MANDATORY_SLOTS: PhotoSlotDefinition[] = [
-  {
-    angle: "front",
-    label: "Frente",
-    sampleUrl: "https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800&auto=format&fit=crop&q=60",
-  },
-  {
-    angle: "left_side",
-    label: "Lateral Esquerdo",
-    sampleUrl: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=800&auto=format&fit=crop&q=60",
-  },
-  {
-    angle: "right_side",
-    label: "Lateral Direito",
-    sampleUrl: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=60",
-  },
-  {
-    angle: "rear",
-    label: "Traseira",
-    sampleUrl: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=800&auto=format&fit=crop&q=60",
-  },
-  {
-    angle: "roof",
-    label: "Tejadilho",
-    sampleUrl: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&auto=format&fit=crop&q=60",
-  },
-  {
-    angle: "odometer",
-    label: "Odómetro (Quilometragem)",
-    sampleUrl: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=60",
-  },
+  { angle: "front", label: "Frente" },
+  { angle: "left_side", label: "Lateral Esquerdo" },
+  { angle: "right_side", label: "Lateral Direito" },
+  { angle: "rear", label: "Traseira" },
+  { angle: "roof", label: "Tejadilho" },
+  { angle: "odometer", label: "Odómetro (Quilometragem)" },
 ];
+
+const MAX_DIMENSION = 1600;
+const JPEG_QUALITY = 0.72;
+
+async function fileToCompressedDataUrl(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Falha ao ler o ficheiro."));
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Ficheiro de imagem inválido."));
+    image.src = dataUrl;
+  });
+
+  const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
+  const width = Math.round(img.width * scale);
+  const height = Math.round(img.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+}
 
 export function PhotoInspectionGrid({
   photos,
   onChangePhotos,
   isReadOnly = false,
 }: PhotoInspectionGridProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const activeSlotRef = useRef<PhotoSlotDefinition | null>(null);
+  const [busySlot, setBusySlot] = useState<PhotoAngle | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   const registeredCount = MANDATORY_SLOTS.filter((slot) =>
     photos.some((p) => p.photoUrl && p.angle === slot.angle)
   ).length;
@@ -67,27 +79,51 @@ export function PhotoInspectionGrid({
   const isComplete = registeredCount >= 5;
 
   const handleCapturePhoto = (slot: PhotoSlotDefinition) => {
-    if (isReadOnly) return;
+    if (isReadOnly || busySlot) return;
+    activeSlotRef.current = slot;
+    setError(null);
+    fileInputRef.current?.click();
+  };
 
-    const existingIndex = photos.findIndex((p) => p.angle === slot.angle);
-    if (existingIndex >= 0) {
-      const updated = [...photos];
-      updated[existingIndex] = {
-        ...updated[existingIndex],
-        photoUrl: slot.sampleUrl,
-        createdAt: new Date().toISOString().replace("T", " ").slice(0, 16),
-      };
-      onChangePhotos(updated);
-    } else {
-      const newPhoto: CheckinPhoto = {
-        id: `cp-${Date.now()}-${slot.angle}`,
-        photoUrl: slot.sampleUrl,
-        angle: slot.angle,
-        label: slot.label,
-        isMandatory: true,
-        createdAt: new Date().toISOString().replace("T", " ").slice(0, 16),
-      };
-      onChangePhotos([...photos, newPhoto]);
+  const handleFileSelected = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const slot = activeSlotRef.current;
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!slot || !file) return;
+
+    setBusySlot(slot.angle);
+    setError(null);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      const existingIndex = photos.findIndex((p) => p.angle === slot.angle);
+      if (existingIndex >= 0) {
+        const updated = [...photos];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          photoUrl: dataUrl,
+          createdAt: new Date().toISOString().replace("T", " ").slice(0, 16),
+        };
+        onChangePhotos(updated);
+      } else {
+        const newPhoto: CheckinPhoto = {
+          id: `cp-${Date.now()}-${slot.angle}`,
+          photoUrl: dataUrl,
+          angle: slot.angle,
+          label: slot.label,
+          isMandatory: true,
+          createdAt: new Date().toISOString().replace("T", " ").slice(0, 16),
+        };
+        onChangePhotos([...photos, newPhoto]);
+      }
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Não foi possível processar a imagem."
+      );
+    } finally {
+      setBusySlot(null);
+      activeSlotRef.current = null;
     }
   };
 
@@ -98,6 +134,14 @@ export function PhotoInspectionGrid({
 
   return (
     <div className="flex flex-col gap-4">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileSelected}
+      />
+
       {/* Clean Status Counter Bar */}
       <div className="flex items-center justify-between p-4 rounded-[14px] bg-[#101314] border border-white/[0.08]">
         <div className="flex items-center gap-3">
@@ -136,11 +180,16 @@ export function PhotoInspectionGrid({
         </Badge>
       </div>
 
-      {/* Grid of 5 standard inspection slots */}
+      {error && (
+        <p className="text-xs font-semibold text-[#f05a50] px-1">{error}</p>
+      )}
+
+      {/* Grid of 6 standard inspection slots */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {MANDATORY_SLOTS.map((slot) => {
           const photo = photos.find((p) => p.angle === slot.angle);
           const isUploaded = !!photo?.photoUrl;
+          const isBusy = busySlot === slot.angle;
 
           return (
             <div
@@ -171,7 +220,12 @@ export function PhotoInspectionGrid({
 
               {/* Photo Preview Area */}
               <div className="relative h-36 w-full rounded-[10px] overflow-hidden bg-[#080a0b] border border-white/[0.04] flex items-center justify-center">
-                {isUploaded ? (
+                {isBusy ? (
+                  <div className="flex flex-col items-center gap-2 text-[#f7d46d]">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="text-[11px]">A processar imagem…</span>
+                  </div>
+                ) : isUploaded ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -206,7 +260,8 @@ export function PhotoInspectionGrid({
                   <button
                     type="button"
                     onClick={() => handleCapturePhoto(slot)}
-                    className={`w-full py-2 rounded-[8px] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                    disabled={isBusy}
+                    className={`w-full py-2 rounded-[8px] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 ${
                       isUploaded
                         ? "bg-white/[0.05] text-[#a9adae] hover:bg-white/10 hover:text-[#f1ede5]"
                         : "bg-[#15191a] text-[#f1ede5] border border-white/[0.08] hover:border-[#d3a548]"
