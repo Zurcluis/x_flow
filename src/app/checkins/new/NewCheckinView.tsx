@@ -10,12 +10,13 @@ import {
   Check,
   Car,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { VehicleDamageMapper } from "@/components/xflow/checkins/VehicleDamageMapper";
 import { PhotoInspectionGrid } from "@/components/xflow/checkins/PhotoInspectionGrid";
+import { PhotoDamageMapper } from "@/components/xflow/checkins/PhotoDamageMapper";
 import { SignaturePad } from "@/components/xflow/checkins/SignaturePad";
 import {
   CheckinDamage,
@@ -23,7 +24,11 @@ import {
   CheckinBelonging,
   FuelLevel,
 } from "@/domains/checkins/types";
-import { validateCheckinSubmission } from "@/domains/checkins/roof-validator";
+import {
+  validateCheckinSubmission,
+  validateCheckinPhotos,
+} from "@/domains/checkins/roof-validator";
+import { createCheckinAction } from "@/app/actions/checkins";
 
 export function NewCheckinView({ vehicles: vehiclesProp, customers: customersProp }: { vehicles: Vehicle[]; customers: Customer[] }) {
   const router = useRouter();
@@ -57,33 +62,18 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
     { id: "b5", itemName: "Objetos de Valor Pessoais", isPresent: false, notes: "Confirmado sem objetos" },
   ]);
 
-  // Step 3: Damages
-  const [damages, setDamages] = useState<CheckinDamage[]>([]);
+  // Step 3: Photos (upload real)
+  const [photos, setPhotos] = useState<CheckinPhoto[]>([]);
 
-  // Step 4: Photos
-  const [photos, setPhotos] = useState<CheckinPhoto[]>([
-    {
-      id: "p-init-1",
-      photoUrl: "https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800&auto=format&fit=crop&q=60",
-      angle: "front",
-      label: "Frente",
-      isMandatory: false,
-      createdAt: "2026-08-28 14:15",
-    },
-    {
-      id: "p-init-2",
-      photoUrl: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?w=800&auto=format&fit=crop&q=60",
-      angle: "odometer",
-      label: "Odómetro",
-      isMandatory: false,
-      createdAt: "2026-08-28 14:16",
-    },
-  ]);
+  // Step 4: Danos marcados sobre as fotografias
+  const [damages, setDamages] = useState<CheckinDamage[]>([]);
 
   // Step 5: Signature & Approver
   const [signerName, setSignerName] = useState<string>(selectedCustomer?.name || "");
-  const [, setSignatureDataUrl] = useState<string>("");
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const toggleBelonging = (id: string) => {
     setBelongings(
@@ -92,16 +82,17 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
   };
 
   const handleNextStep = () => {
-    // If moving from step 4 to 5, check validation
-    if (currentStep === 4) {
-      const validation = validateCheckinSubmission({
-        mileage,
-        photos,
-        signedByName: signerName,
-      });
+    if (currentStep === 2) {
+      if (!mileage || mileage <= 0) {
+        setValidationErrors(["Indica a quilometragem do odómetro."]);
+        return;
+      }
+    }
 
-      if (!validation.isValid) {
-        setValidationErrors(validation.errors);
+    if (currentStep === 3) {
+      const photoValidation = validateCheckinPhotos(photos);
+      if (!photoValidation.isValid && photoValidation.message) {
+        setValidationErrors([photoValidation.message]);
         return;
       }
     }
@@ -112,10 +103,11 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
 
   const handlePrevStep = () => {
     setValidationErrors([]);
+    setSubmitError(null);
     setCurrentStep((prev) => Math.max(1, prev - 1));
   };
 
-  const handleFinalizeCheckin = () => {
+  const handleFinalizeCheckin = async () => {
     const validation = validateCheckinSubmission({
       mileage,
       photos,
@@ -127,7 +119,39 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
       return;
     }
 
-    // Success redirect
+    setSaving(true);
+    setSubmitError(null);
+    const result = await createCheckinAction({
+      vehicleId: selectedVehicleId,
+      customerId: selectedCustomer.id,
+      mileage,
+      fuelLevel,
+      cleanlinessStatus,
+      belongings,
+      photos: photos.map((p) => ({
+        id: p.id,
+        photoUrl: p.photoUrl,
+        angle: p.angle,
+        label: p.label,
+      })),
+      damages: damages.map((d) => ({
+        photoId: d.photoId ?? "",
+        posX: d.posX,
+        posY: d.posY,
+        type: d.type,
+        severity: d.severity,
+        notes: d.notes,
+      })),
+      signedByName: signerName,
+      signatureDataUrl: signatureDataUrl || undefined,
+    });
+    setSaving(false);
+
+    if (!result.ok) {
+      setSubmitError(result.error);
+      return;
+    }
+
     router.push("/checkins");
   };
 
@@ -161,8 +185,8 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
         {[
           { num: 1, label: "1. Viatura" },
           { num: 2, label: "2. Odómetro & Pertences" },
-          { num: 3, label: "3. Mapa de Danos" },
-          { num: 4, label: "4. Fotos (Tejadilho)" },
+          { num: 3, label: "3. Fotos" },
+          { num: 4, label: "4. Mapa de Danos" },
           { num: 5, label: "5. Assinatura" },
         ].map((step) => {
           const isActive = currentStep === step.num;
@@ -191,17 +215,22 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
       </div>
 
       {/* Validation Error Banner */}
-      {validationErrors.length > 0 && (
+      {(validationErrors.length > 0 || submitError) && (
         <div className="p-4 rounded-[14px] bg-[#2a1210] border border-[#f05a50] text-[#f05a50] flex flex-col gap-1.5 animate-shake">
           <div className="flex items-center gap-2 font-bold text-sm">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>Validação Pendente: Corrige os seguintes pontos</span>
+            <span>{submitError ? "Erro ao guardar" : "Validação Pendente: Corrige os seguintes pontos"}</span>
           </div>
-          <ul className="list-disc pl-5 text-xs space-y-1 text-[#f78e85]">
-            {validationErrors.map((err, idx) => (
-              <li key={idx}>{err}</li>
-            ))}
-          </ul>
+          {validationErrors.length > 0 && (
+            <ul className="list-disc pl-5 text-xs space-y-1 text-[#f78e85]">
+              {validationErrors.map((err, idx) => (
+                <li key={idx}>{err}</li>
+              ))}
+            </ul>
+          )}
+          {submitError && (
+            <p className="text-xs text-[#f78e85]">{submitError}</p>
+          )}
         </div>
       )}
 
@@ -358,23 +387,12 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
           </Card>
         )}
 
-        {/* Step 3: Interactive 2D Damage Mapper */}
+        {/* Step 3: Photo Upload (real) */}
         {currentStep === 3 && (
-          <Card className="p-6 flex flex-col gap-4">
-            <VehicleDamageMapper
-              damages={damages}
-              onChangeDamages={setDamages}
-              isReadOnly={false}
-            />
-          </Card>
-        )}
-
-        {/* Step 4: Photo Inspection Grid & Roof Validator */}
-        {currentStep === 4 && (
           <Card className="p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
               <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-                Passo 4 · Galeria Fotográfica de Inspeção
+                Passo 3 · Galeria Fotográfica de Inspeção
               </span>
               <span className="text-xs text-[#8a9092]">
                 {photos.length} fotografias registadas
@@ -384,6 +402,22 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
             <PhotoInspectionGrid
               photos={photos}
               onChangePhotos={setPhotos}
+              isReadOnly={false}
+            />
+          </Card>
+        )}
+
+        {/* Step 4: Damage Mapping on Photos */}
+        {currentStep === 4 && (
+          <Card className="p-6 flex flex-col gap-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
+              Passo 4 · Mapa de Danos sobre as Fotografias
+            </span>
+
+            <PhotoDamageMapper
+              photos={photos}
+              damages={damages}
+              onChangeDamages={setDamages}
               isReadOnly={false}
             />
           </Card>
@@ -412,10 +446,14 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
               </div>
               <div className="flex flex-col">
                 <span className="text-[11px] text-[#8a9092]">Inspeção de Tejadilho</span>
-                <span className="font-bold text-[#68a46b] flex items-center gap-1">
-                  <Check className="h-3.5 w-3.5" />
-                  Validada com Foto
-                </span>
+                {photos.some((p) => p.angle === "roof") ? (
+                  <span className="font-bold text-[#68a46b] flex items-center gap-1">
+                    <Check className="h-3.5 w-3.5" />
+                    Validada com Foto
+                  </span>
+                ) : (
+                  <span className="font-bold text-[#f7d46d]">Sem foto do tejadilho</span>
+                )}
               </div>
             </div>
 
@@ -463,10 +501,20 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
               variant="primary"
               size="lg"
               onClick={handleFinalizeCheckin}
+              disabled={saving}
               className="bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-extrabold"
             >
-              <Check className="h-5 w-5" />
-              <span>Concluir Check-in e Iniciar Ordem de Trabalho</span>
+              {saving ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>A guardar check-in…</span>
+                </>
+              ) : (
+                <>
+                  <Check className="h-5 w-5" />
+                  <span>Concluir Check-in e Iniciar Ordem de Trabalho</span>
+                </>
+              )}
             </Button>
           )}
         </div>

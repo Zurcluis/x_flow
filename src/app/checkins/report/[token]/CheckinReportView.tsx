@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/xflow/Logo";
-import { VehicleDamageMapper } from "@/components/xflow/checkins/VehicleDamageMapper";
+import { PhotoDamageMapper } from "@/components/xflow/checkins/PhotoDamageMapper";
 import { PhotoInspectionGrid } from "@/components/xflow/checkins/PhotoInspectionGrid";
 import { Checkin } from "@/domains/checkins/types";
 
@@ -104,12 +104,13 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
           </div>
         </div>
 
-        {/* 2D Damage Mapper */}
+        {/* Damage Mapping on Photos */}
         <div className="p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] flex flex-col gap-4">
           <h3 className="font-bold text-base text-[#f1ede5]">
             Mapeamento de Danos e Estado da Pintura
           </h3>
-          <VehicleDamageMapper
+          <PhotoDamageMapper
+            photos={checkin.photos}
             damages={checkin.damages}
             onChangeDamages={() => {}}
             isReadOnly={true}

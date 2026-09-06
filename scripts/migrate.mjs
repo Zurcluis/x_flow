@@ -15,6 +15,11 @@ const migration13 = fs.readFileSync(
   "utf8"
 );
 
+const migration14 = fs.readFileSync(
+  new URL("../supabase/migrations/20260828000014_checkin_photos_damages.sql", import.meta.url),
+  "utf8"
+);
+
 const hasColumn = async (table, column) => {
   const r = await client.query(
     `SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND column_name=$2`,
@@ -37,6 +42,14 @@ if (!(await hasColumn("employees", "email")) || !(await hasTable("employee_absen
   console.log("OK: 20260828000013");
 } else {
   console.log("20260828000013 já aplicada.");
+}
+
+// 000014 — checkin_damages.photo_id + checkins.belongings + CHECK de angles
+if (!(await hasColumn("checkin_damages", "photo_id")) || !(await hasColumn("checkins", "belongings"))) {
+  await client.query(migration14);
+  console.log("OK: 20260828000014");
+} else {
+  console.log("20260828000014 já aplicada.");
 }
 
 await client.end();

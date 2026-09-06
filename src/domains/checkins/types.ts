@@ -29,12 +29,13 @@ export interface CheckinPhoto {
 
 export interface CheckinDamage {
   id: string;
-  posX: number; // 0 to 100 percentage on 2D silhouette
-  posY: number; // 0 to 100 percentage on 2D silhouette
+  posX: number; // 0 to 100 percentage on the photo where it was marked
+  posY: number; // 0 to 100 percentage on the photo where it was marked
   bodyPart: string;
   type: DamageType;
   severity: DamageSeverity;
   notes: string;
+  photoId?: string;
   photoUrl?: string;
 }
 

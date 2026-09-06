@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { VehicleDamageMapper } from "@/components/xflow/checkins/VehicleDamageMapper";
+import { PhotoDamageMapper } from "@/components/xflow/checkins/PhotoDamageMapper";
 import { Checkin } from "@/domains/checkins/types";
 import { PhotoInspectionGrid } from "@/components/xflow/checkins/PhotoInspectionGrid";
 
@@ -102,12 +102,13 @@ export function CheckinDetailView({ checkin }: { checkin: Checkin }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Damages Silhouette & Photos */}
         <div className="lg:col-span-8 flex flex-col gap-6">
-          {/* Damages 2D Blueprint */}
+          {/* Damages mapped on photos */}
           <Card className="p-5 flex flex-col gap-3">
             <h2 className="text-base font-bold text-[#f1ede5]">
               Registo de Danos Pré-existentes na Receção
             </h2>
-            <VehicleDamageMapper
+            <PhotoDamageMapper
+              photos={checkin.photos}
               damages={checkin.damages}
               onChangeDamages={() => {}}
               isReadOnly={true}
