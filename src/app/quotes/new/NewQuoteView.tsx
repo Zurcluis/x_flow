@@ -5,7 +5,7 @@ import { Vehicle } from "@/domains/vehicles/types";
 import { Customer } from "@/domains/crm/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { QuotePartsMatrix } from "@/components/xflow/quotes/QuotePartsMatrix";
@@ -15,20 +15,34 @@ import { OptionTier } from "@/domains/quotes/types";
 import { VEHICLE_SEGMENT_MULTIPLIERS } from "@/domains/catalog/types";
 import { createQuoteAction } from "@/app/actions/quotes";
 
-export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp }: { vehicles: Vehicle[]; customers: Customer[] }) {
+export function NewQuoteView({
+  vehicles: vehiclesProp,
+  customers: customersProp,
+  initialVehicleId,
+  simRef,
+}: {
+  vehicles: Vehicle[];
+  customers: Customer[];
+  initialVehicleId?: string;
+  simRef?: { finish: string; coverageLabel: string } | null;
+}) {
   const router = useRouter();
 
   const [vehicles] = useState(vehiclesProp);
   const [customers] = useState(customersProp);
 
-  // Selected vehicle & customer
+  // Selected vehicle & customer — sincroniza quando a URL muda (ex.: "Refazer Proposta")
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const pre = new URLSearchParams(window.location.search).get("vehicle");
-      if (pre && vehicles.some((x) => x.id === pre)) return pre;
+    if (initialVehicleId && vehicles.some((x) => x.id === initialVehicleId)) {
+      return initialVehicleId;
     }
     return vehicles[0]?.id ?? "";
   });
+  const [appliedInit, setAppliedInit] = useState(initialVehicleId);
+  if (initialVehicleId && initialVehicleId !== appliedInit && vehicles.some((x) => x.id === initialVehicleId)) {
+    setAppliedInit(initialVehicleId);
+    setSelectedVehicleId(initialVehicleId);
+  }
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId) || vehicles[0];
   const selectedCustomer =
     customers.find((c) => c.id === selectedVehicle?.currentOwner?.customerId) ||
@@ -189,6 +203,16 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
 
         {emitError && (
           <p className="text-xs font-semibold text-[#f05a50]">{emitError}</p>
+        )}
+
+        {simRef && (
+          <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[#d3a548]/10 border border-[#d3a548]/30 text-xs text-[#f7d46d]">
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span>
+              Referência do Simulador: <strong>{simRef.finish}</strong> · Cobertura{" "}
+              <strong>{simRef.coverageLabel}</strong>
+            </span>
+          </div>
         )}
 
         <Button variant="primary" onClick={handleCreateQuote} disabled={saving}>

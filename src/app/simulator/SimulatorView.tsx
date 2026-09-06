@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Vehicle } from "@/domains/vehicles/types";
 import { initialFinishPresets } from "@/lib/demo-data/vision-simulation-data";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Car,
   Sliders,
+  Info,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,43 +23,105 @@ import {
 } from "@/domains/intelligence/vision-analyzer";
 import { FinishPreset } from "@/domains/intelligence/types";
 
-export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] }) {
+// Parâmetros de negócio — configuráveis, alinhados com o blueprint (33 €/h)
+const HOURLY_RATE_EUR = 33;
+const PRICE_MULTIPLIER = 2.5;
+const MATERIAL_METERS: Record<"exterior" | "extended" | "integral", number> = {
+  exterior: 14,
+  extended: 17,
+  integral: 21,
+};
+const LABOR_HOURS: Record<"exterior" | "extended" | "integral", number> = {
+  exterior: 24,
+  extended: 30,
+  integral: 36,
+};
+const HIGH_CONTRAST_EXTRA_HOURS = 4;
+const SUV_EXTRA_HOURS = 4;
+const HIGH_CONTRAST_ZONES = [
+  "Puxadores",
+  "Retrovisores",
+  "Emblemas",
+  "Óticas",
+  "Frisos",
+  "Borrachas",
+  "Arestas de capô e mala",
+  "Uniões de para-choques",
+  "Entradas de cavas",
+];
+
+function presetTargetFamily(preset: FinishPreset): string {
+  if (preset.type.startsWith("clear_ppf")) return "clear";
+  const n = preset.name.toLowerCase();
+  if (n.includes("black")) return "black";
+  if (n.includes("grey") || n.includes("gray")) return "dark_grey";
+  if (n.includes("white")) return "white";
+  if (n.includes("silver")) return "silver";
+  if (n.includes("blue")) return "dark_blue";
+  if (n.includes("green")) return "green";
+  if (n.includes("red")) return "red";
+  return "custom";
+}
+
+export function SimulatorView({
+  vehicles: vehiclesProp,
+  coverPhotos,
+}: {
+  vehicles: Vehicle[];
+  coverPhotos: Record<string, string>;
+}) {
   const [vehicles] = useState(vehiclesProp);
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0].id);
   const [presets] = useState(initialFinishPresets);
   const [selectedPreset, setSelectedPreset] = useState<FinishPreset>(presets[0]);
   const [selectedCoverage, setSelectedCoverage] = useState<"exterior" | "extended" | "integral">("extended");
+  const [sliderPos, setSliderPos] = useState(50);
 
   const selectedVehicle =
     vehicles.find((v) => v.id === selectedVehicleId) || vehicles[0];
+  const coverPhoto = coverPhotos[selectedVehicle.id];
 
-  // Contrast calculation
   const originalColorFamily = selectedVehicle.originalColorFamily || "green";
-
-  const targetColorFamily = selectedPreset.type.includes("clear")
-    ? originalColorFamily
-    : selectedPreset.name.toLowerCase().includes("grey")
-    ? "dark_grey"
-    : selectedPreset.name.toLowerCase().includes("black")
-    ? "black"
-    : "custom";
+  const targetColorFamily = presetTargetFamily(selectedPreset);
+  const isClearFilm = selectedPreset.type.startsWith("clear_ppf");
+  const serviceType = isClearFilm ? "PPF" : "Wrap";
 
   const contrastLevel = calculateColorContrast(
     originalColorFamily,
     targetColorFamily
   );
 
-  const recommendedCoverage = recommendCoverageLevel(
-    contrastLevel,
-    selectedPreset.type.includes("ppf") && !selectedPreset.type.includes("color")
-      ? "PPF"
-      : "Wrap"
+  const recommendedCoverage = useMemo(
+    () => recommendCoverageLevel(contrastLevel, serviceType) as "exterior" | "extended" | "integral",
+    [contrastLevel, serviceType]
   );
 
-  // Estimations
-  const estimatedMeters = 18;
-  const materialCost = (estimatedMeters * selectedPreset.costPerMeterCents) / 100;
-  const estimatedSellingPrice = Math.round(materialCost * 2.85);
+  // Sincroniza a cobertura com a recomendação (padrão "adjust state on prop change")
+  const [prevRecommended, setPrevRecommended] = useState<string | null>(null);
+  if (prevRecommended !== recommendedCoverage) {
+    setPrevRecommended(recommendedCoverage);
+    setSelectedCoverage(recommendedCoverage);
+  }
+
+  // Estimativa determinística (blueprint secção 11: custo direto + margem)
+  const meters = MATERIAL_METERS[selectedCoverage] + (contrastLevel === "high" ? 2 : 0);
+  const materialCost = (meters * selectedPreset.costPerMeterCents) / 100;
+
+  const isLargeBody = ["suv", "van", "pickup"].includes(selectedVehicle.bodyType);
+  const laborHours =
+    LABOR_HOURS[selectedCoverage] +
+    (contrastLevel === "high" ? HIGH_CONTRAST_EXTRA_HOURS : 0) +
+    (isLargeBody ? SUV_EXTRA_HOURS : 0);
+  const laborCost = laborHours * HOURLY_RATE_EUR;
+
+  const directCost = materialCost + laborCost;
+  const sellingPrice = Math.round(directCost * PRICE_MULTIPLIER);
+  const marginPct = Math.round(((sellingPrice - directCost) / sellingPrice) * 100);
+
+  const eur = (v: number) =>
+    v.toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+
+  const quoteHref = `/quotes/new?vehicle=${selectedVehicle.id}&finish=${encodeURIComponent(selectedPreset.name)}&coverage=${selectedCoverage}`;
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -82,7 +145,7 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
           </p>
         </div>
 
-        <Link href="/quotes/new">
+        <Link href={quoteHref}>
           <Button className="bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d] font-bold">
             <span>Criar Orçamento com este Acabamento</span>
             <ArrowRight className="h-4 w-4 ml-2" />
@@ -95,7 +158,7 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
         <span className="text-xs font-semibold text-[#a9adae] shrink-0 mr-1">
           Viatura de Teste:
         </span>
-        {vehicles.slice(0, 4).map((v) => {
+        {vehicles.map((v) => {
           const isSelected = v.id === selectedVehicleId;
           return (
             <button
@@ -118,24 +181,121 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
       </div>
 
       {/* Visual Simulation Stage */}
-      <div className="relative w-full h-80 sm:h-96 rounded-[20px] overflow-hidden bg-gradient-to-b from-[#0e1214] to-[#060809] border border-white/[0.08] flex items-center justify-center p-6 shadow-2xl">
+      <div className="relative w-full h-80 sm:h-[26rem] rounded-[20px] overflow-hidden bg-gradient-to-b from-[#0e1214] to-[#060809] border border-white/[0.08] flex items-center justify-center p-6 shadow-2xl">
         {/* Background Ambient Studio Light */}
         <div
           style={{
-            backgroundColor: selectedPreset.colorHex,
+            backgroundColor: isClearFilm ? "#0e1214" : selectedPreset.colorHex,
             opacity: 0.15,
           }}
           className="absolute inset-0 blur-3xl transition-all duration-700 pointer-events-none"
         />
 
-        {/* Vehicle Render Image */}
-        <div className="relative z-10 w-full max-w-2xl h-full flex flex-col items-center justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://images.unsplash.com/photo-1617788138017-80ad40651399?w=1200&auto=format&fit=crop&q=80"
-            alt={selectedVehicle.model}
-            className="max-h-64 sm:max-h-72 w-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] transition-all duration-500"
-          />
+        {/* Vehicle Render */}
+        <div className="relative z-10 w-full max-w-2xl h-full flex flex-col items-center justify-center select-none">
+          {coverPhoto ? (
+            <div className="relative w-full h-full flex items-center justify-center">
+              {/* Original (base) */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverPhoto}
+                alt={`${selectedVehicle.make} ${selectedVehicle.model} original`}
+                className="max-h-64 sm:max-h-72 w-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)]"
+              />
+
+              {/* Simulated (tinted, clipped from the left by the slider) */}
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverPhoto}
+                  alt={`${selectedVehicle.make} ${selectedVehicle.model} simulado`}
+                  className="max-h-64 sm:max-h-72 w-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)]"
+                />
+                {!isClearFilm && (
+                  <>
+                    <div
+                      style={{ backgroundColor: selectedPreset.colorHex, mixBlendMode: "color" }}
+                      className="absolute inset-0"
+                    />
+                    <div
+                      style={{ backgroundColor: selectedPreset.colorHex, mixBlendMode: "multiply", opacity: 0.3 }}
+                      className="absolute inset-0"
+                    />
+                  </>
+                )}
+                {selectedPreset.textureEffect === "gloss" && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/25" />
+                )}
+                {selectedPreset.textureEffect === "satin" && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/15" />
+                )}
+                {selectedPreset.textureEffect === "matte" && (
+                  <div
+                    className="absolute inset-0"
+                    style={{ backdropFilter: "saturate(0.65) contrast(0.95)" }}
+                  />
+                )}
+                {selectedPreset.textureEffect === "carbon" && (
+                  <div
+                    className="absolute inset-0 opacity-20"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(45deg, rgba(255,255,255,0.25) 0 2px, transparent 2px 4px)",
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Divider handle */}
+              <div
+                className="absolute top-0 bottom-0 w-px bg-[#d3a548] pointer-events-none"
+                style={{ left: `${sliderPos}%` }}
+              >
+                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-8 w-8 rounded-full bg-[#050606]/90 border border-[#d3a548] flex items-center justify-center text-[10px] font-bold text-[#f7d46d]">
+                  ↔
+                </div>
+              </div>
+
+              {/* Slider control */}
+              <input
+                type="range"
+                min={5}
+                max={95}
+                value={sliderPos}
+                onChange={(e) => setSliderPos(Number(e.target.value))}
+                aria-label="Comparar original e simulado"
+                className="absolute bottom-2 left-0 w-full h-6 opacity-0 cursor-ew-resize"
+              />
+
+              {/* Labels */}
+              <span className="absolute bottom-2 left-3 text-[10px] font-bold uppercase tracking-wider text-[#8a9092]">
+                Original
+              </span>
+              <span className="absolute bottom-2 right-3 text-[10px] font-bold uppercase tracking-wider text-[#f7d46d]">
+                Simulado · {selectedPreset.name}
+              </span>
+            </div>
+          ) : (
+            /* Silhueta vetorial quando não existem fotografias de check-in */
+            <svg viewBox="0 0 400 170" className="w-full max-w-xl">
+              <path
+                d="M30 115 Q28 85 62 78 L108 48 Q120 42 142 42 L258 42 Q288 42 308 62 L340 78 Q372 83 372 108 Q372 120 355 120 L45 120 Q30 120 30 115 Z"
+                fill={isClearFilm ? "#3a4043" : selectedPreset.colorHex}
+                stroke="rgba(255,255,255,0.25)"
+                strokeWidth="2"
+              />
+              <path
+                d="M118 52 L150 50 L150 76 L102 76 Z M160 50 L250 50 L288 76 L160 76 Z"
+                fill="#0a0d0e"
+                opacity="0.85"
+              />
+              <circle cx="112" cy="120" r="20" fill="#0a0d0e" stroke="#2a2f31" strokeWidth="4" />
+              <circle cx="298" cy="120" r="20" fill="#0a0d0e" stroke="#2a2f31" strokeWidth="4" />
+            </svg>
+          )}
         </div>
 
         {/* Floating Finish Badge on Stage */}
@@ -154,8 +314,14 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
           </div>
         </div>
 
+        {/* Representation disclaimer (requisito blueprint: simulação com aviso) */}
+        <div className="absolute top-4 right-4 max-w-[180px] p-2.5 rounded-[10px] bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-start gap-1.5 text-[10px] text-[#a9adae]">
+          <Info className="h-3.5 w-3.5 text-[#d3a548] shrink-0 mt-0.5" />
+          <span>Simulação meramente representativa. A cor final pode variar face ao material real.</span>
+        </div>
+
         {/* Floating Quick Specs */}
-        <div className="absolute bottom-4 right-4 hidden sm:flex items-center gap-2 p-2.5 rounded-[12px] bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] text-xs text-[#a9adae]">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-2 p-2.5 rounded-[12px] bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] text-xs text-[#a9adae]">
           <Shield className="h-4 w-4 text-[#68a46b]" />
           <span>Garantia de {selectedPreset.warrantyYears} Anos</span>
           <span>•</span>
@@ -189,6 +355,18 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
               ? "Requer acabamentos profundos nas cavas para disfarçar cor de fábrica."
               : "Transição cromática suave sem risco de vincos visíveis."}
           </span>
+          {contrastLevel === "high" && !isClearFilm && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {HIGH_CONTRAST_ZONES.map((zone) => (
+                <span
+                  key={zone}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f05a50]/10 text-[#f78e85] border border-[#f05a50]/25"
+                >
+                  {zone}
+                </span>
+              ))}
+            </div>
+          )}
         </Card>
 
         <Card className="p-4 bg-[#101314] border-white/[0.06] flex flex-col justify-between gap-2">
@@ -216,21 +394,37 @@ export function SimulatorView({ vehicles: vehiclesProp }: { vehicles: Vehicle[] 
           </div>
         </Card>
 
-        <Card className="p-4 bg-[#101314] border-white/[0.06] flex flex-col justify-between gap-2">
+        {/* Estimativa determinística */}
+        <Card className="p-4 bg-[#101314] border-white/[0.06] flex flex-col gap-2">
           <span className="text-xs text-[#a9adae]">Estimativa de Valor & Material</span>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-bold text-[#f1ede5] font-mono">
-              {estimatedSellingPrice.toLocaleString("pt-PT", {
-                style: "currency",
-                currency: "EUR",
-              })}
+              {eur(sellingPrice)}
             </span>
             <span className="text-xs text-[#68a46b] font-semibold">
-              ~{estimatedMeters}m necessários
+              ~{meters}m · ~{laborHours}h
             </span>
           </div>
-          <span className="text-[12px] text-[#a9adae]">
-            Custo material: {materialCost.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })} • Margem estimada: ~65%
+          <div className="text-[12px] text-[#a9adae] flex flex-col gap-0.5">
+            <span className="flex justify-between">
+              <span>Material ({meters}m)</span>
+              <span className="font-mono">{eur(materialCost)}</span>
+            </span>
+            <span className="flex justify-between">
+              <span>Mão de obra ({laborHours}h × {HOURLY_RATE_EUR}€)</span>
+              <span className="font-mono">{eur(laborCost)}</span>
+            </span>
+            <span className="flex justify-between">
+              <span>Custo direto</span>
+              <span className="font-mono">{eur(directCost)}</span>
+            </span>
+            <span className="flex justify-between text-[#f1ede5]">
+              <span>Margem estimada</span>
+              <span className="font-mono">~{marginPct}%</span>
+            </span>
+          </div>
+          <span className="text-[10px] text-[#747a7c] pt-1">
+            Estimativa automática — sujeita a confirmação no orçamento.
           </span>
         </Card>
       </div>
