@@ -1,18 +1,20 @@
 # Progresso — X-Flow
 
-_Última atualização: 05/09/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 06/09/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.3.3, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
 - Health: typecheck OK, lint OK, 85/85 testes a passar
-- **Git a funcionar**: repo inicializado, commit inicial `5e3c471` no `main` e push feito para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo)
+- **Git a funcionar**: repo em `main`, tudo commitado e pushed para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo) — último commit `7b7c76a` (06/09/2026)
 - `README.md` ainda é o template default do create-next-app
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
+- Feed de progresso: `progresso.md` (este ficheiro)
 
-## Base de dados (Neon, 05/09/2026)
-- **Neon Postgres 18.6** ligado e **11 migrações aplicadas** (35 tabelas + `work_orders.quote_id`)
+## Base de dados (Neon, 06/09/2026)
+- **Neon Postgres 18.6** ligado e **14 migrações aplicadas** (35+ tabelas; 13: `employees.email/phone` + `employee_absences`; 14: `checkin_damages.photo_id` + `checkins.belongings` + CHECK de angles)
 - Connection string (pooler) em `.env.local` como `DATABASE_URL` — coberto por `.env*` no `.gitignore` (não commitar)
 - **Seed global**: `node scripts/seed.mjs` (idempotente, truncate manual antes) — org, 5 perfis, 3 baias, catálogo, 6 materiais (3 críticos), 5 clientes, 6 viaturas, 5 orçamentos, 4 ordens com fases/tempos, check-ins, QC, agenda da semana, faturas, garantia+entrega
+- **Migrações estruturais novas**: `node scripts/migrate.mjs` (idempotente por deteção de colunas)
 
 ## Núcleo operacional interligado (05/09/2026, commit 1f53194)
 - **Padrão estabelecido**: `src/server/<domínio>.ts` (repositório pg, snake→camel) + `src/app/actions/<domínio>.ts` (server actions) + página server (`force-dynamic`) → view client
@@ -36,8 +38,20 @@ _Última atualização: 05/09/2026. Ficheiro de continuação de sessão — diz
 - Validação: typecheck, lint 0 erros, 85/85 testes; testado no browser (criação de marcação e colaborador persistidas)
 - **Nota**: horários do calendário são absolutos (UTC) e mostrados no fuso do browser
 
+## Sessão 06/09/2026 — Check-in real, portal do cliente, painel de TV e simulador (7 commits, push feito)
+- **Encoding cp850 corrigido** (3bbdb1f): NewQuoteView/NewCheckinView/SimulatorView tinham texto gravado em mojibake estilo codepage DOS (UTF-8 lido como cp850 e regravado); corrigido com script one-off que reverte a transformação. Ficheiros validados UTF-8 estrito.
+- **Mapa 3D da oficina no calendário** (c1d5610): `WorkshopMap.tsx` — grelha de baias em perspetiva, drag & drop de viaturas para baias, CRUD de baias, cliente derivado do proprietário da viatura.
+- **Check-in completo e persistido** (8c762c7 + 4d69b84): migração 14 (`checkin_damages.photo_id`, `checkins.belongings` JSONB, CHECK de angles alinhado com o domínio); `PhotoInspectionGrid` com upload real (compressão canvas 1600px/JPEG, fotos guardadas como data URL na BD); novo `PhotoDamageMapper` — danos marcados por clique **sobre a fotografia** (passo 4 depois das fotos); `createCheckinAction` grava check-in + fotos + danos + pertences em transação; ficha de detalhe e relatório público mostram danos na foto exata.
+- **Viaturas** (2107291): causa raiz `String(null)="null"` no `currentOwner.customerId` (quebrava agendamento com `invalid input syntax for type uuid`); `createVehicleAction` agora lê o proprietário de `currentOwner` (formulário); capa com foto frontal (último check-in) nos cards; 00-GA-23 ligada a Miguel Cruz (reparação de dados).
+- **Orçamentos emitidos de verdade** (7d780f4): `createQuote` (transação quote + 3 opções + itens + eventos, token público, expira 30d); "Emitir e Gerar Link Seguro" grava e redireciona para a ficha; **eliminar** (bloqueado se já gerou WO) e **refazer** (`/quotes/new?vehicle=` pré-seleciona); **portal do cliente dinâmico** `/portal/[token]` — proposta com 3 opções, aceitar (cria WO idempotente) ou recusar; links WhatsApp/copiar/"Ver como Cliente" apontam ao portal.
+- **Painel de oficina para TV** (68a9e44): `/shop-floor` standalone (sem shell) — relógio live, 5 KPIs (marcações hoje, em produção, QC pendente, concluídas hoje, propostas à espera), agenda do dia, produção em curso com barras de progresso; auto-refresh 60s; link na sidebar (Sistema → Painel Oficina).
+- **Simulador de acabamentos** (7b7c76a): simulação visual sobre a **foto real** da viatura (blend modes por textura: gloss/matte/satin/carbon), slider antes/depois, silhueta vetorial de fallback, aviso de representação (requisito blueprint); **estimativa determinística** (material por cobertura 14/17/21m + contraste, horas 24/30/36 + contraste/SUV, 33 €/h, preço ×2,5 com margem); zonas críticas em contraste alto; sincronização automática da cobertura recomendada; "Criar Orçamento com este Acabamento" leva vehicle+finish+coverage para `/quotes/new` com banner de referência.
+- Validação: typecheck, lint 0 erros, testado E2E no browser (check-in 00-GA-23 com 6 fotos/3 danos; orçamento ORC-2026-997 emitido → aceite no portal → WO-2026-232 criada; marcação agendada; propostas eliminadas/bloqueadas conforme esperado).
+
 ## Ainda por ligar (usa demo data)
-- `/vision` (fase 8 do blueprint — análise IA), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo), auth/perfis, uploads de ficheiros, RLS efetiva (owner faz bypass); RLS atualmente bypassed (owner) — rever políticas na altura do auth
+- `/vision` (fase 8 do blueprint — análise IA), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo), auth/perfis, RLS efetiva (owner faz bypass); RLS atualmente bypassed (owner) — rever políticas na altura do auth
+- Fotos de check-in guardadas como data URL na BD (TEXT) — migrar para object storage quando existir auth/Storage
+- Entregas/faturas/garantias/stock/ferramentas/B2B: leitura ligada à BD, escritas ainda demo
 
 ## O que foi feito na sessão 04/09/2026 (mudanças visuais)
 1. **Piso tipográfico subido** (83 ficheiros): `9px/10px → 11px` (badges/eyebrows), `11px → 12px` (metadados). Zero texto abaixo de 11px.
@@ -64,7 +78,7 @@ _Última atualização: 05/09/2026. Ficheiro de continuação de sessão — diz
 
 ## Notas práticas
 - Dev server: `npm run dev` em `localhost:3000` (não está a correr entre sessões).
-- Mudanças **não commitadas** (não há git). Se quiseres preservar: `git init` + commit antes de mais nada.
+- Git: commitar + push no fim de cada sessão (a pedido de Luís).
 
 ## Retomar
 Dizer ao agente: "Lê `progresso.md` e continua pelos pendentes."
