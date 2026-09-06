@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Assets estáticos de terceiros (WASM/JS do MediaPipe) e catálogos
+    "public/**",
   ]),
 ]);
 

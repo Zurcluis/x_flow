@@ -26,6 +26,14 @@ _Última atualização: 06/09/2026 (noite). Ficheiro de continuação de sessão
 - **Pass de raios para tokens** (~80 ficheiros): `rounded-[8px]→rounded-sm(10px)`, `[10px]→rounded-sm`, `[12px]→rounded-md`, `[14px]→rounded-md`, `[18px]→rounded-lg` fora dos tokens eliminados (pendente do audit de 05/09)
 - Validação: typecheck, lint, 85/85 testes; E2E no browser — simulador gera JPEG simulado distinto do original (data URL) e re-simula ao trocar de película; entrega registada para WO-2026-098 (Ferrari UV-12-WX, pertences, assinatura demo, notas) persistida em `deliveries.belongings` JSONB e visível na ficha `/deliveries/[id]`
 
+## Sessão 06/09 (noite, 2ª parte) — catálogos oficiais + simulação só na viatura + slider
+- **Catálogos oficiais descarregados** em `docs/catalogos-peliculas/` (10 PDFs: 3M bulletin, Avery SW900 swatch+PDS, 4 TDS XPEL, 2 TDS Stek, catálogo KPMF 2023) + `README.md` com fontes, dados extraídos e correções vs. seed anterior (SKUs inventados corrigidos: Inozetek MSG025/SG004/DPPF901/DPPF809, KPMF K75320, 3M G12/M22/M227, Avery SW900-190/865/180/858; DYNOshield passou a 12 anos)
+- **Seed de películas reescrito** (`scripts/seed-films.mjs`): 16 películas com códigos/garantias verificados nos catálogos; substitui o catálogo da org (DELETE+INSERT) porque os códigos mudaram
+- **Simulação pinta só a viatura**: segmentação ML no browser com **MediaPipe Image Segmenter (DeepLab v3)** — modelo `deeplab_v3.tflite` (2,8 MB) + WASMs em `public/` (sem CDN em runtime; classe "car" do Pascal VOC + bus/motorbike); novo `src/lib/car-segmentation.ts` (singleton + feather 2× box blur); `film-simulation.ts` aplica a película com blending por alpha (ambiente fica pixel-idêntico salvo JPEG); fallback heurístico (flood-fill do fundo com suavização) se o modelo falhar
+- **Slider antes/depois corrigido**: o input range só cobria uma faixa de 24px no fundo (a pega ↔ tinha pointer-events-none) — agora cobre toda a área da fotografia (`inset-0`, z-20, opacity-0) e arrasta em qualquer sítio; camadas com `pointer-events-none`
+- **ESLint**: `public/**` ignorado (JS/WASM de terceiros do MediaPipe)
+- Validação: typecheck, lint, 85/85 testes; E2E no browser — cantos do fundo com diff 0,0% e centro (viatura) ~73% alterado, com gloss black e PPF transparente; slider arrastado de 28→82 com clip-path a acompanhar; sem foto de check-in a silhueta vetorial mantém-se
+
 ## Ainda por ligar (usa demo data)
 - `/vision` (fase 8 do blueprint — análise IA), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo), auth/perfis, RLS efetiva (owner faz bypass); RLS atualmente bypassed (owner) — rever políticas na altura do auth
 - Fotos de check-in guardadas como data URL na BD (TEXT) — migrar para object storage quando existir auth/Storage

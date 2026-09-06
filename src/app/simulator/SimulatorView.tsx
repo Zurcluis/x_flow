@@ -238,12 +238,12 @@ export function SimulatorView({
               <img
                 src={coverPhoto}
                 alt={`${selectedVehicle.make} ${selectedVehicle.model} original`}
-                className="max-h-64 sm:max-h-72 w-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)]"
+                className="max-h-64 sm:max-h-72 w-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)] pointer-events-none"
               />
 
               {/* Simulated (tinted, clipped from the left by the slider) */}
               <div
-                className="absolute inset-0 flex items-center justify-center"
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}
               >
                 {simUrl ? (
@@ -324,22 +324,25 @@ export function SimulatorView({
                 </div>
               </div>
 
-              {/* Slider control */}
+              {/*
+                Slider control — cobre toda a área da fotografia para arrastar em
+                qualquer sítio (incluindo a pega central). Invisível (opacity-0).
+              */}
               <input
                 type="range"
-                min={5}
-                max={95}
+                min={2}
+                max={98}
                 value={sliderPos}
                 onChange={(e) => setSliderPos(Number(e.target.value))}
                 aria-label="Comparar original e simulado"
-                className="absolute bottom-2 left-0 w-full h-6 opacity-0 cursor-ew-resize"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20 appearance-none bg-transparent m-0"
               />
 
               {/* Labels */}
-              <span className="absolute bottom-2 left-3 text-[10px] font-bold uppercase tracking-wider text-[#8a9092]">
+              <span className="absolute bottom-2 left-3 text-[10px] font-bold uppercase tracking-wider text-[#8a9092] pointer-events-none z-10">
                 Original
               </span>
-              <span className="absolute bottom-2 right-3 text-[10px] font-bold uppercase tracking-wider text-[#f7d46d]">
+              <span className="absolute bottom-2 right-3 text-[10px] font-bold uppercase tracking-wider text-[#f7d46d] pointer-events-none z-10">
                 Simulado · {selectedPreset.name}
               </span>
             </div>

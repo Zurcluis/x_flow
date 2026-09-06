@@ -1,7 +1,10 @@
 // Motor de simulação física de películas sobre fotografia real.
-// Substitui os blend modes CSS por composição por pixel que preserva a luminância
-// (sombras, reflexos e vãos da foto original) e aplica o modelo de refletância da película:
-// difusão pela cor do material, especular controlada pelo brilho GU e flocado metálico.
+// Composição por pixel que preserva a luminância (sombras, reflexos e vãos da foto
+// original) e aplica o modelo de refletância da película APENAS à viatura:
+// a silhueta do carro é segmentada por ML (MediaPipe DeepLab v3), com fallback
+// heurístico (flood-fill do fundo a partir das margens) quando o modelo falha.
+
+import { segmentVehicle } from "@/lib/car-segmentation";
 
 export interface FilmSimParams {
   /** Cor base da película em hex (#rrggbb) */
@@ -14,9 +17,16 @@ export interface FilmSimParams {
   flakeScale: number;
   /** PPF transparente — preserva o croma original e aplica só o modelo de brilho */
   transparent?: boolean;
+  /** Isola a viatura do ambiente (default: true). false pinta a imagem toda. */
+  isolateCar?: boolean;
 }
 
 const MAX_DIM = 1200;
+/** Distância RGB² máxima entre vizinhos (na imagem suavizada) para o fundo continuar a expandir */
+const BG_EDGE_T2 = 3 * 22 * 22;
+/** Frações mínima/máxima de pixéis de viatura para confiar na segmentação */
+const CAR_FRACTION_MIN = 0.08;
+const CAR_FRACTION_MAX = 0.96;
 
 function hexToLinear(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1, 7), 16);
@@ -59,9 +69,152 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /**
+ * Detecta o fundo por flood-fill a partir das margens da imagem (continuidade local
+ * de cor, decidida sobre versão suavizada para ignorar ruído JPEG).
+ * Devolve alpha por pixel: 255 = viatura, 0 = ambiente.
+ */
+function buildCarAlpha(d: Uint8ClampedArray, w: number, h: number): Uint8Array {
+  const n = w * h;
+
+  // Cópia suavizada (box blur 3×3 ×2) só para decisões de segmentação
+  let sr = new Float32Array(n);
+  let sg = new Float32Array(n);
+  let sb = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    sr[i] = d[i * 4];
+    sg[i] = d[i * 4 + 1];
+    sb[i] = d[i * 4 + 2];
+  }
+  for (let pass = 0; pass < 2; pass++) {
+    const tr = new Float32Array(n);
+    const tg = new Float32Array(n);
+    const tb = new Float32Array(n);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        let ar = 0, ag = 0, ab = 0, c = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            const j = yy * w + xx;
+            ar += sr[j]; ag += sg[j]; ab += sb[j]; c++;
+          }
+        }
+        tr[i] = ar / c; tg[i] = ag / c; tb[i] = ab / c;
+      }
+    }
+    sr = tr; sg = tg; sb = tb;
+  }
+
+  const isBg = new Uint8Array(n);
+  const stack = new Int32Array(n);
+  let sp = 0;
+
+  const seed = (i: number) => {
+    if (isBg[i] === 0) {
+      isBg[i] = 1;
+      stack[sp++] = i;
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    seed(x);
+    seed((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    seed(y * w);
+    seed(y * w + w - 1);
+  }
+
+  while (sp > 0) {
+    const i = stack[--sp];
+    const x = i % w;
+    const y = (i / w) | 0;
+    const r = sr[i], g = sg[i], b = sb[i];
+
+    if (x > 0) {
+      const j = i - 1;
+      const dr = sr[j] - r, dg = sg[j] - g, db = sb[j] - b;
+      if (isBg[j] === 0 && dr * dr + dg * dg + db * db < BG_EDGE_T2) {
+        isBg[j] = 1;
+        stack[sp++] = j;
+      }
+    }
+    if (x < w - 1) {
+      const j = i + 1;
+      const dr = sr[j] - r, dg = sg[j] - g, db = sb[j] - b;
+      if (isBg[j] === 0 && dr * dr + dg * dg + db * db < BG_EDGE_T2) {
+        isBg[j] = 1;
+        stack[sp++] = j;
+      }
+    }
+    if (y > 0) {
+      const j = i - w;
+      const dr = sr[j] - r, dg = sg[j] - g, db = sb[j] - b;
+      if (isBg[j] === 0 && dr * dr + dg * dg + db * db < BG_EDGE_T2) {
+        isBg[j] = 1;
+        stack[sp++] = j;
+      }
+    }
+    if (y < h - 1) {
+      const j = i + w;
+      const dr = sr[j] - r, dg = sg[j] - g, db = sb[j] - b;
+      if (isBg[j] === 0 && dr * dr + dg * dg + db * db < BG_EDGE_T2) {
+        isBg[j] = 1;
+        stack[sp++] = j;
+      }
+    }
+  }
+
+  let carCount = 0;
+  for (let i = 0; i < n; i++) if (!isBg[i]) carCount++;
+  const carFraction = carCount / n;
+
+  // Segmentação não fiável (fundo dominante ou viatura dominante) → aplica a toda a imagem
+  if (carFraction < CAR_FRACTION_MIN || carFraction > CAR_FRACTION_MAX) {
+    const all = new Uint8Array(n).fill(255);
+    return all;
+  }
+
+  const alpha = new Uint8Array(n);
+  for (let i = 0; i < n; i++) alpha[i] = isBg[i] ? 0 : 255;
+
+  // Feather: 2 passagens de box blur 3×3 para transição suave nas bordas
+  let src = alpha;
+  let dst = new Uint8Array(n);
+  for (let pass = 0; pass < 2; pass++) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        let acc = 0;
+        let count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            acc += src[yy * w + xx];
+            count++;
+          }
+        }
+        dst[i] = (acc / count) | 0;
+      }
+    }
+    const tmp = src;
+    src = dst;
+    dst = tmp;
+  }
+  return src;
+}
+
+/**
  * Aplica uma película à fotografia devolvendo um dataURL JPEG.
  * Modelo: saída = cor_filme × difusão(Y normalizada, achatada consoante GU)
  *         + especular(Y, GU, metálico) + sparkle de flocos.
+ * Com `isolateCar`, só os pixéis da viatura (segmentados) são alterados.
  */
 export async function simulateFilmOnPhoto(
   imgSrc: string,
@@ -82,15 +235,26 @@ export async function simulateFilmOnPhoto(
   const imageData = ctx.getImageData(0, 0, w, h);
   const d = imageData.data;
 
-  // Mediana da luminância para auto-exposição (fotos variam muito)
+  const isolate = params.isolateCar !== false;
+  let carAlpha: Uint8Array | null = null;
+  if (isolate) {
+    carAlpha = await segmentVehicle(canvas);
+    if (!carAlpha) carAlpha = buildCarAlpha(d, w, h);
+  }
+
+  // Mediana da luminância para auto-exposição (só viatura quando segmentado)
   const bins = new Uint32Array(256);
-  for (let i = 0; i < d.length; i += 16) {
-    const y = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+  let sampleCount = 0;
+  for (let i = 0; i < w * h; i++) {
+    if (carAlpha && carAlpha[i] < 128) continue;
+    const p = i * 4;
+    const y = 0.2126 * d[p] + 0.7152 * d[p + 1] + 0.0722 * d[p + 2];
     bins[Math.min(255, y | 0)]++;
+    sampleCount++;
   }
   let median = 128;
-  {
-    const half = d.length / 16 / 2;
+  if (sampleCount > 0) {
+    const half = sampleCount / 2;
     let acc = 0;
     for (let b = 0; b < 256; b++) {
       acc += bins[b];
@@ -126,10 +290,15 @@ export async function simulateFilmOnPhoto(
   for (let py = 0; py < h; py++) {
     for (let px = 0; px < w; px++) {
       const i = (py * w + px) * 4;
-      const r = toLinear(d[i] / 255);
-      const g = toLinear(d[i + 1] / 255);
-      const b = toLinear(d[i + 2] / 255);
-      const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      const a = carAlpha ? carAlpha[py * w + px] / 255 : 1;
+      if (a === 0) continue;
+
+      const or = d[i], og = d[i + 1], ob = d[i + 2];
+
+      const lr = toLinear(or / 255);
+      const lg = toLinear(og / 255);
+      const lb = toLinear(ob / 255);
+      const y = 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
       const yn = Math.min(1, y * yScale);
 
       // Especular a partir dos realces originais (preserva forma/reflexos da foto)
@@ -138,25 +307,34 @@ export async function simulateFilmOnPhoto(
       // Flocos metálicos: sparkle determinístico em tons médios/altos
       let sparkle = 0;
       if (metallic > 0) {
-        const n = hash2(px, py);
-        if (n > flakeThreshold && yn > 0.3) {
-          sparkle = (n - flakeThreshold) * flake * 0.35 * yn;
+        const nh = hash2(px, py);
+        if (nh > flakeThreshold && yn > 0.3) {
+          sparkle = (nh - flakeThreshold) * flake * 0.35 * yn;
         }
       }
 
+      let sr: number, sg: number, sb: number;
       if (transparent) {
         const flat = yn * (1 - matteAmount) + (0.5 + (yn - 0.5) * 0.7) * matteAmount;
         const k = flat / Math.max(yn, 1e-4);
-        d[i] = toSrgb(r * k + spec * specTintR + sparkle);
-        d[i + 1] = toSrgb(g * k + spec * specTintG + sparkle);
-        d[i + 2] = toSrgb(b * k + spec * specTintB + sparkle);
+        sr = lr * k + spec * specTintR + sparkle;
+        sg = lg * k + spec * specTintG + sparkle;
+        sb = lb * k + spec * specTintB + sparkle;
       } else {
         // Difusão: shading original re-aplicado à cor do filme
         const s = yn * (1 - matteAmount) + (0.5 + (yn - 0.5) * 0.72) * matteAmount;
-        d[i] = toSrgb(fr * s * diffuseK + spec * specTintR + sparkle);
-        d[i + 1] = toSrgb(fg * s * diffuseK + spec * specTintG + sparkle);
-        d[i + 2] = toSrgb(fb * s * diffuseK + spec * specTintB + sparkle);
+        sr = fr * s * diffuseK + spec * specTintR + sparkle;
+        sg = fg * s * diffuseK + spec * specTintG + sparkle;
+        sb = fb * s * diffuseK + spec * specTintB + sparkle;
       }
+
+      // Mistura: viatura recebe a película; ambiente mantém a cor original
+      const simR = toSrgb(sr);
+      const simG = toSrgb(sg);
+      const simB = toSrgb(sb);
+      d[i] = Math.round(or * (1 - a) + simR * a);
+      d[i + 1] = Math.round(og * (1 - a) + simG * a);
+      d[i + 2] = Math.round(ob * (1 - a) + simB * a);
     }
   }
 
