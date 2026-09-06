@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Share2,
@@ -9,6 +10,8 @@ import {
   MessageCircle,
   CheckCircle2,
   Check,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,16 +19,19 @@ import { Card } from "@/components/ui/card";
 import { QuoteOptionSelector } from "@/components/xflow/quotes/QuoteOptionSelector";
 import { QuoteFinancialSummary } from "@/components/xflow/quotes/QuoteFinancialSummary";
 import { Quote } from "@/domains/quotes/types";
-import { approveQuoteAction } from "@/app/actions/quotes";
+import { approveQuoteAction, deleteQuoteAction } from "@/app/actions/quotes";
 
 interface QuoteDetailViewProps {
   quote: Quote;
 }
 
 export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
+  const router = useRouter();
   const [quote, setQuote] = useState<Quote>(initialQuote);
   const [copied, setCopied] = useState(false);
   const [selectedOptionId, setSelectedOptionId] = useState<string>("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const currentOptionId =
     selectedOptionId ||
@@ -37,7 +43,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
     quote.options.find((o) => o.id === currentOptionId) || quote.options[0];
 
   const handleCopyPublicLink = () => {
-    const url = `${window.location.origin}/quotes/public/${quote.publicToken}`;
+    const url = `${window.location.origin}/portal/${quote.publicToken}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
@@ -69,8 +75,18 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
     }
   };
 
+  const handleDelete = async () => {
+    const result = await deleteQuoteAction(quote.id);
+    if (!result.ok) {
+      setDeleteError(result.error ?? "Erro ao eliminar a proposta.");
+      setConfirmDelete(false);
+      return;
+    }
+    router.push("/quotes");
+  };
+
   const whatsappMessage = encodeURIComponent(
-    `Olá ${quote.customerName}, segue a sua proposta comercial da X-Motion para o ${quote.vehicleModel} (${quote.vehiclePlate}):\n${typeof window !== "undefined" ? window.location.origin : ""}/quotes/public/${quote.publicToken}`
+    `Olá ${quote.customerName}, segue a sua proposta comercial da X-Motion para o ${quote.vehicleModel} (${quote.vehiclePlate}):\n${typeof window !== "undefined" ? window.location.origin : ""}/portal/${quote.publicToken}`
   );
 
   return (
@@ -166,7 +182,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
             <span>Copiar Link</span>
           </Button>
 
-          <Link href={`/quotes/public/${quote.publicToken}`} target="_blank">
+          <Link href={`/portal/${quote.publicToken}`} target="_blank">
             <Button variant="outline" size="sm" className="bg-[#15191a]">
               <ExternalLink className="h-4 w-4 text-[#d3a548]" />
               <span>Ver como Cliente</span>
@@ -179,7 +195,45 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
               <span>Aprovar Manualmente</span>
             </Button>
           )}
+
+          <Link href={`/quotes/new?vehicle=${quote.vehicleId}`}>
+            <Button variant="outline" size="sm" className="bg-[#15191a]">
+              <RefreshCw className="h-4 w-4 text-[#d3a548]" />
+              <span>Refazer Proposta</span>
+            </Button>
+          </Link>
+
+          {confirmDelete ? (
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>
+                <span>Cancelar</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDelete}
+                className="border-[#f05a50]/50 text-[#f05a50] hover:bg-[#f05a50]/10"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Confirmar Eliminação</span>
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmDelete(true)}
+              className="border-[#f05a50]/30 text-[#f05a50] hover:bg-[#f05a50]/10"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Eliminar</span>
+            </Button>
+          )}
         </div>
+
+        {deleteError && (
+          <p className="text-xs font-semibold text-[#f05a50]">{deleteError}</p>
+        )}
       </div>
 
       {/* Main Grid: Options Comparer + Confidential Financials */}

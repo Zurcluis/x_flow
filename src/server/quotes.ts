@@ -164,6 +164,146 @@ export async function getQuoteById(
   return quote;
 }
 
+export interface CreateQuoteInput {
+  vehicleId: string;
+  customerId: string;
+  notes?: string;
+  options: QuoteOption[];
+}
+
+export async function createQuote(
+  organizationId: string,
+  input: CreateQuoteInput
+): Promise<Quote> {
+  const db = getDb();
+  const client = await db.connect();
+  let quoteId: string;
+  try {
+    await client.query("BEGIN");
+
+    const quoteNumber = `ORC-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
+    const publicToken = `qt_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+
+    const { rows: quoteRows } = await client.query<Row>(
+      `INSERT INTO quotes
+        (organization_id, quote_number, vehicle_id, customer_id, status, public_token, expires_at, notes)
+       VALUES ($1,$2,$3,$4,'sent',$5, NOW() + INTERVAL '30 days', $6)
+       RETURNING id`,
+      [
+        organizationId,
+        quoteNumber,
+        input.vehicleId,
+        input.customerId,
+        publicToken,
+        input.notes ?? null,
+      ]
+    );
+    quoteId = String(quoteRows[0].id);
+
+    for (const opt of input.options) {
+      const { rows: optRows } = await client.query<Row>(
+        `INSERT INTO quote_options
+          (quote_id, tier, name, description, is_recommended, warranty_years,
+           subtotal, discount_rate, discount_amount, taxable_base, vat_rate,
+           vat_amount, total_with_vat, estimated_cost, estimated_margin_amount,
+           estimated_margin_percentage, estimated_hours)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         RETURNING id`,
+        [
+          quoteId,
+          opt.tier,
+          opt.name,
+          opt.description,
+          opt.isRecommended,
+          opt.warrantyYears,
+          opt.subtotal,
+          opt.discountRate,
+          opt.discountAmount,
+          opt.taxableBase,
+          opt.vatRate,
+          opt.vatAmount,
+          opt.totalWithVat,
+          opt.estimatedCost,
+          opt.estimatedMarginAmount,
+          opt.estimatedMarginPercentage,
+          opt.estimatedHours,
+        ]
+      );
+      const optionId = String(optRows[0].id);
+
+      for (const item of opt.items) {
+        await client.query(
+          `INSERT INTO quote_option_items
+            (quote_option_id, service_name, body_part_code, body_part_name,
+             material_name, area_m2, labor_hours, unit_price, total_price)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [
+            optionId,
+            item.serviceName,
+            item.bodyPartCode,
+            item.bodyPartName,
+            item.materialName,
+            item.areaM2,
+            item.laborHours,
+            item.unitPrice,
+            item.totalPrice,
+          ]
+        );
+      }
+    }
+
+    await client.query(
+      `INSERT INTO quote_events (quote_id, event_type, description, author_name)
+       VALUES ($1,'created','Orçamento emitido e enviado para o painel do cliente.','X-Flow')`,
+      [quoteId]
+    );
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+
+  const quote = await getQuoteById(organizationId, quoteId);
+  if (!quote) throw new Error("Orçamento não encontrado após criação.");
+  return quote;
+}
+
+export async function rejectQuote(organizationId: string, quoteId: string): Promise<void> {
+  await getDb().query(
+    `UPDATE quotes SET status = 'rejected', updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+    [quoteId, organizationId]
+  );
+  await getDb().query(
+    `INSERT INTO quote_events (quote_id, event_type, description, author_name)
+     VALUES ($1,'rejected','Proposta recusada pelo cliente.','Cliente')`,
+    [quoteId]
+  );
+}
+
+export async function deleteQuote(
+  organizationId: string,
+  quoteId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { rows } = await getDb().query<Row>(
+    `SELECT count(*)::int AS n FROM work_orders WHERE quote_id = $1`,
+    [quoteId]
+  );
+  if (Number(rows[0].n) > 0) {
+    return {
+      ok: false,
+      error: "A proposta já gerou uma ordem de trabalho e não pode ser eliminada.",
+    };
+  }
+  await getDb().query(
+    `DELETE FROM quotes WHERE id = $1 AND organization_id = $2`,
+    [quoteId, organizationId]
+  );
+  return { ok: true };
+}
+
 export async function approveQuote(
   organizationId: string,
   quoteId: string

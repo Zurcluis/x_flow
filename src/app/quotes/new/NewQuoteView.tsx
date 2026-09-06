@@ -13,6 +13,7 @@ import { QuoteFinancialSummary } from "@/components/xflow/quotes/QuoteFinancialS
 import { buildQuoteOptionFromParts } from "@/domains/quotes/pricing-engine";
 import { OptionTier } from "@/domains/quotes/types";
 import { VEHICLE_SEGMENT_MULTIPLIERS } from "@/domains/catalog/types";
+import { createQuoteAction } from "@/app/actions/quotes";
 
 export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp }: { vehicles: Vehicle[]; customers: Customer[] }) {
   const router = useRouter();
@@ -21,7 +22,13 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
   const [customers] = useState(customersProp);
 
   // Selected vehicle & customer
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicles[0]?.id ?? "");
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const pre = new URLSearchParams(window.location.search).get("vehicle");
+      if (pre && vehicles.some((x) => x.id === pre)) return pre;
+    }
+    return vehicles[0]?.id ?? "";
+  });
   const selectedVehicle = vehicles.find((v) => v.id === selectedVehicleId) || vehicles[0];
   const selectedCustomer =
     customers.find((c) => c.id === selectedVehicle?.currentOwner?.customerId) ||
@@ -139,8 +146,27 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
     }
   };
 
-  const handleCreateQuote = () => {
-    router.push(`/quotes`);
+  const [saving, setSaving] = useState(false);
+  const [emitError, setEmitError] = useState<string | null>(null);
+
+  const handleCreateQuote = async () => {
+    if (!selectedVehicleId || !selectedCustomer?.id) {
+      setEmitError("Seleciona a viatura e o cliente antes de emitir.");
+      return;
+    }
+    setSaving(true);
+    setEmitError(null);
+    const result = await createQuoteAction({
+      vehicleId: selectedVehicleId,
+      customerId: selectedCustomer.id,
+      options: [option1, option2, option3],
+    });
+    setSaving(false);
+    if (!result.ok) {
+      setEmitError(result.error);
+      return;
+    }
+    router.push(`/quotes/${result.quoteId}`);
   };
 
   return (
@@ -161,9 +187,19 @@ export function NewQuoteView({ vehicles: vehiclesProp, customers: customersProp 
           </div>
         </div>
 
-        <Button variant="primary" onClick={handleCreateQuote}>
-          <Check className="h-4 w-4" />
-          <span>Emitir e Gerar Link Seguro</span>
+        {emitError && (
+          <p className="text-xs font-semibold text-[#f05a50]">{emitError}</p>
+        )}
+
+        <Button variant="primary" onClick={handleCreateQuote} disabled={saving}>
+          {saving ? (
+            <span>A emitir proposta…</span>
+          ) : (
+            <>
+              <Check className="h-4 w-4" />
+              <span>Emitir e Gerar Link Seguro</span>
+            </>
+          )}
         </Button>
       </div>
 
