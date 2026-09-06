@@ -27,7 +27,7 @@ export function MaterialUsageWidget({ materialUsage }: MaterialUsageWidgetProps)
       </div>
 
       {/* Material & Batch Info */}
-      <div className="flex flex-col gap-1 p-3 rounded-[12px] bg-[#0c0f10] border border-white/[0.04]">
+      <div className="flex flex-col gap-1 p-3 rounded-md bg-[#0c0f10] border border-white/[0.04]">
         <span className="font-bold text-xs text-[#f1ede5]">
           {materialUsage.materialName}
         </span>

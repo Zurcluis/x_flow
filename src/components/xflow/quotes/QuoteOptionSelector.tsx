@@ -72,7 +72,7 @@ export function QuoteOptionSelector({
               </p>
 
               {/* Price Display */}
-              <div className="flex flex-col mt-5 p-3.5 rounded-[12px] bg-[#080a0b]/60 border border-white/[0.04]">
+              <div className="flex flex-col mt-5 p-3.5 rounded-md bg-[#080a0b]/60 border border-white/[0.04]">
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-2xl font-black text-[#f1ede5] tracking-tight tabular-nums">
                     {formatCurrency(option.totalWithVat)}
@@ -114,7 +114,7 @@ export function QuoteOptionSelector({
             {isInteractive && (
               <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-center">
                 <div
-                  className={`w-full py-2.5 rounded-[12px] text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                  className={`w-full py-2.5 rounded-md text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                     isSelected
                       ? "bg-[#d3a548] text-[#050606] shadow-sm"
                       : "bg-white/[0.05] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10"

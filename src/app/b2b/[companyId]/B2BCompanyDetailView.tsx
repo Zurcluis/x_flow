@@ -49,7 +49,7 @@ export function B2BCompanyDetailView({ account }: { account: B2BAccount }) {
       <div className="p-6 rounded-[18px] bg-gradient-to-br from-[#15191a] via-[#101314] to-[#080a0b] border border-white/[0.08] shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="h-10 w-10 rounded-[12px] bg-[#d3a548]/10 text-[#d3a548] flex items-center justify-center">
+            <div className="h-10 w-10 rounded-md bg-[#d3a548]/10 text-[#d3a548] flex items-center justify-center">
               <Building2 className="h-5 w-5" />
             </div>
             <div>
@@ -85,7 +85,7 @@ export function B2BCompanyDetailView({ account }: { account: B2BAccount }) {
 
         {/* Financial Highlights */}
         <div className="grid grid-cols-2 gap-3 self-start md:self-auto">
-          <div className="p-3 rounded-[12px] bg-[#101314] border border-white/[0.04]">
+          <div className="p-3 rounded-md bg-[#101314] border border-white/[0.04]">
             <span className="text-[11px] text-[#8a9092] uppercase font-bold block mb-1">
               Faturação Total
             </span>
@@ -93,7 +93,7 @@ export function B2BCompanyDetailView({ account }: { account: B2BAccount }) {
               €{(account.totalBilledCents / 100).toFixed(2).replace(".", ",")}
             </span>
           </div>
-          <div className="p-3 rounded-[12px] bg-[#101314] border border-[#d3a548]/30">
+          <div className="p-3 rounded-md bg-[#101314] border border-[#d3a548]/30">
             <span className="text-[11px] text-[#f7d46d] uppercase font-bold block mb-1">
               Saldo em Conta
             </span>

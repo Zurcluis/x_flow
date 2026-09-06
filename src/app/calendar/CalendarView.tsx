@@ -37,7 +37,7 @@ export function CalendarView({ bays, appointments, selectedDate, dayLabel }: Cal
           <span className="text-xs font-medium text-[#a9adae]">
             Planeamento Operacional & Baias
           </span>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
             Agenda & Capacidade da Oficina
           </h1>
         </div>
@@ -123,11 +123,11 @@ export function CalendarView({ bays, appointments, selectedDate, dayLabel }: Cal
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="p-2 rounded-[8px] bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-2 rounded-sm bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-[#15191a] border border-white/[0.04]">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#15191a] border border-white/[0.04]">
             <CalendarIcon className="h-4 w-4 text-[#d3a548]" />
             <span className="font-bold text-sm text-[#f1ede5]">
               {dayLabel}
@@ -135,7 +135,7 @@ export function CalendarView({ bays, appointments, selectedDate, dayLabel }: Cal
           </div>
           <button
             type="button"
-            className="p-2 rounded-[8px] bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-2 rounded-sm bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

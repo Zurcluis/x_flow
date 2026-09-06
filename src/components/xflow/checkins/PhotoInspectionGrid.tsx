@@ -143,7 +143,7 @@ export function PhotoInspectionGrid({
       />
 
       {/* Clean Status Counter Bar */}
-      <div className="flex items-center justify-between p-4 rounded-[14px] bg-[#101314] border border-white/[0.08]">
+      <div className="flex items-center justify-between p-4 rounded-md bg-[#101314] border border-white/[0.08]">
         <div className="flex items-center gap-3">
           <div
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
@@ -219,7 +219,7 @@ export function PhotoInspectionGrid({
               </div>
 
               {/* Photo Preview Area */}
-              <div className="relative h-36 w-full rounded-[10px] overflow-hidden bg-[#080a0b] border border-white/[0.04] flex items-center justify-center">
+              <div className="relative h-36 w-full rounded-sm overflow-hidden bg-[#080a0b] border border-white/[0.04] flex items-center justify-center">
                 {isBusy ? (
                   <div className="flex flex-col items-center gap-2 text-[#f7d46d]">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -261,7 +261,7 @@ export function PhotoInspectionGrid({
                     type="button"
                     onClick={() => handleCapturePhoto(slot)}
                     disabled={isBusy}
-                    className={`w-full py-2 rounded-[8px] text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 ${
+                    className={`w-full py-2 rounded-sm text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 ${
                       isUploaded
                         ? "bg-white/[0.05] text-[#a9adae] hover:bg-white/10 hover:text-[#f1ede5]"
                         : "bg-[#15191a] text-[#f1ede5] border border-white/[0.08] hover:border-[#d3a548]"

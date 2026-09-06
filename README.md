@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# X-Flow
 
-## Getting Started
+CRM/OS para oficina PPF & wrapping — centro de comando, check-ins fotográficos com mapa de danos,
+orçamentos com portal público, produção em kanban, agenda de baias, stock, faturação, garantias,
+simulador de acabamentos e painel de oficina para TV.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router, server actions, `force-dynamic`) + **React 19** + **TypeScript strict**
+- **Tailwind CSS v4** (tokens em `src/app/globals.css` e `src/styles/tokens.css`)
+- **Postgres (Neon)** com repositórios SQL puros em `src/server/*.ts` (snake_case → camelCase)
+- **Vitest** + Testing Library (85 testes)
+
+## Arranque
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+A `DATABASE_URL` (connection string com pooler da Neon) vive em `.env.local` — nunca commitar.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Base de dados
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+node scripts/migrate.mjs        # aplica migrações estruturais pendentes (idempotente)
+node scripts/seed.mjs           # seed global demo (idempotente — truncate antes: node scripts/reset.mjs)
+node scripts/seed-films.mjs     # catálogo de películas p/ simulador (idempotente, ON CONFLICT)
+```
 
-## Learn More
+- Migrações em `supabase/migrations/` (numeradas 202608280000NN).
+- RLS por organização ativa (`current_organization_id()`); em dev a RLS é bypassed pelo owner — rever quando existir auth.
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Comando | Descrição |
+| --- | --- |
+| `npm run dev` | dev server em localhost:3000 |
+| `npm run build` / `npm start` | produção |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run test` | Vitest (run única) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estrutura
 
-## Deploy on Vercel
+```
+src/
+  app/            # páginas (App Router); views client-side junto do page.tsx
+    actions/      # server actions por domínio
+  server/         # repositórios pg por domínio (única fonte de SQL)
+  components/     # ui/ (primitivas) + xflow/ (domínio)
+  domains/        # tipos por domínio + lógica determinística (intelligence/)
+  lib/            # db, formatting, film-simulation (motor físico do simulador)
+scripts/          # migrate.mjs, seed.mjs, seed-films.mjs, reset.mjs
+supabase/migrations/
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Padrões
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Página server (`force-dynamic`) → repositório `src/server/<domínio>.ts` → view client.
+- Escritas via server actions em `src/app/actions/<domínio>.ts` com `revalidatePath`.
+- Simulador: tabela `films` (GU, metallic, flake) alimenta o motor `src/lib/film-simulation.ts`
+  (composição por pixel com preservação de luminância sobre a foto real do check-in).
+
+## Fonte de verdade de produto
+
+`X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`. Estado e continuação de sessão:
+`progresso.md`.

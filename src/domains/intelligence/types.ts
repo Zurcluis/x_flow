@@ -65,4 +65,11 @@ export interface FinishPreset {
   textureEffect: "gloss" | "satin" | "matte" | "carbon";
   costPerMeterCents: number;
   warrantyYears: number;
+  /** Brilho mediano a 60° em GU (0-100) — datasheet da película */
+  glossGu?: number;
+  /** Intensidade de flocado metálico (0-1) */
+  metallic?: number;
+  /** Granulação do flocado (0-3) */
+  flakeScale?: number;
+  sku?: string;
 }

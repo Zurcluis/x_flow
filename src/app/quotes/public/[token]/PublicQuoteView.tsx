@@ -105,7 +105,7 @@ export function PublicQuoteView({ quote: initialQuote, token }: { quote: Quote |
         {/* Vehicle Presentation Card */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#15191a] border border-white/[0.08] text-[#d3a548]">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-[#15191a] border border-white/[0.08] text-[#d3a548]">
               <Car className="h-6 w-6" />
             </div>
             <div className="flex flex-col">
@@ -207,7 +207,7 @@ export function PublicQuoteView({ quote: initialQuote, token }: { quote: Quote |
             </div>
 
             <form onSubmit={handleConfirmApproval} className="flex flex-col gap-4 mt-4 text-xs">
-              <div className="p-3.5 rounded-[12px] bg-[#15191a] border border-white/[0.04] flex flex-col gap-1">
+              <div className="p-3.5 rounded-md bg-[#15191a] border border-white/[0.04] flex flex-col gap-1">
                 <div className="flex items-center justify-between text-sm font-bold text-[#f1ede5]">
                   <span>Total da Proposta c/ IVA:</span>
                   <span className="text-[#f7d46d] tabular-nums font-black">
@@ -225,7 +225,7 @@ export function PublicQuoteView({ quote: initialQuote, token }: { quote: Quote |
                   type="text"
                   value={approverName}
                   onChange={(e) => setApproverName(e.target.value)}
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                   required
                 />
               </div>
@@ -237,7 +237,7 @@ export function PublicQuoteView({ quote: initialQuote, token }: { quote: Quote |
                   value={approvalNotes}
                   onChange={(e) => setApprovalNotes(e.target.value)}
                   placeholder="ex: Preferência para início na próxima segunda-feira de manhã..."
-                  className="p-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+                  className="p-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
                 />
               </div>
 

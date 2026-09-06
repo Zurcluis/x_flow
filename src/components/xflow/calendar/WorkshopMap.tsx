@@ -101,7 +101,7 @@ export function WorkshopMap({
         <span className="text-xs font-bold uppercase tracking-wider text-[#8a9092] px-1">
           Viaturas disponíveis
         </span>
-        <div className="flex flex-col gap-2 p-3 rounded-[14px] bg-[#0d0f10] border border-white/[0.06] min-h-[200px]">
+        <div className="flex flex-col gap-2 p-3 rounded-md bg-[#0d0f10] border border-white/[0.06] min-h-[200px]">
           {vehicles
             .filter((v) => !dayAppointments.some((a) => a.vehicleId === v.id))
             .map((v) => (
@@ -114,7 +114,7 @@ export function WorkshopMap({
                   e.dataTransfer.effectAllowed = "move";
                 }}
                 onDragEnd={() => setDraggedId(null)}
-                className="cursor-grab active:cursor-grabbing p-2.5 rounded-[10px] bg-[#15191a] border border-white/[0.1] hover:border-[#d3a548]/60 transition-all"
+                className="cursor-grab active:cursor-grabbing p-2.5 rounded-sm bg-[#15191a] border border-white/[0.1] hover:border-[#d3a548]/60 transition-all"
               >
                 <span className="text-xs font-bold text-[#f1ede5] block">{v.label}</span>
               </div>
@@ -130,7 +130,7 @@ export function WorkshopMap({
         <span className="text-xs font-bold uppercase tracking-wider text-[#8a9092] px-1 mt-2">
           Tipos de serviço (arrasta para a baia)
         </span>
-        <div className="flex flex-wrap gap-1.5 p-3 rounded-[14px] bg-[#0d0f10] border border-white/[0.06]">
+        <div className="flex flex-wrap gap-1.5 p-3 rounded-md bg-[#0d0f10] border border-white/[0.06]">
           {SERVICE_TYPES.map((t) => (
             <div
               key={t}
@@ -150,7 +150,7 @@ export function WorkshopMap({
 
         <button
           onClick={() => setBayModal("new")}
-          className="flex items-center justify-center gap-2 p-3 rounded-[14px] border border-dashed border-white/[0.15] text-xs font-bold text-[#a9adae] hover:text-[#f7d46d] hover:border-[#d3a548]/60 transition-all cursor-pointer"
+          className="flex items-center justify-center gap-2 p-3 rounded-md border border-dashed border-white/[0.15] text-xs font-bold text-[#a9adae] hover:text-[#f7d46d] hover:border-[#d3a548]/60 transition-all cursor-pointer"
         >
           <Plus className="h-4 w-4" />
           <span>Adicionar Baia</span>
@@ -192,7 +192,7 @@ export function WorkshopMap({
                   e.preventDefault();
                   void dropBay(bay);
                 }}
-                className={`relative min-h-[190px] p-3 rounded-[14px] border-2 ${style.floor} ${style.edge} transition-all ${
+                className={`relative min-h-[190px] p-3 rounded-md border-2 ${style.floor} ${style.edge} transition-all ${
                   isDropTarget ? "ring-2 ring-[#d3a548]/60 brightness-125" : ""
                 }`}
                 style={{ transformStyle: "preserve-3d" }}
@@ -243,7 +243,7 @@ export function WorkshopMap({
                       }}
                       onDragEnd={() => setDraggedId(null)}
                       onClick={() => onOpenEditAppointment(a)}
-                      className="cursor-grab active:cursor-grabbing px-2.5 py-2 rounded-[10px] bg-[#1b2021] border border-white/[0.15] shadow-lg hover:border-[#d3a548]/60 transition-all"
+                      className="cursor-grab active:cursor-grabbing px-2.5 py-2 rounded-sm bg-[#1b2021] border border-white/[0.15] shadow-lg hover:border-[#d3a548]/60 transition-all"
                       style={{
                         transform: "rotateX(-48deg) translateZ(6px)",
                         transformOrigin: "bottom center",
@@ -261,7 +261,7 @@ export function WorkshopMap({
                     </div>
                   ))}
                   {bayAppointments.length === 0 && (
-                    <div className="flex items-center justify-center h-16 rounded-[10px] border border-dashed border-white/[0.12] text-[10px] text-[#5a6062]">
+                    <div className="flex items-center justify-center h-16 rounded-sm border border-dashed border-white/[0.12] text-[10px] text-[#5a6062]">
                       Arrasta uma viatura para aqui
                     </div>
                   )}
@@ -273,7 +273,7 @@ export function WorkshopMap({
           {/* Tile adicionar baia */}
           <button
             onClick={() => setBayModal("new")}
-            className="min-h-[190px] rounded-[14px] border-2 border-dashed border-white/[0.12] flex flex-col items-center justify-center gap-2 text-[#5a6062] hover:text-[#f7d46d] hover:border-[#d3a548]/60 transition-all cursor-pointer"
+            className="min-h-[190px] rounded-md border-2 border-dashed border-white/[0.12] flex flex-col items-center justify-center gap-2 text-[#5a6062] hover:text-[#f7d46d] hover:border-[#d3a548]/60 transition-all cursor-pointer"
           >
             <Plus className="h-6 w-6" />
             <span className="text-[11px] font-bold uppercase tracking-wider">Nova Baia</span>
@@ -319,7 +319,7 @@ function BayModal({
   const [saving, setSaving] = useState(false);
 
   const inputClass =
-    "h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] w-full";
+    "h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] w-full";
 
   const handleSave = async () => {
     if (!name.trim()) {

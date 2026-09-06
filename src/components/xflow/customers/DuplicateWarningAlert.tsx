@@ -11,7 +11,7 @@ export function DuplicateWarningAlert({ matches }: DuplicateWarningAlertProps) {
   if (!matches || matches.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 p-3.5 rounded-[12px] bg-[#3a2512]/80 border border-[#d3a548]/50 text-[#f7d46d] text-xs">
+    <div className="flex flex-col gap-2 p-3.5 rounded-md bg-[#3a2512]/80 border border-[#d3a548]/50 text-[#f7d46d] text-xs">
       <div className="flex items-center gap-2 font-semibold">
         <AlertTriangle className="h-4 w-4 text-[#d3a548] shrink-0" />
         <span>Atenção: Foram encontrados possíveis duplicados registados</span>

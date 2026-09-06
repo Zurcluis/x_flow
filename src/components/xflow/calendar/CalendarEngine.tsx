@@ -261,14 +261,14 @@ export function CalendarEngine({
           </Button>
           <button
             onClick={() => move(-1)}
-            className="p-2 rounded-[8px] bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-2 rounded-sm bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
             aria-label="Anterior"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={() => move(1)}
-            className="p-2 rounded-[8px] bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
+            className="p-2 rounded-sm bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
             aria-label="Seguinte"
           >
             <ChevronRight className="h-4 w-4" />
@@ -276,7 +276,7 @@ export function CalendarEngine({
           <span className="font-bold text-sm text-[#f1ede5] ml-1">{periodLabel}</span>
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 rounded-[12px] bg-[#101314] border border-white/[0.06] select-none">
+        <div className="flex items-center gap-1.5 p-1 rounded-md bg-[#101314] border border-white/[0.06] select-none">
           {(
             [
               ["month", "Mês"],
@@ -484,7 +484,7 @@ export function CalendarEngine({
                             e.stopPropagation();
                             openEdit(a);
                           }}
-                          className={`absolute left-0.5 right-0.5 rounded-[8px] border px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-125 transition-all ${color.bg} ${color.border} ${color.text}`}
+                          className={`absolute left-0.5 right-0.5 rounded-sm border px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-125 transition-all ${color.bg} ${color.border} ${color.text}`}
                           style={{ top: (offset / 60) * PX_PER_HOUR, height, minHeight: 24 }}
                           title={`${a.startTime}–${a.endTime} · ${a.vehicleModel} (${a.vehiclePlate}) · ${a.customerName}`}
                         >
@@ -554,7 +554,7 @@ export function CalendarEngine({
                   )}
                   <button
                     onClick={() => openEdit(a)}
-                    className="flex items-center gap-3 p-3.5 rounded-[12px] bg-[#101314] border border-white/[0.06] hover:border-[#d3a548]/40 transition-all cursor-pointer text-left"
+                    className="flex items-center gap-3 p-3.5 rounded-md bg-[#101314] border border-white/[0.06] hover:border-[#d3a548]/40 transition-all cursor-pointer text-left"
                   >
                     <span className="font-mono text-xs font-bold text-[#f7d46d]">{a.startTime}</span>
                     <span className="text-sm font-semibold text-[#f1ede5]">{a.vehicleModel}</span>
@@ -732,7 +732,7 @@ function AppointmentModal({
         </div>
 
         {conflicts && (
-          <div className="mt-4 p-3.5 rounded-[12px] bg-[#f05a50]/10 border border-[#f05a50]/40 flex flex-col gap-2">
+          <div className="mt-4 p-3.5 rounded-md bg-[#f05a50]/10 border border-[#f05a50]/40 flex flex-col gap-2">
             <div className="flex items-center gap-2 text-xs font-bold text-[#f05a50]">
               <AlertTriangle className="h-4 w-4" />
               Conflito de recursos detetado
@@ -758,7 +758,7 @@ function AppointmentModal({
                 const v = vehicles.find((x) => x.id === e.target.value);
                 if (v?.customerId) setCustomerId(v.customerId);
               }}
-              className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
+              className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
             >
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
@@ -769,7 +769,7 @@ function AppointmentModal({
           </label>
 
           {!selectedVehicleHasOwner && (
-            <p className="p-3 rounded-[10px] bg-[#2a1210] border border-[#f05a50]/40 text-[11px] font-semibold text-[#f78e85]">
+            <p className="p-3 rounded-sm bg-[#2a1210] border border-[#f05a50]/40 text-[11px] font-semibold text-[#f78e85]">
               Esta viatura não tem proprietário associado. Associa um cliente no
               CRM (Viaturas) antes de agendar.
             </p>
@@ -781,7 +781,7 @@ function AppointmentModal({
               <select
                 value={bayId}
                 onChange={(e) => setBayId(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
               >
                 {bays.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -795,7 +795,7 @@ function AppointmentModal({
               <select
                 value={technicianId}
                 onChange={(e) => setTechnicianId(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
               >
                 <option value="">Sem técnico</option>
                 {technicians.map((t) => (
@@ -814,7 +814,7 @@ function AppointmentModal({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
@@ -823,7 +823,7 @@ function AppointmentModal({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
@@ -834,7 +834,7 @@ function AppointmentModal({
                 step={0.5}
                 value={estimatedHours}
                 onChange={(e) => setEstimatedHours(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
               />
             </label>
           </div>
@@ -844,7 +844,7 @@ function AppointmentModal({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as AppointmentStatus)}
-              className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
+              className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
             >
               <option value="scheduled">Agendada</option>
               <option value="confirmed">Confirmada</option>
@@ -860,7 +860,7 @@ function AppointmentModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="px-3 py-2 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] resize-none"
+              className="px-3 py-2 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] resize-none"
               placeholder="Ex: Full PPF — prioridade entrega sexta..."
             />
           </label>

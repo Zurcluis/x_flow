@@ -116,7 +116,7 @@ export function B2BPortalView({ initialAccounts }: { initialAccounts: B2BAccount
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Pesquisar parceiro por nome comercial, razão social ou NIF..."
-            className="w-full h-10 pl-9 pr-4 rounded-[12px] bg-[#101314] border border-white/[0.08] text-xs text-[#f1ede5] placeholder-[#8a9092] focus:border-[#d3a548] outline-none"
+            className="w-full h-10 pl-9 pr-4 rounded-md bg-[#101314] border border-white/[0.08] text-xs text-[#f1ede5] placeholder-[#8a9092] focus:border-[#d3a548] outline-none"
           />
         </div>
       </div>
@@ -175,7 +175,7 @@ export function B2BPortalView({ initialAccounts }: { initialAccounts: B2BAccount
             </div>
 
             {/* Fleet Summary inside card */}
-            <div className="p-3 rounded-[12px] bg-[#15191a] border border-white/[0.04]">
+            <div className="p-3 rounded-md bg-[#15191a] border border-white/[0.04]">
               <span className="text-[11px] uppercase font-bold tracking-wider text-[#8a9092] block mb-2">
                 Viaturas Ativas / Concluídas ({account.fleetVehicles.length})
               </span>
@@ -183,7 +183,7 @@ export function B2BPortalView({ initialAccounts }: { initialAccounts: B2BAccount
                 {account.fleetVehicles.map((v) => (
                   <div
                     key={v.id}
-                    className="flex items-center justify-between text-xs py-1 px-2 rounded-[8px] bg-[#101314] border border-white/[0.02]"
+                    className="flex items-center justify-between text-xs py-1 px-2 rounded-sm bg-[#101314] border border-white/[0.02]"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-[#f1ede5]">

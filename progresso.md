@@ -1,20 +1,35 @@
 # Progresso — X-Flow
 
-_Última atualização: 06/09/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 06/09/2026 (noite). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.3.3, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
 - Health: typecheck OK, lint OK, 85/85 testes a passar
-- **Git a funcionar**: repo em `main`, tudo commitado e pushed para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo) — último commit `7b7c76a` (06/09/2026)
+- **Git a funcionar**: repo em `main`, tudo commitado e pushed para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo)
 - `README.md` ainda é o template default do create-next-app
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
 
 ## Base de dados (Neon, 06/09/2026)
-- **Neon Postgres 18.6** ligado e **14 migrações aplicadas** (35+ tabelas; 13: `employees.email/phone` + `employee_absences`; 14: `checkin_damages.photo_id` + `checkins.belongings` + CHECK de angles)
+- **Neon Postgres 18.6** ligado e **15 migrações aplicadas** (35+ tabelas; 15: tabela `films` + `deliveries.belongings` JSONB)
 - Connection string (pooler) em `.env.local` como `DATABASE_URL` — coberto por `.env*` no `.gitignore` (não commitar)
 - **Seed global**: `node scripts/seed.mjs` (idempotente, truncate manual antes) — org, 5 perfis, 3 baias, catálogo, 6 materiais (3 críticos), 5 clientes, 6 viaturas, 5 orçamentos, 4 ordens com fases/tempos, check-ins, QC, agenda da semana, faturas, garantia+entrega
-- **Migrações estruturais novas**: `node scripts/migrate.mjs` (idempotente por deteção de colunas)
+- **Seed de películas**: `node scripts/seed-films.mjs` (idempotente, ON CONFLICT) — 15 películas reais (3M 2080, Avery SW900, XPEL Ultimate/Stealth, Stek DYNO, Inozetek, KPMF) com cor, GU, metallic, flake, custo/m e garantia
+- **Migrações estruturais novas**: `node scripts/migrate.mjs` (idempotente por deteção de colunas/tabelas)
+
+## Sessão 06/09 (noite) — Películas físicas no simulador + entregas reais (validado E2E)
+- **Migração 15**: `films` (catálogo com parâmetros físicos: `gloss_gu`, `metallic`, `flake_scale`, `cost_per_meter_cents`, `warranty_years`, type clear_ppf_gloss/clear_ppf_matte/color_ppf/vinyl_wrap/chrome_delete) + `deliveries.belongings` JSONB
+- **Simulação física em canvas** (`src/lib/film-simulation.ts`): composição por pixel sobre a foto real que preserva a luminância (sombras/reflexos/vãos), modelo difusão (cor do filme × shading) + especular derivada do GU + sparkle determinístico de flocos metálicos; PPF transparente preserva croma e aplica só o modelo de brilho; auto-exposição pela mediana; max 1200px, JPEG 0.92
+- **Simulador** (`/simulator`): presets agora vêm da tabela `films` via `listFilms()` (fallback demo data se vazia); badge mostra "Efeito X · N GU"; resultado canvas no lado "Simulado" do slider com fallback CSS + indicador "a processar simulação física…" enquanto processa; FinishSelector mostra GU; carbon continua overlay CSS
+- **Entregas reais** (`/deliveries/new`): página server com candidatos da BD (`listDeliveryCandidates` — OTs `completed` sem entrega, LEFT JOIN QC passed, pertences do último check-in da viatura); `NewDeliveryWizard` 3 passos (gate QC → checklist de pertences pré-preenchido → assinatura + notas); `createDeliveryAction`/`createDelivery` gravam em transação com token público; estado vazio com explicação
+- **Bug apanhado no E2E**: SELECT não aliava `qc.certificate_number AS qc_certificate_number` — o gate de QC aparecia sempre "sem registo"; corrigido e revalidado (badge "QC 100% Aprovado" com QC-2026-44TX88-PASS)
+- **Pass de raios para tokens** (~80 ficheiros): `rounded-[8px]→rounded-sm(10px)`, `[10px]→rounded-sm`, `[12px]→rounded-md`, `[14px]→rounded-md`, `[18px]→rounded-lg` fora dos tokens eliminados (pendente do audit de 05/09)
+- Validação: typecheck, lint, 85/85 testes; E2E no browser — simulador gera JPEG simulado distinto do original (data URL) e re-simula ao trocar de película; entrega registada para WO-2026-098 (Ferrari UV-12-WX, pertences, assinatura demo, notas) persistida em `deliveries.belongings` JSONB e visível na ficha `/deliveries/[id]`
+
+## Ainda por ligar (usa demo data)
+- `/vision` (fase 8 do blueprint — análise IA), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo), auth/perfis, RLS efetiva (owner faz bypass); RLS atualmente bypassed (owner) — rever políticas na altura do auth
+- Fotos de check-in guardadas como data URL na BD (TEXT) — migrar para object storage quando existir auth/Storage
+- Faturas/garantias/stock/ferramentas/B2B: leitura ligada à BD, escritas ainda demo (entregas agora com escrita real)
 
 ## Núcleo operacional interligado (05/09/2026, commit 1f53194)
 - **Padrão estabelecido**: `src/server/<domínio>.ts` (repositório pg, snake→camel) + `src/app/actions/<domínio>.ts` (server actions) + página server (`force-dynamic`) → view client
@@ -72,9 +87,9 @@ _Última atualização: 06/09/2026. Ficheiro de continuação de sessão — diz
 ## Pendente
 - **Médio prazo**: ligar a app às tabelas Neon (substituir demo data), README real
 - H1s de listagem misturam `text-2xl` e `text-2xl lg:text-3xl` — unificar noutro pass
-- Raios `rounded-[8px]/[10px]/[12px]/[14px]` existem fora dos tokens — mapear para `rounded-sm/md` noutro pass
 - Topbar chrome não aparece em <lg (mobile tem header/drawer/bottom-nav próprios) — avaliar ações rápidas no drawer mobile
 - Filtro `pathname.startsWith(item.href)` na nav pode dar falsos positivos futuros (ex.: `/tools` vs `/tooling`) — considerar `route matching` por segmentos
+- Valores de cor/GU do seed de películas são aproximações de datasheets — afinar com leituras reais (L*a*b*/GU)
 
 ## Notas práticas
 - Dev server: `npm run dev` em `localhost:3000` (não está a correr entre sessões).

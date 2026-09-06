@@ -79,6 +79,17 @@ export async function getInvoiceById(
   return invoices.find((i) => i.id === invoiceId) ?? null;
 }
 
+function mapBelongings(r: Row): Delivery["belongings"] {
+  const raw = Array.isArray(r.belongings) ? (r.belongings as Record<string, unknown>[]) : [];
+  return raw
+    .filter((b) => typeof b?.name === "string")
+    .map((b, idx) => ({
+      id: typeof b.id === "string" ? b.id : `bel-${idx}`,
+      name: String(b.name),
+      isReturned: Boolean(b.isReturned),
+    }));
+}
+
 export async function listDeliveries(organizationId: string): Promise<Delivery[]> {
   const { rows } = await getDb().query<Row>(
     `SELECT d.*, v.make || ' ' || v.model AS vehicle_model_full
@@ -98,7 +109,7 @@ export async function listDeliveries(organizationId: string): Promise<Delivery[]
     receiverIdDocument: (r.receiver_id_document as string) ?? undefined,
     signatureDataUrl: (r.signature_data_url as string) ?? undefined,
     belongingsReturnedConfirmed: Boolean(r.belongings_returned_confirmed),
-    belongings: [],
+    belongings: mapBelongings(r),
     notes: (r.notes as string) ?? undefined,
     deliveredAt: iso(r.delivered_at),
     token: String(r.token),
@@ -133,7 +144,7 @@ export async function getDeliveryById(
     receiverIdDocument: (r.receiver_id_document as string) ?? undefined,
     signatureDataUrl: (r.signature_data_url as string) ?? undefined,
     belongingsReturnedConfirmed: Boolean(r.belongings_returned_confirmed),
-    belongings: [],
+    belongings: mapBelongings(r),
     notes: (r.notes as string) ?? undefined,
     deliveredAt: iso(r.delivered_at),
     token: String(r.token),

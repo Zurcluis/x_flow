@@ -206,7 +206,7 @@ export function NewQuoteView({
         )}
 
         {simRef && (
-          <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[#d3a548]/10 border border-[#d3a548]/30 text-xs text-[#f7d46d]">
+          <div className="flex items-center gap-2 p-3 rounded-md bg-[#d3a548]/10 border border-[#d3a548]/30 text-xs text-[#f7d46d]">
             <Sparkles className="h-4 w-4 shrink-0" />
             <span>
               Referência do Simulador: <strong>{simRef.finish}</strong> · Cobertura{" "}
@@ -242,7 +242,7 @@ export function NewQuoteView({
                 <select
                   value={selectedVehicleId}
                   onChange={(e) => handleVehicleChange(e.target.value)}
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id} className="bg-[#15191a] text-[#f1ede5]">
@@ -254,7 +254,7 @@ export function NewQuoteView({
 
               <div className="flex flex-col gap-1.5">
                 <label className="font-semibold text-[#a9adae]">Proprietário</label>
-                <div className="h-10 px-3.5 rounded-[10px] bg-[#080a0b] border border-white/[0.04] flex items-center justify-between text-sm text-[#f1ede5]">
+                <div className="h-10 px-3.5 rounded-sm bg-[#080a0b] border border-white/[0.04] flex items-center justify-between text-sm text-[#f1ede5]">
                   <span className="truncate">{selectedCustomer.name}</span>
                   <span className="text-[11px] uppercase font-bold text-[#d3a548] shrink-0">
                     {selectedCustomer.type === "business" ? "B2B" : "Particular"}
@@ -270,7 +270,7 @@ export function NewQuoteView({
                 <select
                   value={finish}
                   onChange={(e) => setFinish(e.target.value)}
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   <option value="gloss">PPF Ultra Gloss (Transparente Auto-regenerativo)</option>
                   <option value="matte">PPF Satin / Matte (Transformação Acetinada)</option>
@@ -286,7 +286,7 @@ export function NewQuoteView({
                   max="50"
                   value={discountRate}
                   onChange={(e) => setDiscountRate(parseFloat(e.target.value) || 0)}
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                 />
               </div>
             </div>
@@ -304,7 +304,7 @@ export function NewQuoteView({
             </div>
 
             {/* Option Tier Tabs */}
-            <div className="flex items-center gap-2 p-1 rounded-[12px] bg-[#080a0b] border border-white/[0.06] select-none">
+            <div className="flex items-center gap-2 p-1 rounded-md bg-[#080a0b] border border-white/[0.06] select-none">
               <button
                 type="button"
                 onClick={() => setActiveTierTab("essential")}

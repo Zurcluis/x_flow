@@ -44,7 +44,7 @@ export function CheckinDetailView({ checkin }: { checkin: Checkin }) {
 
       {/* Copy Alert Toast */}
       {copied && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-[12px] bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in">
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-md bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in">
           <CheckCircle2 className="h-4 w-4 text-[#d3a548]" />
           <span>Link do relatório copiado para a área de transferência!</span>
         </div>
@@ -183,7 +183,7 @@ export function CheckinDetailView({ checkin }: { checkin: Checkin }) {
               {checkin.belongings.map((b) => (
                 <div
                   key={b.id}
-                  className="flex items-center justify-between p-2 rounded-[8px] bg-[#15191a] text-xs text-[#f1ede5]"
+                  className="flex items-center justify-between p-2 rounded-sm bg-[#15191a] text-xs text-[#f1ede5]"
                 >
                   <span>{b.itemName}</span>
                   <Badge variant={b.isPresent ? "success" : "outline"} className="text-[11px]">
@@ -210,7 +210,7 @@ export function CheckinDetailView({ checkin }: { checkin: Checkin }) {
                 <span>{checkin.completedAt}</span>
               </div>
 
-              <div className="mt-2 p-3 rounded-[10px] bg-[#0c0f10] border border-white/[0.06] text-center font-mono text-xs text-[#d3a548]">
+              <div className="mt-2 p-3 rounded-sm bg-[#0c0f10] border border-white/[0.06] text-center font-mono text-xs text-[#d3a548]">
                 Assinatura Digital Validada em Ficha Oficial
               </div>
             </div>

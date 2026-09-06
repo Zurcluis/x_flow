@@ -56,7 +56,7 @@ export function PhaseChecklistCard({
           <label
             key={item.id}
             onClick={() => onToggleItem(item.id)}
-            className={`flex items-center justify-between p-3 rounded-[12px] border transition-all cursor-pointer select-none ${
+            className={`flex items-center justify-between p-3 rounded-md border transition-all cursor-pointer select-none ${
               item.isCompleted
                 ? "bg-[#141b17] border-[#68a46b]/40 text-[#f1ede5]"
                 : "bg-[#15191a]/50 border-white/[0.04] text-[#a9adae] hover:border-white/15 hover:text-[#f1ede5]"

@@ -164,7 +164,7 @@ export function CapacityRing({ percentage }: { percentage: number }) {
 
 export function PendingQuotesIcon() {
   return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.04] border border-white/[0.08] text-[#f1ede5]">
+    <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white/[0.04] border border-white/[0.08] text-[#f1ede5]">
       <FileText className="h-5 w-5 stroke-[1.75] text-[#a9adae]" />
     </div>
   );
@@ -172,7 +172,7 @@ export function PendingQuotesIcon() {
 
 export function StockDangerIcon() {
   return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-[#f05a50]/10 border border-[#f05a50]/20 text-[#f05a50]">
+    <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#f05a50]/10 border border-[#f05a50]/20 text-[#f05a50]">
       <AlertTriangle className="h-6 w-6 stroke-[1.75]" />
     </div>
   );

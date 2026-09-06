@@ -146,7 +146,7 @@ export function SignaturePad({
       </div>
 
       {/* Signature Canvas Box */}
-      <div className="relative w-full h-36 rounded-[14px] bg-[#0c0f10] border border-white/[0.08] flex items-center justify-center overflow-hidden">
+      <div className="relative w-full h-36 rounded-md bg-[#0c0f10] border border-white/[0.08] flex items-center justify-center overflow-hidden">
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}

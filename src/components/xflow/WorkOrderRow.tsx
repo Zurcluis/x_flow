@@ -32,11 +32,11 @@ export function ActiveWorksCard({ works }: ActiveWorksCardProps) {
           {works.map((work) => (
             <div
               key={work.id}
-              className="flex items-center justify-between gap-3 p-3 rounded-[12px] bg-[#15191a] border border-white/[0.04] hover:border-white/10 transition-colors"
+              className="flex items-center justify-between gap-3 p-3 rounded-md bg-[#15191a] border border-white/[0.04] hover:border-white/10 transition-colors"
             >
               {/* Vehicle info */}
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-white/[0.03] border border-white/[0.06] text-[#a9adae]">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-white/[0.03] border border-white/[0.06] text-[#a9adae]">
                   <Car className="h-4 w-4 stroke-[1.5]" />
                 </div>
                 <div className="flex flex-col min-w-0">

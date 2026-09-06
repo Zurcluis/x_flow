@@ -56,7 +56,7 @@ export function TimesheetTracker({
       </div>
 
       {/* Efficiency Gauge */}
-      <div className="grid grid-cols-2 gap-3 p-3 rounded-[12px] bg-[#0c0f10] border border-white/[0.04]">
+      <div className="grid grid-cols-2 gap-3 p-3 rounded-md bg-[#0c0f10] border border-white/[0.04]">
         <div className="flex flex-col">
           <span className="text-[11px] text-[#8a9092]">Horas Gastas / Previstas</span>
           <span className="font-mono font-bold text-sm text-[#f1ede5]">
@@ -83,7 +83,7 @@ export function TimesheetTracker({
         {timeEntries.map((entry) => (
           <div
             key={entry.id}
-            className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#15191a] border border-white/[0.03]"
+            className="flex items-center justify-between p-2.5 rounded-sm bg-[#15191a] border border-white/[0.03]"
           >
             <div className="flex flex-col min-w-0 pr-2">
               <span className="font-semibold text-[#f1ede5] truncate">
@@ -123,7 +123,7 @@ export function TimesheetTracker({
                 <select
                   value={techName}
                   onChange={(e) => setTechName(e.target.value)}
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   <option value="João Martins">João Martins (Lead Detailer)</option>
                   <option value="Rui Almeida">Rui Almeida (Wrap Master)</option>
@@ -141,7 +141,7 @@ export function TimesheetTracker({
                   max="12"
                   value={hoursInput}
                   onChange={(e) => setHoursInput(e.target.value)}
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] font-mono"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] font-mono"
                   required
                 />
               </div>
@@ -153,7 +153,7 @@ export function TimesheetTracker({
                   value={notesInput}
                   onChange={(e) => setNotesInput(e.target.value)}
                   placeholder="ex: Ajuste e corte de folgas..."
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
                 />
               </div>
 

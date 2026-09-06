@@ -98,7 +98,7 @@ export function TeamView({ initialTeam }: { initialTeam: TeamMember[] }) {
             <div className="flex flex-col gap-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3.5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#d3a548]/15 border border-[#d3a548]/30 font-bold text-base text-[#f7d46d]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#d3a548]/15 border border-[#d3a548]/30 font-bold text-base text-[#f7d46d]">
                     {member.name.slice(0, 2).toUpperCase()}
                   </div>
 
@@ -123,7 +123,7 @@ export function TeamView({ initialTeam }: { initialTeam: TeamMember[] }) {
                 </Badge>
               </div>
 
-              <div className="flex flex-col gap-2 p-3.5 rounded-[12px] bg-[#15191a] border border-white/[0.03] text-xs">
+              <div className="flex flex-col gap-2 p-3.5 rounded-md bg-[#15191a] border border-white/[0.03] text-xs">
                 <div className="flex items-center justify-between text-[#a9adae]">
                   <span>Especialidade:</span>
                   <strong className="text-[#f1ede5]">{member.specialty}</strong>

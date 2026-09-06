@@ -32,7 +32,7 @@ export function MetricCard({
           {title}
         </span>
         <div className="flex items-center gap-2 mt-2">
-          <span className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5] tabular-nums">
+          <span className="text-2xl font-bold tracking-tight text-[#f1ede5] tabular-nums">
             {value}
           </span>
           <div className="inline-flex items-center gap-0.5 rounded-full bg-[#68a46b]/15 px-2 py-0.5 text-xs font-semibold text-[#68a46b] border border-[#68a46b]/30">

@@ -37,7 +37,7 @@ export function InvoiceSummaryCard({ invoice }: InvoiceSummaryCardProps) {
       </div>
 
       {/* Customer & Vehicle Info */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 rounded-[14px] bg-[#0c0f10] border border-white/[0.04]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 rounded-md bg-[#0c0f10] border border-white/[0.04]">
         <div className="flex flex-col gap-1">
           <span className="text-[11px] uppercase font-bold tracking-wider text-[#d3a548]">
             Dados do Cliente:

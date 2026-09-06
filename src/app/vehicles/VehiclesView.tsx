@@ -68,7 +68,7 @@ export function VehiclesView({ initialVehicles, customers, coverPhotos }: Vehicl
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.04]">
         <div className="flex flex-col">
           <span className="text-xs font-medium text-[#a9adae]">Passaportes Digitais</span>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
             Viaturas da Oficina
           </h1>
         </div>
@@ -89,12 +89,12 @@ export function VehiclesView({ initialVehicles, customers, coverPhotos }: Vehicl
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Pesquisar por matrícula (ex: 44-TX-88), marca, modelo, VIN ou dono..."
-            className="w-full h-10 pl-10 pr-4 rounded-[12px] bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
+            className="w-full h-10 pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
           />
         </div>
 
         {/* Body Types Filter */}
-        <div className="flex items-center gap-1.5 p-1 rounded-[12px] bg-[#101314] border border-white/[0.06] overflow-x-auto select-none">
+        <div className="flex items-center gap-1.5 p-1 rounded-md bg-[#101314] border border-white/[0.06] overflow-x-auto select-none">
           <button
             onClick={() => setSelectedBodyType("all")}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${

@@ -106,7 +106,7 @@ export function DeliveriesView({ initialDeliveries }: { initialDeliveries: Deliv
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Pesquisar por matrícula, modelo, cliente ou levantador..."
-          className="h-10 w-full pl-10 pr-4 rounded-[12px] bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
+          className="h-10 w-full pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
         />
       </div>
 
@@ -138,7 +138,7 @@ export function DeliveriesView({ initialDeliveries }: { initialDeliveries: Deliv
                 </span>
               </div>
 
-              <div className="flex flex-col gap-1 p-3 rounded-[10px] bg-[#15191a] border border-white/[0.03] text-xs">
+              <div className="flex flex-col gap-1 p-3 rounded-sm bg-[#15191a] border border-white/[0.03] text-xs">
                 <span className="text-[#a9adae]">
                   Levantado por: <strong className="text-[#f1ede5]">{del.receiverName}</strong> {del.receiverIdDocument && `(${del.receiverIdDocument})`}
                 </span>

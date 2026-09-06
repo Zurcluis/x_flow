@@ -74,7 +74,7 @@ export default function VehiclePassportPublicPage() {
             </div>
 
             {/* Current Owner Badge */}
-            <div className="flex flex-col sm:items-end p-3.5 rounded-[14px] bg-[#050606]/80 border border-white/[0.04] text-xs">
+            <div className="flex flex-col sm:items-end p-3.5 rounded-md bg-[#050606]/80 border border-white/[0.04] text-xs">
               <span className="text-[#8a9092]">Proprietário Registado:</span>
               <strong className="text-sm text-[#f1ede5] mt-0.5">
                 {passport.ownerName}

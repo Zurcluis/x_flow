@@ -33,7 +33,7 @@ export function WarrantyDetailView({ warranty }: { warranty: WarrantyCertificate
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#d3a548]/15 text-[#f7d46d]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#d3a548]/15 text-[#f7d46d]">
               <Award className="h-6 w-6" />
             </div>
             <h1 className="text-2xl font-bold text-[#f1ede5]">
@@ -84,7 +84,7 @@ export function WarrantyDetailView({ warranty }: { warranty: WarrantyCertificate
             </span>
           </div>
 
-          <div className="p-3.5 rounded-[12px] bg-[#0c0f10] border border-white/[0.04] flex flex-col gap-1">
+          <div className="p-3.5 rounded-md bg-[#0c0f10] border border-white/[0.04] flex flex-col gap-1">
             <span className="text-[#8a9092]">Película Certificada:</span>
             <strong className="text-sm text-[#f1ede5]">{warranty.materialName}</strong>
             <span className="text-[12px] font-mono text-[#d3a548]">
@@ -94,7 +94,7 @@ export function WarrantyDetailView({ warranty }: { warranty: WarrantyCertificate
 
           <div className="flex flex-col gap-1.5">
             <span className="font-semibold text-[#a9adae]">Termos da Cobertura:</span>
-            <p className="text-[#f1ede5] leading-relaxed p-3.5 rounded-[12px] bg-[#15191a] border border-white/[0.03]">
+            <p className="text-[#f1ede5] leading-relaxed p-3.5 rounded-md bg-[#15191a] border border-white/[0.03]">
               {warranty.termsText}
             </p>
           </div>
@@ -115,7 +115,7 @@ export function WarrantyDetailView({ warranty }: { warranty: WarrantyCertificate
             {warranty.maintenanceRules.map((rule) => (
               <div
                 key={rule.id}
-                className="p-3 rounded-[12px] bg-[#15191a] border border-white/[0.03] flex flex-col gap-1"
+                className="p-3 rounded-md bg-[#15191a] border border-white/[0.03] flex flex-col gap-1"
               >
                 <div className="flex items-center justify-between">
                   <strong className="text-xs text-[#f1ede5]">{rule.title}</strong>

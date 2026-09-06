@@ -65,7 +65,7 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
       {/* Hero Card */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] bg-[#15191a] border border-white/[0.1] text-[#d3a548]">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-[#15191a] border border-white/[0.1] text-[#d3a548]">
             {isBusiness ? (
               <Building2 className="h-7 w-7 stroke-[1.75]" />
             ) : (
@@ -248,7 +248,7 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
             customer.communications.map((com) => (
               <div
                 key={com.id}
-                className="flex items-start gap-3 p-4 rounded-[12px] bg-[#101314] border border-white/[0.06] text-xs"
+                className="flex items-start gap-3 p-4 rounded-md bg-[#101314] border border-white/[0.06] text-xs"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#15191a] text-[#d3a548]">
                   <MessageSquare className="h-4 w-4" />

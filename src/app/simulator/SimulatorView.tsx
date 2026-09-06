@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Vehicle } from "@/domains/vehicles/types";
 import { initialFinishPresets } from "@/lib/demo-data/vision-simulation-data";
+import { simulateFilmOnPhoto } from "@/lib/film-simulation";
 import Link from "next/link";
 import {
   Sparkles,
@@ -66,13 +67,17 @@ function presetTargetFamily(preset: FinishPreset): string {
 export function SimulatorView({
   vehicles: vehiclesProp,
   coverPhotos,
+  films,
 }: {
   vehicles: Vehicle[];
   coverPhotos: Record<string, string>;
+  films?: FinishPreset[];
 }) {
   const [vehicles] = useState(vehiclesProp);
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0].id);
-  const [presets] = useState(initialFinishPresets);
+  const [presets] = useState<FinishPreset[]>(
+    films && films.length > 0 ? films : initialFinishPresets
+  );
   const [selectedPreset, setSelectedPreset] = useState<FinishPreset>(presets[0]);
   const [selectedCoverage, setSelectedCoverage] = useState<"exterior" | "extended" | "integral">("extended");
   const [sliderPos, setSliderPos] = useState(50);
@@ -85,6 +90,39 @@ export function SimulatorView({
   const targetColorFamily = presetTargetFamily(selectedPreset);
   const isClearFilm = selectedPreset.type.startsWith("clear_ppf");
   const serviceType = isClearFilm ? "PPF" : "Wrap";
+
+  // Simulação física (canvas, preservação de luminância) — fallback CSS enquanto processa
+  const [simResult, setSimResult] = useState<{ key: string; url: string | null }>({
+    key: "",
+    url: null,
+  });
+  const canSimulate =
+    selectedPreset.textureEffect !== "carbon" && selectedPreset.glossGu !== undefined;
+  const simKey = `${selectedVehicle.id}|${selectedPreset.id}|${coverPhoto ? "foto" : "sem"}`;
+
+  useEffect(() => {
+    if (!coverPhoto || !canSimulate || !selectedPreset.glossGu) return;
+    let cancelled = false;
+    simulateFilmOnPhoto(coverPhoto, {
+      colorHex: selectedPreset.colorHex,
+      glossGu: selectedPreset.glossGu,
+      metallic: selectedPreset.metallic ?? 0,
+      flakeScale: selectedPreset.flakeScale ?? 0,
+      transparent: isClearFilm,
+    })
+      .then((url) => {
+        if (!cancelled) setSimResult({ key: simKey, url });
+      })
+      .catch(() => {
+        if (!cancelled) setSimResult({ key: simKey, url: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [coverPhoto, simKey, canSimulate, isClearFilm, selectedPreset.glossGu, selectedPreset.colorHex, selectedPreset.metallic, selectedPreset.flakeScale]);
+
+  const simUrl = simResult.key === simKey ? simResult.url : null;
+  const simPending = Boolean(coverPhoto) && canSimulate && simUrl === null;
 
   const contrastLevel = calculateColorContrast(
     originalColorFamily,
@@ -208,44 +246,71 @@ export function SimulatorView({
                 className="absolute inset-0 flex items-center justify-center"
                 style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={coverPhoto}
-                  alt={`${selectedVehicle.make} ${selectedVehicle.model} simulado`}
-                  className="max-h-64 sm:max-h-72 w-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)]"
-                />
-                {!isClearFilm && (
+                {simUrl ? (
                   <>
-                    <div
-                      style={{ backgroundColor: selectedPreset.colorHex, mixBlendMode: "color" }}
-                      className="absolute inset-0"
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={simUrl}
+                      alt={`${selectedVehicle.make} ${selectedVehicle.model} simulado`}
+                      className="max-h-64 sm:max-h-72 w-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)]"
                     />
-                    <div
-                      style={{ backgroundColor: selectedPreset.colorHex, mixBlendMode: "multiply", opacity: 0.3 }}
-                      className="absolute inset-0"
-                    />
+                    {selectedPreset.textureEffect === "carbon" && (
+                      <div
+                        className="absolute inset-0 opacity-20"
+                        style={{
+                          backgroundImage:
+                            "repeating-linear-gradient(45deg, rgba(255,255,255,0.25) 0 2px, transparent 2px 4px)",
+                        }}
+                      />
+                    )}
                   </>
-                )}
-                {selectedPreset.textureEffect === "gloss" && (
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/25" />
-                )}
-                {selectedPreset.textureEffect === "satin" && (
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/15" />
-                )}
-                {selectedPreset.textureEffect === "matte" && (
-                  <div
-                    className="absolute inset-0"
-                    style={{ backdropFilter: "saturate(0.65) contrast(0.95)" }}
-                  />
-                )}
-                {selectedPreset.textureEffect === "carbon" && (
-                  <div
-                    className="absolute inset-0 opacity-20"
-                    style={{
-                      backgroundImage:
-                        "repeating-linear-gradient(45deg, rgba(255,255,255,0.25) 0 2px, transparent 2px 4px)",
-                    }}
-                  />
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={coverPhoto}
+                      alt={`${selectedVehicle.make} ${selectedVehicle.model} simulado`}
+                      className="max-h-64 sm:max-h-72 w-auto object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,0.8)]"
+                    />
+                    {!isClearFilm && (
+                      <>
+                        <div
+                          style={{ backgroundColor: selectedPreset.colorHex, mixBlendMode: "color" }}
+                          className="absolute inset-0"
+                        />
+                        <div
+                          style={{ backgroundColor: selectedPreset.colorHex, mixBlendMode: "multiply", opacity: 0.3 }}
+                          className="absolute inset-0"
+                        />
+                      </>
+                    )}
+                    {selectedPreset.textureEffect === "gloss" && (
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/25" />
+                    )}
+                    {selectedPreset.textureEffect === "satin" && (
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/15" />
+                    )}
+                    {selectedPreset.textureEffect === "matte" && (
+                      <div
+                        className="absolute inset-0"
+                        style={{ backdropFilter: "saturate(0.65) contrast(0.95)" }}
+                      />
+                    )}
+                    {selectedPreset.textureEffect === "carbon" && (
+                      <div
+                        className="absolute inset-0 opacity-20"
+                        style={{
+                          backgroundImage:
+                            "repeating-linear-gradient(45deg, rgba(255,255,255,0.25) 0 2px, transparent 2px 4px)",
+                        }}
+                      />
+                    )}
+                    {simPending && (
+                      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-2 py-1 rounded-full bg-[#050606]/85 border border-white/[0.1] text-[10px] text-[#a9adae]">
+                        a processar simulação física…
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -299,7 +364,7 @@ export function SimulatorView({
         </div>
 
         {/* Floating Finish Badge on Stage */}
-        <div className="absolute top-4 left-4 p-3 rounded-[12px] bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-center gap-3">
+        <div className="absolute top-4 left-4 p-3 rounded-md bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-center gap-3">
           <div
             style={{ backgroundColor: selectedPreset.colorHex }}
             className="h-6 w-6 rounded-full border border-white/30"
@@ -310,18 +375,19 @@ export function SimulatorView({
             </span>
             <span className="text-[11px] text-[#d3a548] uppercase tracking-wider font-mono">
               Efeito {selectedPreset.textureEffect.toUpperCase()}
+              {selectedPreset.glossGu !== undefined && ` · ${Math.round(selectedPreset.glossGu)} GU`}
             </span>
           </div>
         </div>
 
         {/* Representation disclaimer (requisito blueprint: simulação com aviso) */}
-        <div className="absolute top-4 right-4 max-w-[180px] p-2.5 rounded-[10px] bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-start gap-1.5 text-[10px] text-[#a9adae]">
+        <div className="absolute top-4 right-4 max-w-[180px] p-2.5 rounded-sm bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-start gap-1.5 text-[10px] text-[#a9adae]">
           <Info className="h-3.5 w-3.5 text-[#d3a548] shrink-0 mt-0.5" />
           <span>Simulação meramente representativa. A cor final pode variar face ao material real.</span>
         </div>
 
         {/* Floating Quick Specs */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-2 p-2.5 rounded-[12px] bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] text-xs text-[#a9adae]">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-2 p-2.5 rounded-md bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] text-xs text-[#a9adae]">
           <Shield className="h-4 w-4 text-[#68a46b]" />
           <span>Garantia de {selectedPreset.warrantyYears} Anos</span>
           <span>•</span>

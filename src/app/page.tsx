@@ -31,7 +31,7 @@ export default async function CentroDeComandoPage() {
         <span className="text-xs font-medium text-[#a9adae] tracking-wide">
           {data.user.greeting}
         </span>
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5]">
+        <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
           Centro de Comando
         </h1>
       </div>

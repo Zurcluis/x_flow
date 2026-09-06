@@ -117,7 +117,7 @@ export function AiSidePanel({ isOpen, onClose }: AiSidePanelProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/[0.08] bg-[#101314]">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#d3a548] to-[#f7d46d] text-[#050606] shadow">
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-gradient-to-br from-[#d3a548] to-[#f7d46d] text-[#050606] shadow">
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="flex flex-col">
@@ -135,7 +135,7 @@ export function AiSidePanel({ isOpen, onClose }: AiSidePanelProps) {
 
           <button
             onClick={onClose}
-            className="h-8 w-8 flex items-center justify-center rounded-[8px] text-[#8a9092] hover:text-[#f1ede5] hover:bg-white/[0.06] transition-colors cursor-pointer"
+            className="h-8 w-8 flex items-center justify-center rounded-sm text-[#8a9092] hover:text-[#f1ede5] hover:bg-white/[0.06] transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -151,7 +151,7 @@ export function AiSidePanel({ isOpen, onClose }: AiSidePanelProps) {
               <button
                 key={idx}
                 onClick={() => handleSend(q.query)}
-                className="px-2.5 py-1 rounded-[8px] bg-[#15191a] border border-white/[0.06] hover:border-[#d3a548]/50 text-[12px] text-[#a9adae] hover:text-[#f7d46d] transition-all text-left cursor-pointer"
+                className="px-2.5 py-1 rounded-sm bg-[#15191a] border border-white/[0.06] hover:border-[#d3a548]/50 text-[12px] text-[#a9adae] hover:text-[#f7d46d] transition-all text-left cursor-pointer"
               >
                 {q.label}
               </button>
@@ -175,7 +175,7 @@ export function AiSidePanel({ isOpen, onClose }: AiSidePanelProps) {
               )}
 
               <div
-                className={`max-w-[85%] p-3.5 rounded-[14px] leading-relaxed text-xs ${
+                className={`max-w-[85%] p-3.5 rounded-md leading-relaxed text-xs ${
                   msg.sender === "user"
                     ? "bg-[#d3a548] text-[#050606] font-medium rounded-br-none"
                     : "bg-[#15191a] border border-white/[0.06] text-[#f1ede5] rounded-bl-none shadow"
@@ -212,7 +212,7 @@ export function AiSidePanel({ isOpen, onClose }: AiSidePanelProps) {
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
               placeholder="Pergunta sobre orçamentos, viaturas, stock..."
-              className="flex-1 h-10 px-3.5 rounded-[12px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
+              className="flex-1 h-10 px-3.5 rounded-md bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
             />
             <Button
               type="submit"

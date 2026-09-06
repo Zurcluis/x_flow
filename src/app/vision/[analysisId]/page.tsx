@@ -210,7 +210,7 @@ export default function VisionAnalysisDetailPage() {
             {analysis.recommendedSequence.map((step, idx) => (
               <div
                 key={idx}
-                className="p-3 rounded-[12px] bg-[#0c0f10] border border-white/[0.04] flex items-start gap-2.5"
+                className="p-3 rounded-md bg-[#0c0f10] border border-white/[0.04] flex items-start gap-2.5"
               >
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#d3a548]/20 text-[#d3a548] text-xs font-bold font-mono">
                   {idx + 1}

@@ -44,7 +44,7 @@ export function Topbar({ unreadCount = initialDashboardData.user.unreadNotificat
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
-          className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-[12px] bg-[#101314] border border-white/[0.08] hover:border-[#d3a548]/50 text-xs text-[#8a9092] hover:text-[#f1ede5] transition-all cursor-pointer w-full max-w-72 shadow-sm"
+          className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-md bg-[#101314] border border-white/[0.08] hover:border-[#d3a548]/50 text-xs text-[#8a9092] hover:text-[#f1ede5] transition-all cursor-pointer w-full max-w-72 shadow-sm"
         >
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-[#8a9092]" />
@@ -62,7 +62,7 @@ export function Topbar({ unreadCount = initialDashboardData.user.unreadNotificat
           <button
             type="button"
             onClick={() => setAiPanelOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-[10px] bg-gradient-to-r from-[#d3a548]/20 to-[#f7d46d]/20 border border-[#d3a548]/40 hover:border-[#d3a548] text-xs font-bold text-[#f7d46d] hover:bg-[#d3a548]/30 transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-gradient-to-r from-[#d3a548]/20 to-[#f7d46d]/20 border border-[#d3a548]/40 hover:border-[#d3a548] text-xs font-bold text-[#f7d46d] hover:bg-[#d3a548]/30 transition-all cursor-pointer shadow-sm"
           >
             <Sparkles className="h-3.5 w-3.5" />
             <span>Pergunta ao X-Flow AI</span>
@@ -74,7 +74,7 @@ export function Topbar({ unreadCount = initialDashboardData.user.unreadNotificat
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-[#101314]/80 border-white/10 hover:border-[#d3a548]/60 text-xs text-[#f1ede5] font-medium h-9 px-3.5 rounded-[10px]"
+                className="bg-[#101314]/80 border-white/10 hover:border-[#d3a548]/60 text-xs text-[#f1ede5] font-medium h-9 px-3.5 rounded-sm"
               >
                 <Camera className="h-3.5 w-3.5 text-[#a9adae]" />
                 <span>Novo Check-in</span>
@@ -85,7 +85,7 @@ export function Topbar({ unreadCount = initialDashboardData.user.unreadNotificat
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-[#101314]/80 border-white/10 hover:border-[#d3a548]/60 text-xs text-[#f1ede5] font-medium h-9 px-3.5 rounded-[10px]"
+                className="bg-[#101314]/80 border-white/10 hover:border-[#d3a548]/60 text-xs text-[#f1ede5] font-medium h-9 px-3.5 rounded-sm"
               >
                 <FileText className="h-3.5 w-3.5 text-[#a9adae]" />
                 <span>Novo Orçamento</span>
@@ -96,7 +96,7 @@ export function Topbar({ unreadCount = initialDashboardData.user.unreadNotificat
               <Button
                 variant="outline"
                 size="sm"
-                className="bg-[#101314]/80 border-white/10 hover:border-[#d3a548]/60 text-xs text-[#f1ede5] font-medium h-9 px-3.5 rounded-[10px]"
+                className="bg-[#101314]/80 border-white/10 hover:border-[#d3a548]/60 text-xs text-[#f1ede5] font-medium h-9 px-3.5 rounded-sm"
               >
                 <Calendar className="h-3.5 w-3.5 text-[#a9adae]" />
                 <span>Nova Marcação</span>

@@ -36,7 +36,7 @@ export function WorkOrderPhaseStepper({
               key={phase.id}
               type="button"
               onClick={() => onSelectPhase(phase.phaseKey)}
-              className={`flex flex-col items-start justify-between p-2.5 rounded-[12px] border text-left transition-all cursor-pointer min-h-[72px] ${
+              className={`flex flex-col items-start justify-between p-2.5 rounded-md border text-left transition-all cursor-pointer min-h-[72px] ${
                 isSelected
                   ? "bg-[#1f1b14] border-[#d3a548] text-[#f7d46d] shadow-sm ring-1 ring-[#d3a548]/30"
                   : isCompleted

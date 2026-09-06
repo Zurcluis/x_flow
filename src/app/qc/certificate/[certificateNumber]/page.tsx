@@ -33,7 +33,7 @@ export default function QCCertificatePage() {
           {/* Top Gold Ribbon Badge */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#d3a548]/20 text-[#f7d46d] shadow-md border border-[#d3a548]/40">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-[#d3a548]/20 text-[#f7d46d] shadow-md border border-[#d3a548]/40">
                 <Award className="h-7 w-7" />
               </div>
               <div className="flex flex-col">
@@ -97,7 +97,7 @@ export default function QCCertificatePage() {
               {initialBMWQCInspection.items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-2.5 p-2.5 rounded-[10px] bg-[#15191a]/60 border border-white/[0.04]"
+                  className="flex items-center gap-2.5 p-2.5 rounded-sm bg-[#15191a]/60 border border-white/[0.04]"
                 >
                   <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#68a46b]/20 text-[#68a46b]">
                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -118,7 +118,7 @@ export default function QCCertificatePage() {
               <span className="text-[11px] text-[#8a9092]">Data de Aprovação: 28 de Agosto de 2026</span>
             </div>
 
-            <div className="p-3 rounded-[12px] bg-[#15191a] border border-[#d3a548]/30 font-mono text-[12px] text-[#f7d46d] text-center">
+            <div className="p-3 rounded-md bg-[#15191a] border border-[#d3a548]/30 font-mono text-[12px] text-[#f7d46d] text-center">
               CERTIFICADO DIGITAL VÁLIDO · X-MOTION PERFORMANCE
             </div>
           </div>

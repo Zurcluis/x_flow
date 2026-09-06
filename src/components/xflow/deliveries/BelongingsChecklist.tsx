@@ -22,7 +22,7 @@ export function BelongingsChecklist({
     <div className="flex flex-col gap-4 p-5 rounded-[18px] bg-[#101314] border border-white/[0.08]">
       <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#d3a548]/15 text-[#f7d46d]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#d3a548]/15 text-[#f7d46d]">
             <PackageCheck className="h-4 w-4" />
           </div>
           <div className="flex flex-col">
@@ -49,7 +49,7 @@ export function BelongingsChecklist({
           <label
             key={b.id}
             onClick={() => !isReadOnly && onToggleBelonging(b.id)}
-            className={`flex items-center justify-between p-3 rounded-[12px] border transition-all select-none ${
+            className={`flex items-center justify-between p-3 rounded-md border transition-all select-none ${
               isReadOnly ? "cursor-default" : "cursor-pointer"
             } ${
               b.isReturned

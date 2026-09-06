@@ -106,7 +106,7 @@ export default function PublicWarrantyCertificatePage() {
           </div>
 
           {/* Terms text */}
-          <div className="p-4 rounded-[14px] bg-[#101314] border border-white/[0.04] text-xs text-[#a9adae] leading-relaxed">
+          <div className="p-4 rounded-md bg-[#101314] border border-white/[0.04] text-xs text-[#a9adae] leading-relaxed">
             <strong className="text-[#f1ede5] block mb-1">Termos de Cobertura da Garantia:</strong>
             {warranty.termsText}
           </div>
@@ -121,7 +121,7 @@ export default function PublicWarrantyCertificatePage() {
               {warranty.maintenanceRules.map((rule) => (
                 <div
                   key={rule.id}
-                  className="p-3.5 rounded-[12px] bg-[#101314] border border-white/[0.04] flex flex-col gap-1"
+                  className="p-3.5 rounded-md bg-[#101314] border border-white/[0.04] flex flex-col gap-1"
                 >
                   <div className="flex items-center justify-between">
                     <strong className="text-[#f1ede5] text-xs">
@@ -144,7 +144,7 @@ export default function PublicWarrantyCertificatePage() {
           {/* Footer Seal */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-white/[0.08] text-xs text-[#a9adae]">
             <span>Certificado emitido por X-Motion Performance Detailing Center</span>
-            <div className="p-2.5 rounded-[10px] bg-[#0c0f10] border border-[#68a46b]/40 font-mono text-[12px] text-[#68a46b] font-bold text-center">
+            <div className="p-2.5 rounded-sm bg-[#0c0f10] border border-[#68a46b]/40 font-mono text-[12px] text-[#68a46b] font-bold text-center">
               CERTIFICADO DIGITAL ATIVO E RASTREÁVEL
             </div>
           </div>

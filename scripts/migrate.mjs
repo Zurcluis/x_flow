@@ -20,6 +20,11 @@ const migration14 = fs.readFileSync(
   "utf8"
 );
 
+const migration15 = fs.readFileSync(
+  new URL("../supabase/migrations/20260828000015_films_delivery_belongings.sql", import.meta.url),
+  "utf8"
+);
+
 const hasColumn = async (table, column) => {
   const r = await client.query(
     `SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 AND column_name=$2`,
@@ -50,6 +55,14 @@ if (!(await hasColumn("checkin_damages", "photo_id")) || !(await hasColumn("chec
   console.log("OK: 20260828000014");
 } else {
   console.log("20260828000014 já aplicada.");
+}
+
+// 000015 — films (catálogo de películas p/ simulador) + deliveries.belongings
+if (!(await hasTable("films")) || !(await hasColumn("deliveries", "belongings"))) {
+  await client.query(migration15);
+  console.log("OK: 20260828000015");
+} else {
+  console.log("20260828000015 já aplicada.");
 }
 
 await client.end();

@@ -22,10 +22,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizes = {
-      sm: "h-8 px-3 text-xs rounded-[8px] gap-1.5",
-      md: "h-10 px-4 text-sm rounded-[10px] gap-2",
-      lg: "h-12 px-6 text-base rounded-[12px] gap-2.5",
-      icon: "h-9 w-9 p-0 rounded-[10px] justify-center items-center",
+      sm: "h-8 px-3 text-xs rounded-sm gap-1.5",
+      md: "h-10 px-4 text-sm rounded-sm gap-2",
+      lg: "h-12 px-6 text-base rounded-md gap-2.5",
+      icon: "h-9 w-9 p-0 rounded-sm justify-center items-center",
     };
 
     return (

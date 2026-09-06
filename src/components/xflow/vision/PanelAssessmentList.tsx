@@ -78,7 +78,7 @@ export function PanelAssessmentList({
             {/* Disassembly & Risks */}
             <div className="space-y-2.5 text-xs">
               {panel.disassemblyRecommended.length > 0 && (
-                <div className="p-2.5 rounded-[10px] bg-[#0c0f10] border border-white/[0.04]">
+                <div className="p-2.5 rounded-sm bg-[#0c0f10] border border-white/[0.04]">
                   <div className="flex items-center gap-1.5 font-semibold text-[#d3a548] mb-1">
                     <Wrench className="h-3.5 w-3.5" />
                     <span>Desmontagem Recomendada:</span>
@@ -92,7 +92,7 @@ export function PanelAssessmentList({
               )}
 
               {panel.risks.length > 0 && (
-                <div className="p-2.5 rounded-[10px] bg-[#1a1412] border border-[#f05a50]/20">
+                <div className="p-2.5 rounded-sm bg-[#1a1412] border border-[#f05a50]/20">
                   <div className="flex items-center gap-1.5 font-semibold text-[#f05a50] mb-1">
                     <AlertTriangle className="h-3.5 w-3.5" />
                     <span>Pontos de Atenção & Sensores:</span>
@@ -115,7 +115,7 @@ export function PanelAssessmentList({
                 <button
                   type="button"
                   onClick={() => onToggleStatus(panel.panelCode)}
-                  className={`px-3 py-1.5 rounded-[8px] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-sm text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                     isConfirmed
                       ? "bg-[#68a46b]/20 text-[#68a46b] hover:bg-[#68a46b]/30"
                       : "bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d]"

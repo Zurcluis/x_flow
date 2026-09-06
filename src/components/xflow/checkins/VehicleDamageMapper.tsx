@@ -226,7 +226,7 @@ export function VehicleDamageMapper({
 
               {/* Tooltip on hover */}
               <div className="absolute left-1/2 bottom-full mb-1.5 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none z-30">
-                <div className="rounded-[8px] bg-[#050606] border border-white/20 p-2 text-center text-[11px] text-[#f1ede5] shadow-2xl whitespace-nowrap">
+                <div className="rounded-sm bg-[#050606] border border-white/20 p-2 text-center text-[11px] text-[#f1ede5] shadow-2xl whitespace-nowrap">
                   <span className="font-bold block text-[#f7d46d]">
                     #{idx + 1} {getDamageLabel(dmg.type)}
                   </span>
@@ -250,7 +250,7 @@ export function VehicleDamageMapper({
             {damages.map((dmg, idx) => (
               <div
                 key={dmg.id}
-                className="flex items-start justify-between p-3 rounded-[12px] bg-[#101314] border border-white/[0.06] text-xs"
+                className="flex items-start justify-between p-3 rounded-md bg-[#101314] border border-white/[0.06] text-xs"
               >
                 <div className="flex items-start gap-2.5 min-w-0">
                   <div
@@ -296,7 +296,7 @@ export function VehicleDamageMapper({
             ))}
           </div>
         ) : (
-          <div className="p-3 rounded-[12px] bg-[#101314]/50 border border-white/[0.04] text-xs text-[#8a9092] text-center">
+          <div className="p-3 rounded-md bg-[#101314]/50 border border-white/[0.04] text-xs text-[#8a9092] text-center">
             Nenhum dano assinalado. A viatura encontra-se sem imperfeições visíveis na receção.
           </div>
         )}
@@ -330,7 +330,7 @@ export function VehicleDamageMapper({
                       type: e.target.value as DamageType,
                     })
                   }
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   <option value="stone_chip">Picada de Gravilha (Stone Chip)</option>
                   <option value="scratch">Risco na Pintura / Verniz</option>
@@ -352,7 +352,7 @@ export function VehicleDamageMapper({
                       bodyPart: e.target.value,
                     })
                   }
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                   required
                 />
               </div>
@@ -370,7 +370,7 @@ export function VehicleDamageMapper({
                           severity: sev,
                         })
                       }
-                      className={`py-2 rounded-[8px] border text-xs font-bold transition-all cursor-pointer ${
+                      className={`py-2 rounded-sm border text-xs font-bold transition-all cursor-pointer ${
                         activeDamageModal.severity === sev
                           ? "bg-[#1f1b14] border-[#d3a548] text-[#f7d46d]"
                           : "bg-[#15191a] border-white/[0.06] text-[#a9adae]"
@@ -394,7 +394,7 @@ export function VehicleDamageMapper({
                     })
                   }
                   placeholder="ex: Micro picada no canto superior esquerdo..."
-                  className="p-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+                  className="p-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
                 />
               </div>
 

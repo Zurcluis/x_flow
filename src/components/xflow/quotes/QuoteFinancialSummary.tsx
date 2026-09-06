@@ -55,7 +55,7 @@ export function QuoteFinancialSummary({ financials }: QuoteFinancialSummaryProps
           </span>
         </div>
 
-        <div className="flex items-center justify-between p-3 rounded-[10px] bg-[#15191a] border border-[#d3a548]/30 mt-1">
+        <div className="flex items-center justify-between p-3 rounded-sm bg-[#15191a] border border-[#d3a548]/30 mt-1">
           <span className="font-bold text-sm text-[#f1ede5]">Total da Proposta</span>
           <span className="font-extrabold text-base text-[#f7d46d] tabular-nums">
             {formatCurrency(financials.totalWithVat)}
@@ -64,7 +64,7 @@ export function QuoteFinancialSummary({ financials }: QuoteFinancialSummaryProps
       </div>
 
       {/* Internal Workshop Metrics (Confidential) */}
-      <div className="flex flex-col gap-2 pt-3 border-t border-white/[0.06] bg-[#080a0b]/40 p-3 rounded-[12px]">
+      <div className="flex flex-col gap-2 pt-3 border-t border-white/[0.06] bg-[#080a0b]/40 p-3 rounded-md">
         <span className="text-[11px] uppercase font-bold text-[#8a9092] tracking-wider">
           Rentabilidade Interna da Oficina:
         </span>

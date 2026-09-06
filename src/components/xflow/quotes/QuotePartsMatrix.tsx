@@ -70,7 +70,7 @@ export function QuotePartsMatrix({
                 key={pkg.id}
                 type="button"
                 onClick={() => applyPackage(pkg.partCodes)}
-                className={`flex flex-col items-start p-3 rounded-[12px] border text-left transition-all cursor-pointer ${
+                className={`flex flex-col items-start p-3 rounded-md border text-left transition-all cursor-pointer ${
                   isMatch
                     ? "bg-[#1f1b14] border-[#d3a548] text-[#f7d46d] shadow-sm"
                     : "bg-[#15191a] border-white/[0.06] text-[#a9adae] hover:border-white/20 hover:text-[#f1ede5]"
@@ -109,7 +109,7 @@ export function QuotePartsMatrix({
                   <label
                     key={part.code}
                     onClick={() => togglePart(part.code)}
-                    className={`flex items-center justify-between p-2.5 rounded-[10px] border transition-colors cursor-pointer select-none ${
+                    className={`flex items-center justify-between p-2.5 rounded-sm border transition-colors cursor-pointer select-none ${
                       isSelected
                         ? "bg-[#1f1b14]/70 border-[#d3a548]/50 text-[#f1ede5]"
                         : "bg-[#15191a]/40 border-white/[0.03] text-[#8a9092] hover:text-[#a9adae]"

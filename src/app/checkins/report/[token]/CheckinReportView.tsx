@@ -44,7 +44,7 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
         {/* Hero Card */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#15191a] border border-white/[0.08] text-[#d3a548]">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-[#15191a] border border-white/[0.08] text-[#d3a548]">
               <Car className="h-6 w-6" />
             </div>
             <div className="flex flex-col">

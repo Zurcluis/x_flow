@@ -60,7 +60,7 @@ export function VehicleTimeline({ events }: VehicleTimelineProps) {
           </div>
 
           {/* Event Content Box */}
-          <div className="flex flex-col gap-1.5 p-4 rounded-[14px] bg-[#101314] border border-white/[0.06] hover:border-white/15 transition-colors flex-1">
+          <div className="flex flex-col gap-1.5 p-4 rounded-md bg-[#101314] border border-white/[0.06] hover:border-white/15 transition-colors flex-1">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-[#f1ede5]">{event.title}</span>

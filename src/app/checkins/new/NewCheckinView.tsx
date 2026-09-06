@@ -197,7 +197,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
               key={step.num}
               type="button"
               onClick={() => setCurrentStep(step.num)}
-              className={`flex flex-col items-center justify-center p-2.5 rounded-[12px] border text-center transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center p-2.5 rounded-md border text-center transition-all cursor-pointer ${
                 isActive
                   ? "bg-[#1f1b14] border-[#d3a548] text-[#f7d46d] shadow-sm"
                   : isDone
@@ -216,7 +216,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
 
       {/* Validation Error Banner */}
       {(validationErrors.length > 0 || submitError) && (
-        <div className="p-4 rounded-[14px] bg-[#2a1210] border border-[#f05a50] text-[#f05a50] flex flex-col gap-1.5 animate-shake">
+        <div className="p-4 rounded-md bg-[#2a1210] border border-[#f05a50] text-[#f05a50] flex flex-col gap-1.5 animate-shake">
           <div className="flex items-center gap-2 font-bold text-sm">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span>{submitError ? "Erro ao guardar" : "Validação Pendente: Corrige os seguintes pontos"}</span>
@@ -249,7 +249,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                 <select
                   value={selectedVehicleId}
                   onChange={(e) => setSelectedVehicleId(e.target.value)}
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id}>
@@ -261,7 +261,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
 
               <div className="flex flex-col gap-1.5">
                 <label className="font-semibold text-[#a9adae]">Proprietário / Contacto</label>
-                <div className="h-10 px-3.5 rounded-[10px] bg-[#080a0b] border border-white/[0.04] flex items-center justify-between text-sm text-[#f1ede5]">
+                <div className="h-10 px-3.5 rounded-sm bg-[#080a0b] border border-white/[0.04] flex items-center justify-between text-sm text-[#f1ede5]">
                   <span className="truncate">{selectedCustomer.name}</span>
                   <span className="text-[11px] text-[#8a9092]">
                     {selectedCustomer.phone}
@@ -271,9 +271,9 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
             </div>
 
             {/* Vehicle Presentation Highlight */}
-            <div className="p-4 rounded-[14px] bg-[#15191a] border border-white/[0.04] flex items-center justify-between">
+            <div className="p-4 rounded-md bg-[#15191a] border border-white/[0.04] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[#080a0b] text-[#d3a548] font-mono font-bold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-[#080a0b] text-[#d3a548] font-mono font-bold">
                   <Car className="h-5 w-5" />
                 </div>
                 <div className="flex flex-col">
@@ -308,7 +308,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                   value={mileage}
                   onChange={(e) => setMileage(parseInt(e.target.value) || 0)}
                   placeholder="ex: 45200"
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] font-mono"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] font-mono"
                   required
                 />
               </div>
@@ -318,7 +318,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                 <select
                   value={fuelLevel}
                   onChange={(e) => setFuelLevel(e.target.value as FuelLevel)}
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   <option value="full">100% (Cheio)</option>
                   <option value="three_quarters">3/4 Depósito</option>
@@ -337,7 +337,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                       e.target.value as "clean" | "dusty" | "dirty" | "needs_decontamination"
                     )
                   }
-                  className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
+                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   <option value="clean">Limpa (Pronta para inspeção)</option>
                   <option value="dusty">Poeira Ligeira</option>
@@ -357,7 +357,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                   <label
                     key={item.id}
                     onClick={() => toggleBelonging(item.id)}
-                    className={`flex items-center justify-between p-3 rounded-[10px] border transition-colors cursor-pointer select-none ${
+                    className={`flex items-center justify-between p-3 rounded-sm border transition-colors cursor-pointer select-none ${
                       item.isPresent
                         ? "bg-[#141b17] border-[#68a46b]/40 text-[#f1ede5]"
                         : "bg-[#15191a]/40 border-white/[0.03] text-[#8a9092]"
@@ -431,7 +431,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
             </span>
 
             {/* Summary Box */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-[14px] bg-[#15191a] border border-white/[0.04] text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-md bg-[#15191a] border border-white/[0.04] text-xs">
               <div className="flex flex-col">
                 <span className="text-[11px] text-[#8a9092]">Viatura</span>
                 <span className="font-bold text-[#f1ede5]">
@@ -464,7 +464,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                 type="text"
                 value={signerName}
                 onChange={(e) => setSignerName(e.target.value)}
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                 required
               />
             </div>
@@ -475,7 +475,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
               onSaveSignature={setSignatureDataUrl}
             />
 
-            <div className="p-3.5 rounded-[12px] bg-[#101314] border border-white/[0.04] text-[12px] text-[#8a9092] leading-relaxed">
+            <div className="p-3.5 rounded-md bg-[#101314] border border-white/[0.04] text-[12px] text-[#8a9092] leading-relaxed">
               Ao assinar este documento, o cliente e o técnico confirmam o estado físico da viatura, o registo de danos pré-existentes mapeados e autorizam o início dos trabalhos na oficina X-Motion.
             </div>
           </Card>

@@ -59,7 +59,7 @@ export function WeeklyCapacityGrid({
                   <AppointmentCard key={app.id} appointment={app} />
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center flex-1 rounded-[12px] border border-dashed border-white/[0.06] p-6 text-center text-xs text-[#8a9092]">
+                <div className="flex flex-col items-center justify-center flex-1 rounded-md border border-dashed border-white/[0.06] p-6 text-center text-xs text-[#8a9092]">
                   <span>Sem marcações para esta baia</span>
                 </div>
               )}

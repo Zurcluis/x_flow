@@ -86,7 +86,7 @@ export default function VisionOverviewPage() {
       </div>
 
       {uploadSuccessMessage && (
-        <div className="p-4 rounded-[14px] bg-[#142618] border border-[#68a46b]/40 text-[#68a46b] flex items-center gap-3">
+        <div className="p-4 rounded-md bg-[#142618] border border-[#68a46b]/40 text-[#68a46b] flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5" />
           <span className="text-xs font-bold text-[#f1ede5]">
             Fotografias analisadas com sucesso pelo modelo X-Flow Vision! Dados prontos para validação humana.
@@ -146,7 +146,7 @@ export default function VisionOverviewPage() {
               className="p-5 bg-[#101314] border-white/[0.06] hover:border-white/[0.15] transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
             >
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#1f1b14] border border-[#d3a548]/30 text-[#d3a548]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-[#1f1b14] border border-[#d3a548]/30 text-[#d3a548]">
                   <Scan className="h-6 w-6" />
                 </div>
 

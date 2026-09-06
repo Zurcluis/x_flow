@@ -35,7 +35,7 @@ export function DeliveryDetailView({ delivery }: { delivery: Delivery }) {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#68a46b]/20 text-[#68a46b]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#68a46b]/20 text-[#68a46b]">
               <Key className="h-6 w-6" />
             </div>
             <h1 className="text-2xl font-bold text-[#f1ede5]">
@@ -110,7 +110,7 @@ export function DeliveryDetailView({ delivery }: { delivery: Delivery }) {
           {/* Signature representation */}
           <div className="flex flex-col gap-1.5 pt-3 border-t border-white/[0.04]">
             <span className="font-semibold text-[#a9adae]">Assinatura Recolhida no Levantamento:</span>
-            <div className="p-4 rounded-[12px] bg-[#0c0f10] border border-[#d3a548]/30 flex items-center justify-center">
+            <div className="p-4 rounded-md bg-[#0c0f10] border border-[#d3a548]/30 flex items-center justify-center">
               <span className="font-mono text-sm font-bold text-[#f7d46d] italic">
                 {delivery.receiverName}
               </span>
@@ -118,7 +118,7 @@ export function DeliveryDetailView({ delivery }: { delivery: Delivery }) {
           </div>
 
           {delivery.notes && (
-            <div className="p-3 rounded-[10px] bg-[#15191a] border border-white/[0.04] text-[12px] text-[#a9adae]">
+            <div className="p-3 rounded-sm bg-[#15191a] border border-white/[0.04] text-[12px] text-[#a9adae]">
               <strong>Notas:</strong> {delivery.notes}
             </div>
           )}

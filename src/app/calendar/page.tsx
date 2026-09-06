@@ -27,7 +27,7 @@ export default async function CalendarPage() {
           <span className="text-xs font-medium text-[#a9adae]">
             Planeamento Operacional & Baias
           </span>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
             Agenda & Capacidade da Oficina
           </h1>
         </div>

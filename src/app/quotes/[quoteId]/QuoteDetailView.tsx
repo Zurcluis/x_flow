@@ -104,7 +104,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
 
       {/* Copy Alert Toast */}
       {copied && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-[12px] bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in">
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-md bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in">
           <CheckCircle2 className="h-4 w-4 text-[#d3a548]" />
           <span>Link público seguro copiado!</span>
         </div>
@@ -266,7 +266,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
               {quote.events.map((evt) => (
                 <div
                   key={evt.id}
-                  className="flex items-center justify-between p-3 rounded-[10px] bg-[#15191a] border border-white/[0.04] text-xs"
+                  className="flex items-center justify-between p-3 rounded-sm bg-[#15191a] border border-white/[0.04] text-xs"
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="h-2 w-2 rounded-full bg-[#d3a548]" />
@@ -292,7 +292,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
               <span className="text-[11px] uppercase font-bold text-[#8a9092]">
                 Token Público de Aprovação
               </span>
-              <div className="flex items-center justify-between p-2 rounded-[8px] bg-[#080a0b] font-mono text-xs text-[#d3a548]">
+              <div className="flex items-center justify-between p-2 rounded-sm bg-[#080a0b] font-mono text-xs text-[#d3a548]">
                 <span className="truncate pr-2">{quote.publicToken}</span>
                 <button
                   onClick={handleCopyPublicLink}

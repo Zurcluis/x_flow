@@ -113,7 +113,7 @@ export function MyDayView({ data }: MyDayViewProps) {
             </div>
 
             {/* Task Details */}
-            <div className="p-4 rounded-[14px] bg-[#101314] border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-4 rounded-md bg-[#101314] border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="text-[12px] text-[#8a9092] uppercase font-bold tracking-wider block mb-1">
                   Fase {task.currentPhaseIndex || 1}/{task.totalPhases}
@@ -147,7 +147,7 @@ export function MyDayView({ data }: MyDayViewProps) {
             {/* Big Touch Controls */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               {completed ? (
-                <div className="col-span-2 p-4 rounded-[12px] bg-[#68a46b]/20 border border-[#68a46b]/40 text-center text-sm font-bold text-[#68a46b] flex items-center justify-center gap-2">
+                <div className="col-span-2 p-4 rounded-md bg-[#68a46b]/20 border border-[#68a46b]/40 text-center text-sm font-bold text-[#68a46b] flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5" />
                   <span>Tarefa Concluída e Enviada para Controlo de Qualidade (QC)!</span>
                 </div>
@@ -157,7 +157,7 @@ export function MyDayView({ data }: MyDayViewProps) {
                     <Button
                       variant="outline"
                       onClick={() => setIsRunning(false)}
-                      className="h-14 rounded-[14px] bg-[#15191a] border-white/10 hover:border-[#f05a50] text-sm font-bold text-[#f1ede5] cursor-pointer"
+                      className="h-14 rounded-md bg-[#15191a] border-white/10 hover:border-[#f05a50] text-sm font-bold text-[#f1ede5] cursor-pointer"
                     >
                       <Pause className="h-5 w-5 mr-2 text-[#f05a50]" />
                       <span>Pausar Cronómetro</span>
@@ -166,7 +166,7 @@ export function MyDayView({ data }: MyDayViewProps) {
                     <Button
                       variant="outline"
                       onClick={() => setIsRunning(true)}
-                      className="h-14 rounded-[14px] bg-[#15191a] border-white/10 hover:border-[#68a46b] text-sm font-bold text-[#68a46b] cursor-pointer"
+                      className="h-14 rounded-md bg-[#15191a] border-white/10 hover:border-[#68a46b] text-sm font-bold text-[#68a46b] cursor-pointer"
                     >
                       <Play className="h-5 w-5 mr-2" />
                       <span>Retomar Aplicação</span>
@@ -179,7 +179,7 @@ export function MyDayView({ data }: MyDayViewProps) {
                       setIsRunning(false);
                       setCompleted(true);
                     }}
-                    className="h-14 rounded-[14px] bg-[#d3a548] text-[#050606] text-sm font-bold shadow-lg hover:bg-[#e7c77c] cursor-pointer"
+                    className="h-14 rounded-md bg-[#d3a548] text-[#050606] text-sm font-bold shadow-lg hover:bg-[#e7c77c] cursor-pointer"
                   >
                     <CheckCircle2 className="h-5 w-5 mr-2" />
                     <span>Concluir & Enviar para QC</span>
@@ -214,7 +214,7 @@ export function MyDayView({ data }: MyDayViewProps) {
               className="p-4 bg-[#101314] border-white/[0.08] flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-[10px] bg-[#15191a] flex items-center justify-center text-[#d3a548]">
+                <div className="h-9 w-9 rounded-sm bg-[#15191a] flex items-center justify-center text-[#d3a548]">
                   <Layers className="h-4 w-4" />
                 </div>
                 <div>

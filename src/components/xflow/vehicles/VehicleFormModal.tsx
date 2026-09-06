@@ -122,7 +122,7 @@ export function VehicleFormModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-5">
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-[10px] bg-[#f05a50]/15 border border-[#f05a50]/30 text-xs text-[#f05a50]">
+            <div className="flex items-center gap-2 p-3 rounded-sm bg-[#f05a50]/15 border border-[#f05a50]/30 text-xs text-[#f05a50]">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -138,7 +138,7 @@ export function VehicleFormModal({
                 onChange={(e) => setPlate(e.target.value)}
                 onBlur={() => setPlate(formatPlateForDisplay(plate))}
                 placeholder="ex: 00-AA-00"
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm font-mono font-bold text-[#f1ede5] uppercase tracking-wider"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm font-mono font-bold text-[#f1ede5] uppercase tracking-wider"
                 required
               />
             </div>
@@ -148,7 +148,7 @@ export function VehicleFormModal({
               <select
                 value={selectedCustomerId}
                 onChange={(e) => setSelectedCustomerId(e.target.value)}
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
               >
                 {customers.map((c) => (
                   <option key={c.id} value={c.id} className="bg-[#15191a] text-[#f1ede5]">
@@ -168,7 +168,7 @@ export function VehicleFormModal({
                 value={make}
                 onChange={(e) => setMake(e.target.value)}
                 placeholder="ex: Porsche"
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                 required
               />
             </div>
@@ -179,7 +179,7 @@ export function VehicleFormModal({
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="ex: 911 Carrera"
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                 required
               />
             </div>
@@ -189,7 +189,7 @@ export function VehicleFormModal({
                 type="number"
                 value={generationYear}
                 onChange={(e) => setGenerationYear(e.target.value)}
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
               />
             </div>
           </div>
@@ -201,7 +201,7 @@ export function VehicleFormModal({
               <select
                 value={bodyType}
                 onChange={(e) => setBodyType(e.target.value as BodyType)}
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
               >
                 <option value="coupe">Coupé</option>
                 <option value="sedan">Sedan</option>
@@ -218,7 +218,7 @@ export function VehicleFormModal({
               <select
                 value={fuelType}
                 onChange={(e) => setFuelType(e.target.value as FuelType)}
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
               >
                 <option value="gasoline">Gasolina</option>
                 <option value="diesel">Diesel</option>
@@ -237,7 +237,7 @@ export function VehicleFormModal({
                 value={colorName}
                 onChange={(e) => setColorName(e.target.value)}
                 placeholder="ex: Nardo Grey"
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -245,7 +245,7 @@ export function VehicleFormModal({
               <select
                 value={colorFamily}
                 onChange={(e) => setColorFamily(e.target.value as ColorFamily)}
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
               >
                 <option value="black">Preto</option>
                 <option value="white">Branco</option>
@@ -270,7 +270,7 @@ export function VehicleFormModal({
                 value={mileage}
                 onChange={(e) => setMileage(e.target.value)}
                 placeholder="ex: 15000"
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -280,7 +280,7 @@ export function VehicleFormModal({
                 value={vin}
                 onChange={(e) => setVin(e.target.value)}
                 placeholder="ex: WBA..."
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] uppercase"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] uppercase"
               />
             </div>
           </div>
@@ -293,7 +293,7 @@ export function VehicleFormModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Estado da pintura, histórico prévio ou instruções especiais..."
-              className="p-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+              className="p-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
             />
           </div>
 

@@ -58,7 +58,7 @@ export function CheckinsView({ initialCheckins }: { initialCheckins: Checkin[] }
           <span className="text-xs font-medium text-[#a9adae]">
             Receção, Inspeção Fotográfica & Entregas
           </span>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
             Check-ins de Viaturas
           </h1>
         </div>
@@ -73,7 +73,7 @@ export function CheckinsView({ initialCheckins }: { initialCheckins: Checkin[] }
 
       {/* Copy Alert Toast */}
       {copiedToken && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-[12px] bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in">
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-md bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in">
           <CheckCircle2 className="h-4 w-4 text-[#d3a548]" />
           <span>Link do relatório de check-in copiado para a área de transferência!</span>
         </div>
@@ -144,12 +144,12 @@ export function CheckinsView({ initialCheckins }: { initialCheckins: Checkin[] }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Pesquisar por matrícula, modelo, cliente ou técnico..."
-            className="w-full h-10 pl-10 pr-4 rounded-[12px] bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
+            className="w-full h-10 pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
           />
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1.5 p-1 rounded-[12px] bg-[#101314] border border-white/[0.06] select-none">
+        <div className="flex items-center gap-1.5 p-1 rounded-md bg-[#101314] border border-white/[0.06] select-none">
           <button
             onClick={() => setActiveTab("all")}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
@@ -222,7 +222,7 @@ export function CheckinsView({ initialCheckins }: { initialCheckins: Checkin[] }
               </div>
 
               {/* Odometer & Badges */}
-              <div className="grid grid-cols-2 gap-2 mt-4 p-2.5 rounded-[10px] bg-[#15191a] border border-white/[0.04] text-xs">
+              <div className="grid grid-cols-2 gap-2 mt-4 p-2.5 rounded-sm bg-[#15191a] border border-white/[0.04] text-xs">
                 <div className="flex flex-col">
                   <span className="text-[11px] text-[#8a9092]">Odómetro</span>
                   <span className="font-bold text-[#f1ede5] tabular-nums">

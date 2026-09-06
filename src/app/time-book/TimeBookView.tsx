@@ -88,7 +88,7 @@ export function TimeBookView({ initialModels }: { initialModels: VehicleTimeBook
       </div>
 
       {/* Methodological Transparency Alert */}
-      <div className="p-4 rounded-[14px] bg-[#15191a] border border-white/[0.08] flex items-start gap-3">
+      <div className="p-4 rounded-md bg-[#15191a] border border-white/[0.08] flex items-start gap-3">
         <Info className="h-5 w-5 text-[#d3a548] shrink-0 mt-0.5" />
         <div className="text-xs text-[#a9adae] leading-relaxed">
           <span className="font-bold text-[#f1ede5] block mb-0.5">
@@ -105,7 +105,7 @@ export function TimeBookView({ initialModels }: { initialModels: VehicleTimeBook
           <button
             key={model.id}
             onClick={() => setSelectedModelId(model.id)}
-            className={`px-4 py-2.5 rounded-[12px] text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-4 py-2.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
               selectedModelId === model.id
                 ? "bg-[#d3a548] text-[#050606] shadow-lg"
                 : "bg-[#101314] text-[#a9adae] hover:text-[#f1ede5] border border-white/[0.06] hover:border-white/20"
@@ -140,7 +140,7 @@ export function TimeBookView({ initialModels }: { initialModels: VehicleTimeBook
 
         {/* Model KPI Stat Boxes */}
         <div className="grid grid-cols-3 gap-3 self-start md:self-auto">
-          <div className="p-3 rounded-[12px] bg-[#101314] border border-white/[0.04]">
+          <div className="p-3 rounded-md bg-[#101314] border border-white/[0.04]">
             <span className="text-[11px] text-[#8a9092] uppercase font-bold block mb-1">
               Mediana Real
             </span>
@@ -148,7 +148,7 @@ export function TimeBookView({ initialModels }: { initialModels: VehicleTimeBook
               {activeModel.totalMedianHours}h
             </span>
           </div>
-          <div className="p-3 rounded-[12px] bg-[#101314] border border-white/[0.04]">
+          <div className="p-3 rounded-md bg-[#101314] border border-white/[0.04]">
             <span className="text-[11px] text-[#8a9092] uppercase font-bold block mb-1">
               Estimativa Base
             </span>
@@ -156,7 +156,7 @@ export function TimeBookView({ initialModels }: { initialModels: VehicleTimeBook
               {activeModel.totalEstimatedHours}h
             </span>
           </div>
-          <div className="p-3 rounded-[12px] bg-[#101314] border border-white/[0.04]">
+          <div className="p-3 rounded-md bg-[#101314] border border-white/[0.04]">
             <span className="text-[11px] text-[#8a9092] uppercase font-bold block mb-1">
               Amostras Reais
             </span>

@@ -107,7 +107,7 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
                 vehicle.ownerHistory.map((link) => (
                   <div
                     key={link.id}
-                    className={`flex items-center justify-between p-3.5 rounded-[12px] border ${
+                    className={`flex items-center justify-between p-3.5 rounded-md border ${
                       link.isCurrent
                         ? "bg-[#1f1b14] border-[#d3a548]/40 text-[#f7d46d]"
                         : "bg-[#15191a] border-white/[0.06] text-[#a9adae]"
@@ -141,7 +141,7 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
                   </div>
                 ))
               ) : (
-                <div className="p-3.5 rounded-[12px] bg-[#15191a] text-xs text-[#f1ede5]">
+                <div className="p-3.5 rounded-md bg-[#15191a] text-xs text-[#f1ede5]">
                   Proprietário atual: {vehicle.currentOwner?.customerName || "Sem registo"}
                 </div>
               )}

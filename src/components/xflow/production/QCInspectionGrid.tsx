@@ -141,7 +141,7 @@ export function QCInspectionGrid({
             return (
               <div
                 key={item.id}
-                className={`flex flex-col gap-2 p-4 rounded-[14px] border transition-all ${
+                className={`flex flex-col gap-2 p-4 rounded-md border transition-all ${
                   isFailed
                     ? "bg-[#1c1212] border-[#f05a50]/60"
                     : isPassed
@@ -171,7 +171,7 @@ export function QCInspectionGrid({
                     <button
                       type="button"
                       onClick={() => handleStatusChange(item.id, "pass")}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-sm text-xs font-bold transition-all cursor-pointer ${
                         isPassed
                           ? "bg-[#142618] text-[#68a46b] border border-[#68a46b]/40 shadow-sm"
                           : "bg-[#15191a] text-[#8a9092] border border-white/[0.04] hover:text-[#f1ede5]"
@@ -184,7 +184,7 @@ export function QCInspectionGrid({
                     <button
                       type="button"
                       onClick={() => handleStatusChange(item.id, "fail")}
-                      className={`flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-sm text-xs font-bold transition-all cursor-pointer ${
                         isFailed
                           ? "bg-[#3a1515] text-[#f05a50] border border-[#f05a50] shadow-sm"
                           : "bg-[#15191a] text-[#8a9092] border border-white/[0.04] hover:text-[#f05a50]"
@@ -207,7 +207,7 @@ export function QCInspectionGrid({
                       value={item.reworkNotes || ""}
                       onChange={(e) => handleReworkNoteChange(item.id, e.target.value)}
                       placeholder="Descreve a correção necessária..."
-                      className="h-9 px-3 rounded-[8px] bg-[#0c0808] border border-[#f05a50]/50 text-xs text-[#f1ede5] focus:border-[#f05a50]"
+                      className="h-9 px-3 rounded-sm bg-[#0c0808] border border-[#f05a50]/50 text-xs text-[#f1ede5] focus:border-[#f05a50]"
                     />
                   </div>
                 )}

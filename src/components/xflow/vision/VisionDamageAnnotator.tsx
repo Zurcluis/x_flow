@@ -90,7 +90,7 @@ export function VisionDamageAnnotator({
             <div
               key={item.id}
               onClick={() => setSelectedDamageId(item.id)}
-              className={`p-4 rounded-[14px] border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+              className={`p-4 rounded-md border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                 isSelected
                   ? "bg-[#141b17] border-[#d3a548] ring-1 ring-[#d3a548]/40"
                   : "bg-[#101314] border-white/[0.06] hover:border-white/[0.12]"
@@ -124,7 +124,7 @@ export function VisionDamageAnnotator({
                       e.stopPropagation();
                       onUpdateStatus(item.id, "rejected");
                     }}
-                    className={`px-3 py-1.5 rounded-[8px] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                       isRejected
                         ? "bg-[#f05a50]/20 text-[#f05a50] border border-[#f05a50]/40"
                         : "bg-white/[0.04] text-[#a9adae] hover:bg-white/[0.08]"
@@ -140,7 +140,7 @@ export function VisionDamageAnnotator({
                       e.stopPropagation();
                       onUpdateStatus(item.id, "confirmed");
                     }}
-                    className={`px-3 py-1.5 rounded-[8px] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-sm text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                       isConfirmed
                         ? "bg-[#68a46b] text-[#050606]"
                         : "bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d]"

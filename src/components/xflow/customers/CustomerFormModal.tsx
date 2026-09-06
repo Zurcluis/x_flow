@@ -116,11 +116,11 @@ export function CustomerFormModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-5">
           {/* Customer Type Selector */}
-          <div className="flex rounded-[10px] p-1 bg-[#080a0b] border border-white/[0.06]">
+          <div className="flex rounded-sm p-1 bg-[#080a0b] border border-white/[0.06]">
             <button
               type="button"
               onClick={() => setType("individual")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[8px] text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-sm text-xs font-semibold transition-all cursor-pointer ${
                 type === "individual"
                   ? "bg-[#1b2021] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
                   : "text-[#a9adae] hover:text-[#f1ede5]"
@@ -132,7 +132,7 @@ export function CustomerFormModal({
             <button
               type="button"
               onClick={() => setType("business")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-[8px] text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-sm text-xs font-semibold transition-all cursor-pointer ${
                 type === "business"
                   ? "bg-[#1b2021] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
                   : "text-[#a9adae] hover:text-[#f1ede5]"
@@ -148,7 +148,7 @@ export function CustomerFormModal({
 
           {/* Error display */}
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-[10px] bg-[#f05a50]/15 border border-[#f05a50]/30 text-xs text-[#f05a50]">
+            <div className="flex items-center gap-2 p-3 rounded-sm bg-[#f05a50]/15 border border-[#f05a50]/30 text-xs text-[#f05a50]">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -165,7 +165,7 @@ export function CustomerFormModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={type === "business" ? "ex: AutoStand Prime" : "ex: Bernardo Silva"}
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092]"
                 required
               />
             </div>
@@ -179,7 +179,7 @@ export function CustomerFormModal({
                     value={legalName}
                     onChange={(e) => setLegalName(e.target.value)}
                     placeholder="ex: Prime Automotive Lda"
-                    className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                    className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -189,7 +189,7 @@ export function CustomerFormModal({
                     value={nif}
                     onChange={(e) => setNif(e.target.value)}
                     placeholder="ex: 509123456"
-                    className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                    className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                   />
                 </div>
               </>
@@ -205,7 +205,7 @@ export function CustomerFormModal({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="ex: 912 345 678"
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -215,7 +215,7 @@ export function CustomerFormModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="ex: cliente@email.pt"
-                className="h-10 px-3.5 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
               />
             </div>
           </div>
@@ -242,7 +242,7 @@ export function CustomerFormModal({
 
           {/* B2B Commercial terms if business */}
           {type === "business" && (
-            <div className="grid grid-cols-2 gap-3 p-3.5 rounded-[12px] bg-[#080a0b] border border-white/[0.06]">
+            <div className="grid grid-cols-2 gap-3 p-3.5 rounded-md bg-[#080a0b] border border-white/[0.06]">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-[#d3a548]">Desconto Acordado (%)</label>
                 <input
@@ -251,7 +251,7 @@ export function CustomerFormModal({
                   max="50"
                   value={discountRate}
                   onChange={(e) => setDiscountRate(e.target.value)}
-                  className="h-9 px-3 rounded-[8px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                  className="h-9 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -261,7 +261,7 @@ export function CustomerFormModal({
                   min="0"
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
-                  className="h-9 px-3 rounded-[8px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                  className="h-9 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
                 />
               </div>
             </div>
@@ -275,7 +275,7 @@ export function CustomerFormModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Instruções especiais, preferências de serviço ou histórico..."
-              className="p-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+              className="p-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
             />
           </div>
 

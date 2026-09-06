@@ -32,7 +32,7 @@ export function StockAlertBanner({ lowStockMaterials }: StockAlertBannerProps) {
         {lowStockMaterials.map((mat) => (
           <div
             key={mat.id}
-            className="flex items-center justify-between p-2 rounded-[8px] bg-[#050606]/40 border border-white/[0.04]"
+            className="flex items-center justify-between p-2 rounded-sm bg-[#050606]/40 border border-white/[0.04]"
           >
             <div className="flex flex-col min-w-0 pr-2">
               <span className="font-semibold text-xs text-[#f1ede5] truncate">

@@ -27,7 +27,7 @@ export function CustomerCard({ customer }: CustomerCardProps) {
         {/* Header: Type icon, Name & Badges */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.04] border border-white/[0.08] text-[#d3a548]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-white/[0.04] border border-white/[0.08] text-[#d3a548]">
               {isBusiness ? (
                 <Building2 className="h-5 w-5 stroke-[1.75]" />
               ) : (
@@ -90,7 +90,7 @@ export function CustomerCard({ customer }: CustomerCardProps) {
 
         {/* B2B perks if applicable */}
         {customer.b2bDetails && (
-          <div className="flex items-center gap-2 mt-3 p-2 rounded-[8px] bg-[#15191a] border border-white/[0.04] text-xs text-[#f7d46d]">
+          <div className="flex items-center gap-2 mt-3 p-2 rounded-sm bg-[#15191a] border border-white/[0.04] text-xs text-[#f7d46d]">
             <Percent className="h-3.5 w-3.5 text-[#d3a548]" />
             <span className="text-[12px] font-medium">
               Desconto acordado: <strong>{customer.b2bDetails.discountRate}%</strong> ({customer.b2bDetails.paymentTermsDays} dias)

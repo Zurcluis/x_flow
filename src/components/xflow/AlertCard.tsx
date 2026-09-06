@@ -35,7 +35,7 @@ export function XFlowIntelligenceCard({ alerts }: XFlowIntelligenceCardProps) {
                 key={alert.id}
                 href={alert.href}
                 className={cn(
-                  "flex items-center justify-between p-3.5 rounded-[12px] border transition-all duration-150 group",
+                  "flex items-center justify-between p-3.5 rounded-md border transition-all duration-150 group",
                   isDanger
                     ? "bg-[#251515]/60 border-[#f05a50]/20 hover:border-[#f05a50]/40"
                     : "bg-[#1f1b14]/60 border-[#d3a548]/20 hover:border-[#d3a548]/40"
@@ -44,7 +44,7 @@ export function XFlowIntelligenceCard({ alerts }: XFlowIntelligenceCardProps) {
                 <div className="flex items-start gap-3 min-w-0 pr-2">
                   <div
                     className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] mt-0.5",
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-sm mt-0.5",
                       isDanger
                         ? "bg-[#f05a50]/15 text-[#f05a50]"
                         : "bg-[#d3a548]/15 text-[#f7d46d]"

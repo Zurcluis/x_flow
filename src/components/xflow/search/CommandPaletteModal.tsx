@@ -216,7 +216,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                   key={item.id}
                   onClick={() => handleSelectResult(item)}
                   onMouseEnter={() => setSelectedIndex(index)}
-                  className={`p-3 rounded-[12px] flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                  className={`p-3 rounded-md flex items-center justify-between gap-3 cursor-pointer transition-all ${
                     isSelected
                       ? "bg-[#1f1b14] border border-[#d3a548]/40 text-[#f1ede5]"
                       : "bg-transparent hover:bg-white/[0.03] text-[#a9adae]"
@@ -224,7 +224,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] ${
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-sm ${
                         isSelected ? "bg-[#d3a548]/20" : "bg-white/[0.04]"
                       }`}
                     >

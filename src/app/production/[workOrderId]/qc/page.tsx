@@ -64,7 +64,7 @@ export default function QualityControlPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#d3a548]/15 text-[#f7d46d]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#d3a548]/15 text-[#f7d46d]">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <h1 className="text-2xl font-bold text-[#f1ede5]">
@@ -124,7 +124,7 @@ export default function QualityControlPage() {
             </div>
 
             <div className="flex flex-col gap-3 mt-4 text-xs">
-              <div className="p-3.5 rounded-[12px] bg-[#15191a] border border-white/[0.04] flex flex-col gap-1">
+              <div className="p-3.5 rounded-md bg-[#15191a] border border-white/[0.04] flex flex-col gap-1">
                 <span className="text-[#8a9092]">Certificado de Conformidade Emitido:</span>
                 <span className="font-mono font-black text-sm text-[#f7d46d]">
                   {certificateNumber}

@@ -100,7 +100,7 @@ export function QuoteCard({ quote, onCopyLink }: QuoteCardProps) {
 
         {/* Main Option & Price Preview */}
         {mainOption && (
-          <div className="mt-4 p-3 rounded-[10px] bg-[#15191a] border border-white/[0.04] flex flex-col gap-1">
+          <div className="mt-4 p-3 rounded-sm bg-[#15191a] border border-white/[0.04] flex flex-col gap-1">
             <div className="flex items-center justify-between text-xs">
               <span className="text-[#a9adae] font-medium truncate pr-2">
                 {mainOption.name}

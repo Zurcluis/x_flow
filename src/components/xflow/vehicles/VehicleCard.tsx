@@ -75,7 +75,7 @@ export function VehicleCard({ vehicle, coverUrl }: VehicleCardProps) {
         </div>
 
         {/* Color details */}
-        <div className="flex items-center gap-2 mt-3 p-2 rounded-[8px] bg-[#15191a] border border-white/[0.04] text-xs">
+        <div className="flex items-center gap-2 mt-3 p-2 rounded-sm bg-[#15191a] border border-white/[0.04] text-xs">
           <div
             className="h-3.5 w-3.5 rounded-full border border-white/30 shrink-0 shadow-sm"
             style={{ backgroundColor: swatchColor }}

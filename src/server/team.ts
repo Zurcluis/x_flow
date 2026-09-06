@@ -53,6 +53,20 @@ export async function listTools(organizationId: string): Promise<WorkshopTool[]>
   }));
 }
 
+export async function setToolStatus(
+  organizationId: string,
+  toolId: string,
+  status: WorkshopTool["status"]
+): Promise<void> {
+  await getDb().query(
+    `UPDATE tools
+     SET status = $3,
+         assigned_to_name = CASE WHEN $3 = 'disponivel' THEN NULL ELSE assigned_to_name END
+     WHERE id = $1 AND organization_id = $2`,
+    [toolId, organizationId, status]
+  );
+}
+
 export interface TeamMemberCreateInput {
   name: string;
   role: string;

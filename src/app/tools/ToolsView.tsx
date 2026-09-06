@@ -1,22 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import {
   Wrench,
   Search,
   CheckCircle2,
   MapPin,
   User,
+  ArrowLeftRight,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { setToolStatusAction } from "@/app/actions/team";
 
 import { WorkshopTool } from "@/lib/demo-data/tools-team-data";
 
 export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
-  const [tools] = useState<WorkshopTool[]>(initialTools);
+  const [tools, setTools] = useState<WorkshopTool[]>(initialTools);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   const filtered = tools.filter((tool) => {
     const matchesSearch =
@@ -103,7 +108,7 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Pesquisar por equipamento, marca, série ou QR Code..."
-            className="h-10 w-full pl-10 pr-4 rounded-[12px] bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
+            className="h-10 w-full pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
           />
         </div>
 
@@ -119,7 +124,7 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-[10px] text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
                 selectedCategory === cat.id
                   ? "bg-[#d3a548] text-[#050606] font-bold shadow"
                   : "bg-[#101314] text-[#a9adae] hover:text-[#f1ede5] border border-white/[0.04]"
@@ -159,7 +164,7 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
                 </span>
               </div>
 
-              <div className="flex flex-col gap-1.5 p-3 rounded-[12px] bg-[#15191a] border border-white/[0.03] text-xs">
+              <div className="flex flex-col gap-1.5 p-3 rounded-md bg-[#15191a] border border-white/[0.03] text-xs">
                 <div className="flex items-center gap-2 text-[#a9adae]">
                   <MapPin className="h-3.5 w-3.5 text-[#d3a548] shrink-0" />
                   <span>{tool.location}</span>
@@ -177,6 +182,39 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
                   <span>Próx. Calibração: {tool.nextMaintenance}</span>
                 </div>
               </div>
+
+              {tool.status !== "manutencao" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={togglingId === tool.id}
+                  className="w-full bg-[#15191a] text-[#a9adae]"
+                  onClick={() => {
+                    setTogglingId(tool.id);
+                    const next = tool.status === "disponivel" ? "em_uso" : "disponivel";
+                    startTransition(async () => {
+                      const res = await setToolStatusAction(tool.id, next);
+                      if (res.ok) {
+                        setTools((prev) =>
+                          prev.map((t) =>
+                            t.id === tool.id
+                              ? { ...t, status: next, assignedTo: next === "disponivel" ? undefined : t.assignedTo }
+                              : t
+                          )
+                        );
+                      }
+                      setTogglingId(null);
+                    });
+                  }}
+                >
+                  <ArrowLeftRight className="h-3.5 w-3.5 mr-1" />
+                  <span>
+                    {tool.status === "disponivel"
+                      ? "Marcar em Utilização"
+                      : "Devolver à Bancada"}
+                  </span>
+                </Button>
+              )}
             </div>
           </Card>
         ))}

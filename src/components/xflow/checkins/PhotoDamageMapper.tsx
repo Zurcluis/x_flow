@@ -77,7 +77,7 @@ export function PhotoDamageMapper({
 
   if (photos.length === 0) {
     return (
-      <div className="p-6 rounded-[14px] border border-dashed border-white/[0.12] text-center text-xs text-[#8a9092]">
+      <div className="p-6 rounded-md border border-dashed border-white/[0.12] text-center text-xs text-[#8a9092]">
         Sem fotografias. Volta ao passo anterior e regista as fotos da viatura
         para poderes marcar os danos.
       </div>
@@ -92,7 +92,7 @@ export function PhotoDamageMapper({
     <div className="flex flex-col gap-4">
       {/* Selector de tipo e gravidade (apenas em edição) */}
       {!isReadOnly && (
-      <div className="flex flex-wrap items-center gap-2 p-3.5 rounded-[14px] bg-[#101314] border border-white/[0.08]">
+      <div className="flex flex-wrap items-center gap-2 p-3.5 rounded-md bg-[#101314] border border-white/[0.08]">
         <span className="text-[11px] font-bold uppercase tracking-wider text-[#8a9092] mr-1">
           Tipo:
         </span>
@@ -140,7 +140,7 @@ export function PhotoDamageMapper({
             key={p.id}
             type="button"
             onClick={() => setActivePhotoId(p.id)}
-            className={`relative shrink-0 w-24 h-16 rounded-[10px] overflow-hidden border-2 transition-all cursor-pointer ${
+            className={`relative shrink-0 w-24 h-16 rounded-sm overflow-hidden border-2 transition-all cursor-pointer ${
               activePhoto?.id === p.id
                 ? "border-[#d3a548]"
                 : "border-transparent opacity-60 hover:opacity-100"
@@ -166,7 +166,7 @@ export function PhotoDamageMapper({
           </span>
           <div
             onClick={handlePhotoClick}
-            className={`relative w-full max-h-[420px] rounded-[14px] overflow-hidden border border-white/[0.08] bg-[#080a0b] ${
+            className={`relative w-full max-h-[420px] rounded-md overflow-hidden border border-white/[0.08] bg-[#080a0b] ${
               isReadOnly ? "" : "cursor-crosshair"
             }`}
           >
@@ -202,7 +202,7 @@ export function PhotoDamageMapper({
           {damages.map((d) => (
             <div
               key={d.id}
-              className="flex items-center justify-between p-2.5 rounded-[10px] bg-[#15191a] border border-white/[0.06] text-xs"
+              className="flex items-center justify-between p-2.5 rounded-sm bg-[#15191a] border border-white/[0.06] text-xs"
             >
               <div className="flex items-center gap-2.5">
                 <span

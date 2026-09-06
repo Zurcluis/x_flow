@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { TeamMember } from "@/lib/demo-data/tools-team-data";
+import { TeamMember, WorkshopTool } from "@/lib/demo-data/tools-team-data";
 import { getPrimaryOrganizationId } from "@/server/org";
 import {
   createTeamMember,
   listTeam,
   setTeamMemberStatus,
+  setToolStatus,
   TeamMemberCreateInput,
 } from "@/server/team";
 
@@ -58,6 +59,23 @@ export async function setTeamMemberStatusAction(
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Erro ao atualizar o estado.",
+    };
+  }
+}
+
+export async function setToolStatusAction(
+  toolId: string,
+  status: WorkshopTool["status"]
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const organizationId = await getPrimaryOrganizationId();
+    await setToolStatus(organizationId, toolId, status);
+    revalidatePath("/tools");
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Erro ao atualizar a ferramenta.",
     };
   }
 }

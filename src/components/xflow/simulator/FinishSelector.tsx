@@ -25,7 +25,7 @@ export function FinishSelector({
           <div
             key={preset.id}
             onClick={() => onSelectPreset(preset)}
-            className={`p-4 rounded-[14px] border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+            className={`p-4 rounded-md border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
               isSelected
                 ? "bg-[#141b17] border-[#d3a548] shadow-[0_0_20px_rgba(211,165,72,0.15)] ring-1 ring-[#d3a548]"
                 : "bg-[#101314] border-white/[0.06] hover:border-white/[0.15]"
@@ -63,6 +63,11 @@ export function FinishSelector({
                   })}
                   /m
                 </span>
+                {preset.glossGu !== undefined && (
+                  <span className="text-[10px] text-[#8a9092] font-mono font-normal">
+                    {Math.round(preset.glossGu)} GU
+                  </span>
+                )}
               </div>
 
               <Badge

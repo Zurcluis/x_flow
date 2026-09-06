@@ -96,13 +96,14 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const pathname = usePathname();
   const Icon = item.icon;
   const isActive =
-    pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
+    pathname === item.href ||
+    (item.href !== "/" && (pathname?.startsWith(item.href + "/") || false));
 
   return (
     <Link
       href={item.href}
       className={cn(
-        "group flex items-center gap-3 rounded-[12px] px-3 py-2.5 text-sm font-medium transition-all duration-150",
+        "group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-150",
         isActive
           ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-[0_2px_12px_rgba(211,165,72,0.12)] font-semibold"
           : "text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/[0.04] border border-transparent"
@@ -163,7 +164,7 @@ export function Sidebar() {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
-            "flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-xs font-medium text-[#8a9092] hover:bg-white/[0.04] hover:text-[#f1ede5] transition-colors cursor-pointer",
+            "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-xs font-medium text-[#8a9092] hover:bg-white/[0.04] hover:text-[#f1ede5] transition-colors cursor-pointer",
             collapsed && "justify-center"
           )}
           aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}

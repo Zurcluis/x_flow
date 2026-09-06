@@ -39,7 +39,7 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex flex-wrap items-center gap-4">
           {/* License Plate Style Frame */}
-          <div className="inline-flex items-center rounded-[8px] border-2 border-white/20 bg-[#050606] px-3.5 py-1.5 shadow-[0_4px_14px_rgba(0,0,0,0.6)] font-mono">
+          <div className="inline-flex items-center rounded-sm border-2 border-white/20 bg-[#050606] px-3.5 py-1.5 shadow-[0_4px_14px_rgba(0,0,0,0.6)] font-mono">
             <span className="text-[#6e93b5] mr-2 text-xs font-black font-sans">P</span>
             <span className="text-xl font-black tracking-widest text-[#f1ede5]">
               {vehicle.plateDisplay}
@@ -48,7 +48,7 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
 
           {/* Vehicle Make & Model Title */}
           <div className="flex flex-col">
-            <h1 className="text-2xl lg:text-3xl font-extrabold text-[#f1ede5] tracking-tight">
+            <h1 className="text-2xl font-extrabold text-[#f1ede5] tracking-tight">
               {vehicle.make} {vehicle.model}
             </h1>
             <span className="text-xs text-[#a9adae]">
@@ -83,7 +83,7 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
       {/* Specs & Current Owner Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-4 border-t border-white/[0.06] text-xs">
         {/* 1. Cor Original */}
-        <div className="flex items-center gap-2.5 p-3 rounded-[12px] bg-[#101314] border border-white/[0.04]">
+        <div className="flex items-center gap-2.5 p-3 rounded-md bg-[#101314] border border-white/[0.04]">
           <div
             className="h-4 w-4 rounded-full border border-white/30 shrink-0 shadow-sm"
             style={{ backgroundColor: swatchColor }}
@@ -95,7 +95,7 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
         </div>
 
         {/* 2. Carroçaria */}
-        <div className="flex items-center gap-2.5 p-3 rounded-[12px] bg-[#101314] border border-white/[0.04]">
+        <div className="flex items-center gap-2.5 p-3 rounded-md bg-[#101314] border border-white/[0.04]">
           <Car className="h-4 w-4 text-[#d3a548] shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] text-[#8a9092] uppercase">Carroçaria</span>
@@ -104,7 +104,7 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
         </div>
 
         {/* 3. Quilometragem */}
-        <div className="flex items-center gap-2.5 p-3 rounded-[12px] bg-[#101314] border border-white/[0.04]">
+        <div className="flex items-center gap-2.5 p-3 rounded-md bg-[#101314] border border-white/[0.04]">
           <Gauge className="h-4 w-4 text-[#d3a548] shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] text-[#8a9092] uppercase">Quilometragem</span>
@@ -115,7 +115,7 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
         </div>
 
         {/* 4. Combustível */}
-        <div className="flex items-center gap-2.5 p-3 rounded-[12px] bg-[#101314] border border-white/[0.04]">
+        <div className="flex items-center gap-2.5 p-3 rounded-md bg-[#101314] border border-white/[0.04]">
           <Fuel className="h-4 w-4 text-[#d3a548] shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] text-[#8a9092] uppercase">Combustível</span>
@@ -124,7 +124,7 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
         </div>
 
         {/* 5. Proprietário Atual */}
-        <div className="flex items-center gap-2.5 p-3 rounded-[12px] bg-[#101314] border border-white/[0.04] col-span-2 sm:col-span-1">
+        <div className="flex items-center gap-2.5 p-3 rounded-md bg-[#101314] border border-white/[0.04] col-span-2 sm:col-span-1">
           <User className="h-4 w-4 text-[#d3a548] shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] text-[#8a9092] uppercase">Proprietário</span>

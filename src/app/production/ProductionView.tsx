@@ -84,13 +84,13 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
           <span className="text-xs font-medium text-[#a9adae]">
             Controlo Operacional de Fábrica & Execução
           </span>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
             Produção & Ordens de Trabalho
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 p-1 rounded-[12px] bg-[#101314] border border-white/[0.06]">
+          <div className="flex items-center gap-1 p-1 rounded-md bg-[#101314] border border-white/[0.06]">
             <button
               onClick={() => setViewMode("kanban")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
@@ -223,7 +223,7 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
                       draggable
                       onDragStart={() => setDraggedId(wo.id)}
                       onDragEnd={() => setDraggedId(null)}
-                      className="cursor-grab active:cursor-grabbing p-3 rounded-[12px] bg-[#101314] border border-white/[0.08] hover:border-[#d3a548]/40 transition-all"
+                      className="cursor-grab active:cursor-grabbing p-3 rounded-md bg-[#101314] border border-white/[0.08] hover:border-[#d3a548]/40 transition-all"
                     >
                       <div className="flex items-center gap-1.5 mb-1">
                         <span className="font-mono font-black text-[11px] text-[#f7d46d]">
@@ -259,7 +259,7 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
                 })}
 
                 {columnOrders.length === 0 && (
-                  <div className="flex-1 flex items-center justify-center p-4 text-[11px] text-[#5a6062] border border-dashed border-white/[0.06] rounded-[10px]">
+                  <div className="flex-1 flex items-center justify-center p-4 text-[11px] text-[#5a6062] border border-dashed border-white/[0.06] rounded-sm">
                     Arrasta ordens para aqui
                   </div>
                 )}
@@ -282,12 +282,12 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Pesquisar por OT, matrícula, modelo ou técnico..."
-            className="w-full h-10 pl-10 pr-4 rounded-[12px] bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
+            className="w-full h-10 pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
           />
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1.5 p-1 rounded-[12px] bg-[#101314] border border-white/[0.06] select-none">
+        <div className="flex items-center gap-1.5 p-1 rounded-md bg-[#101314] border border-white/[0.06] select-none">
           <button
             onClick={() => setActiveTab("all")}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${

@@ -67,7 +67,7 @@ export function TeamMemberFormModal({
   };
 
   const inputClass =
-    "h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] w-full";
+    "h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] w-full";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#050606]/85 backdrop-blur-sm overflow-y-auto">

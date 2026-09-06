@@ -112,7 +112,7 @@ export function WarrantiesView({ initialWarranties }: { initialWarranties: Warra
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Pesquisar por matrícula, modelo, cliente ou nº de certificado..."
-          className="h-10 w-full pl-10 pr-4 rounded-[12px] bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
+          className="h-10 w-full pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
         />
       </div>
 
@@ -146,7 +146,7 @@ export function WarrantiesView({ initialWarranties }: { initialWarranties: Warra
               </div>
 
               {/* Technical Details */}
-              <div className="flex flex-col gap-1 p-3 rounded-[10px] bg-[#15191a] border border-white/[0.03] text-xs">
+              <div className="flex flex-col gap-1 p-3 rounded-sm bg-[#15191a] border border-white/[0.03] text-xs">
                 <span className="text-[#a9adae]">Película: <strong className="text-[#f1ede5]">{w.materialUsed}</strong></span>
                 <span className="text-[12px] text-[#8a9092] font-mono">Lote: {w.batchNumber}</span>
                 <span className="text-[12px] text-[#d3a548] font-mono font-bold mt-1">

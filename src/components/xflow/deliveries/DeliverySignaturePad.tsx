@@ -158,7 +158,7 @@ export function DeliverySignaturePad({
             onChange={(e) => onChangeSignerName(e.target.value)}
             placeholder="Nome completo..."
             disabled={isReadOnly}
-            className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+            className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
             required
           />
         </div>
@@ -171,7 +171,7 @@ export function DeliverySignaturePad({
             onChange={(e) => onChangeIdDocument(e.target.value)}
             placeholder="ex: CC 14882991-2"
             disabled={isReadOnly}
-            className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
+            className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
           />
         </div>
       </div>
@@ -179,7 +179,7 @@ export function DeliverySignaturePad({
       {/* Signature Canvas */}
       <div className="flex flex-col gap-1.5 pt-1">
         <label className="font-semibold text-[#a9adae]">Assinatura na Tela *</label>
-        <div className="relative rounded-[14px] bg-[#0a0d0e] border border-white/[0.08] overflow-hidden flex items-center justify-center">
+        <div className="relative rounded-md bg-[#0a0d0e] border border-white/[0.08] overflow-hidden flex items-center justify-center">
           <canvas
             ref={canvasRef}
             width={400}

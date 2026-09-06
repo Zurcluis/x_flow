@@ -75,7 +75,7 @@ export default function SettingsPage() {
                 type="number"
                 value={hourlyRate}
                 onChange={(e) => setHourlyRate(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
               />
               <span className="text-[11px] text-[#8a9092]">Valor de referência X-Flow</span>
             </div>
@@ -86,7 +86,7 @@ export default function SettingsPage() {
                 type="number"
                 value={vatRate}
                 onChange={(e) => setVatRate(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
               />
               <span className="text-[11px] text-[#8a9092]">IVA Normal Portugal</span>
             </div>
@@ -97,7 +97,7 @@ export default function SettingsPage() {
                 type="number"
                 value={minMargin}
                 onChange={(e) => setMinMargin(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
               />
               <span className="text-[11px] text-[#8a9092]">Margem mínima em orçamentos</span>
             </div>
@@ -114,7 +114,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex flex-col gap-3 text-xs">
-            <label className="flex items-center justify-between p-3 rounded-[12px] bg-[#15191a] border border-white/[0.04] cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-md bg-[#15191a] border border-white/[0.04] cursor-pointer">
               <div className="flex flex-col">
                 <strong className="text-[#f1ede5]">Regra do Tejadilho no Check-in</strong>
                 <span className="text-[12px] text-[#a9adae]">
@@ -129,7 +129,7 @@ export default function SettingsPage() {
               />
             </label>
 
-            <label className="flex items-center justify-between p-3 rounded-[12px] bg-[#15191a] border border-white/[0.04] cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-md bg-[#15191a] border border-white/[0.04] cursor-pointer">
               <div className="flex flex-col">
                 <strong className="text-[#f1ede5]">Gate de Qualidade (QC Pass) Obrigatório</strong>
                 <span className="text-[12px] text-[#a9adae]">
@@ -162,7 +162,7 @@ export default function SettingsPage() {
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
               />
             </div>
 
@@ -172,7 +172,7 @@ export default function SettingsPage() {
                 type="text"
                 value={nif}
                 onChange={(e) => setNif(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5] font-mono"
               />
             </div>
 
@@ -182,7 +182,7 @@ export default function SettingsPage() {
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
               />
             </div>
 
@@ -192,7 +192,7 @@ export default function SettingsPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
+                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-xs text-[#f1ede5]"
               />
             </div>
           </div>

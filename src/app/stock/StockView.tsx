@@ -61,7 +61,7 @@ export function StockView({ initialMaterials }: StockViewProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.04]">
         <div className="flex flex-col">
           <span className="text-xs font-medium text-[#a9adae]">Inventário de Oficina & Lotes</span>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#f1ede5]">
+          <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
             Materiais & Rolos
           </h1>
         </div>
@@ -118,12 +118,12 @@ export function StockView({ initialMaterials }: StockViewProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Pesquisar por marca (Stek, 3M, Xpel), acabamento..."
-            className="w-full h-10 pl-10 pr-4 rounded-[12px] bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
+            className="w-full h-10 pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
           />
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 p-1 rounded-[12px] bg-[#101314] border border-white/[0.06] overflow-x-auto select-none">
+        <div className="flex items-center gap-1.5 p-1 rounded-md bg-[#101314] border border-white/[0.06] overflow-x-auto select-none">
           <button
             onClick={() => setActiveTypeFilter("all")}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
