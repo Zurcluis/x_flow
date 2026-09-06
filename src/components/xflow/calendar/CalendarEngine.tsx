@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Appointment, AppointmentStatus, WorkshopBay } from "@/domains/calendar/types";
+import { WorkshopMap } from "@/components/xflow/calendar/WorkshopMap";
 import {
   cancelAppointmentAction,
   forceSaveAppointmentAction,
@@ -23,19 +24,17 @@ import {
   saveAppointmentAction,
 } from "@/app/actions/calendar";
 
-type ViewMode = "month" | "week" | "day" | "agenda";
+type ViewMode = "month" | "week" | "day" | "agenda" | "mapa";
 
 interface EngineProps {
   initialAppointments: Appointment[];
   bays: WorkshopBay[];
   technicians: { id: string; name: string }[];
   vehicles: { id: string; label: string; customerId: string | null }[];
-  customers: { id: string; name: string }[];
 }
 
 const DAY_START_H = 7;
 const DAY_END_H = 20;
-const SLOT_MIN = 30;
 const PX_PER_HOUR = 48;
 
 const WEEKDAYS_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -95,7 +94,6 @@ export function CalendarEngine({
   bays,
   technicians,
   vehicles,
-  customers,
 }: EngineProps) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("week");
@@ -103,7 +101,8 @@ export function CalendarEngine({
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [dragType, setDragType] = useState<WorkshopBay["serviceType"] | null>(null);
+  const [bayModal, setBayModal] = useState<"new" | WorkshopBay | null>(null);
 
   // re-sincroniza quando o servidor envia dados novos (router.refresh)
   const [lastSynced, setLastSynced] = useState(initialAppointments);
@@ -123,7 +122,7 @@ export function CalendarEngine({
       setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1));
     } else if (view === "week") {
       setCursor(addDays(cursor, dir * 7));
-    } else if (view === "day") {
+    } else if (view === "day" || view === "mapa") {
       setCursor(addDays(cursor, dir));
     } else {
       setCursor(addDays(cursor, dir * 30));
@@ -139,7 +138,7 @@ export function CalendarEngine({
       const e = addDays(s, 6);
       return `${s.getDate()} ${MONTHS[s.getMonth()].slice(0, 3)} — ${e.getDate()} ${MONTHS[e.getMonth()].slice(0, 3)} ${e.getFullYear()}`;
     }
-    if (view === "day") {
+    if (view === "day" || view === "mapa") {
       return `${WEEKDAYS_SHORT[(cursor.getDay() + 6) % 7]}, ${cursor.getDate()} de ${MONTHS[cursor.getMonth()]}`;
     }
     return "Próximos 30 dias";
@@ -232,7 +231,11 @@ export function CalendarEngine({
     return (
       <div
         draggable
-        onDragStart={() => setDraggedId(a.id)}
+        onDragStart={(e) => {
+          setDraggedId(a.id);
+          e.dataTransfer.setData("text/plain", a.id);
+          e.dataTransfer.effectAllowed = "move";
+        }}
         onDragEnd={() => setDraggedId(null)}
         onClick={(e) => {
           e.stopPropagation();
@@ -279,6 +282,7 @@ export function CalendarEngine({
               ["month", "Mês"],
               ["week", "Semana"],
               ["day", "Dia"],
+              ["mapa", "Mapa 3D"],
               ["agenda", "Agenda"],
             ] as Array<[ViewMode, string]>
           ).map(([id, label]) => (
@@ -371,10 +375,7 @@ export function CalendarEngine({
               <div />
               {(view === "week"
                 ? weekDays
-                : bays.map((b) => {
-                    const synthetic = new Date(cursor);
-                    return synthetic; // placeholders; colunas reais abaixo
-                  })
+                : bays.map(() => new Date(cursor))
               ).map((day, i) => (
                 <div key={i} className="p-2 text-center border-l border-white/[0.04]">
                   {view === "week" ? (
@@ -424,7 +425,8 @@ export function CalendarEngine({
                   <div
                     key={colIdx}
                     className="relative border-r border-white/[0.04]"
-                    onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={(e) => e.preventDefault()}
+                  onDragOver={(e) => e.preventDefault()}
                     onDrop={() => {
                       if (draggedId) {
                         const appt = appointments.find((a) => a.id === draggedId);
@@ -472,7 +474,11 @@ export function CalendarEngine({
                         <div
                           key={a.id}
                           draggable
-                          onDragStart={() => setDraggedId(a.id)}
+                          onDragStart={(e) => {
+                            setDraggedId(a.id);
+                            e.dataTransfer.setData("text/plain", a.id);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
                           onDragEnd={() => setDraggedId(null)}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -500,6 +506,25 @@ export function CalendarEngine({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ═══ VISTA MAPA 3D DA OFICINA ═══ */}
+      {view === "mapa" && (
+        <WorkshopMap
+          date={cursor}
+          appointments={appointments.filter((a) => a.status !== "cancelled")}
+          bays={bays}
+          technicians={technicians}
+          vehicles={vehicles}
+          draggedId={draggedId}
+          setDraggedId={setDraggedId}
+          dragType={dragType}
+          setDragType={setDragType}
+          bayModal={bayModal}
+          setBayModal={setBayModal}
+          onOpenEditAppointment={openEdit}
+          onRefresh={() => router.refresh()}
+        />
       )}
 
       {/* ═══ VISTA AGENDA ═══ */}
@@ -554,7 +579,6 @@ export function CalendarEngine({
           bays={bays}
           technicians={technicians}
           vehicles={vehicles}
-          customers={customers}
           onClose={() => setModal(null)}
           onSaved={(deleted) => {
             setModal(null);
@@ -599,7 +623,6 @@ interface ModalProps {
   bays: WorkshopBay[];
   technicians: { id: string; name: string }[];
   vehicles: { id: string; label: string; customerId: string | null }[];
-  customers: { id: string; name: string }[];
   onClose: () => void;
   onSaved: (deletedId?: string) => void;
 }
@@ -611,7 +634,6 @@ function AppointmentModal({
   bays,
   technicians,
   vehicles,
-  customers,
   onClose,
   onSaved,
 }: ModalProps) {
@@ -622,7 +644,7 @@ function AppointmentModal({
 
   const [vehicleId, setVehicleId] = useState(initVehicle);
   const [customerId, setCustomerId] = useState(
-    appointment?.customerId ?? vehicles.find((v) => v.id === initVehicle)?.customerId ?? customers[0]?.id ?? ""
+    appointment?.customerId ?? vehicles.find((v) => v.id === initVehicle)?.customerId ?? ""
   );
   const [bayId, setBayId] = useState(initBay);
   const [technicianId, setTechnicianId] = useState(appointment ? "" : technicians[0]?.id ?? "");
@@ -732,21 +754,6 @@ function AppointmentModal({
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
-            Cliente
-            <select
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              className="h-10 px-3 rounded-[10px] bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
-            >
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
                 </option>
               ))}
             </select>

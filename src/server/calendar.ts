@@ -259,4 +259,104 @@ export async function cancelAppointment(
   );
 }
 
+// ── Gestão de baías ─────────────────────────────────────────────────────────
+
+export interface BayInput {
+  name: string;
+  code: string;
+  serviceType: WorkshopBay["serviceType"];
+  technicianId?: string;
+}
+
+export async function createBay(
+  organizationId: string,
+  input: BayInput
+): Promise<WorkshopBay> {
+  const { rows } = await getDb().query<Row>(
+    `INSERT INTO bays (organization_id, name, code, service_type, default_technician_id)
+     VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+    [organizationId, input.name, input.code, input.serviceType, input.technicianId ?? null]
+  );
+  const bays = await listBays(organizationId);
+  return bays.find((b) => b.id === String(rows[0].id))!;
+}
+
+export async function updateBay(
+  organizationId: string,
+  bayId: string,
+  input: Partial<BayInput>
+): Promise<void> {
+  await getDb().query(
+    `UPDATE bays SET
+       name = COALESCE($3, name),
+       service_type = COALESCE($4, service_type),
+       default_technician_id = COALESCE($5, default_technician_id)
+     WHERE id = $1 AND organization_id = $2`,
+    [bayId, organizationId, input.name ?? null, input.serviceType ?? null, input.technicianId ?? null]
+  );
+}
+
+export async function deleteBay(organizationId: string, bayId: string): Promise<{ ok: boolean; error?: string }> {
+  const { rows } = await getDb().query<Row>(
+    `SELECT count(*)::int AS n FROM appointments
+     WHERE bay_id = $1 AND status NOT IN ('cancelled') AND start_time >= NOW()`,
+    [bayId]
+  );
+  if (Number(rows[0].n) > 0) {
+    return { ok: false, error: "A baia tem marcações futuras. Cancela-as primeiro." };
+  }
+  await getDb().query(
+    `DELETE FROM bays WHERE id = $1 AND organization_id = $2`,
+    [bayId, organizationId]
+  );
+  return { ok: true };
+}
+
+// ── Atribuir viatura a baia (mapa da oficina) ───────────────────────────────
+
+export async function assignVehicleToBay(
+  organizationId: string,
+  vehicleId: string,
+  bayId: string,
+  date: string
+): Promise<{ ok: boolean; error?: string }> {
+  const db = getDb();
+
+  const { rows: ownerRows } = await db.query<Row>(
+    `SELECT c.id AS customer_id FROM vehicle_customer_links l
+     JOIN customers c ON c.id = l.customer_id
+     WHERE l.vehicle_id = $1 AND l.is_current LIMIT 1`,
+    [vehicleId]
+  );
+  const customerId = ownerRows[0] ? String(ownerRows[0].customer_id) : null;
+  if (!customerId) return { ok: false, error: "A viatura não tem proprietário associado." };
+
+  const dayStart = `${date}T00:00:00`;
+  const dayEnd = `${date}T23:59:59`;
+
+  const { rows: existing } = await db.query<Row>(
+    `SELECT id FROM appointments
+     WHERE vehicle_id = $1 AND organization_id = $2
+       AND start_time >= $3 AND start_time <= $4 AND status <> 'cancelled'
+     LIMIT 1`,
+    [vehicleId, organizationId, dayStart, dayEnd]
+  );
+
+  if (existing.length > 0) {
+    await db.query(
+      `UPDATE appointments SET bay_id = $3, updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+      [String(existing[0].id), organizationId, bayId]
+    );
+    return { ok: true };
+  }
+
+  await db.query(
+    `INSERT INTO appointments
+      (organization_id, vehicle_id, customer_id, bay_id, start_time, end_time, estimated_hours, status, notes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'scheduled','Atribuída via mapa da oficina')`,
+    [organizationId, vehicleId, customerId, bayId, `${date}T09:00:00`, `${date}T13:00:00`, 4]
+  );
+  return { ok: true };
+}
+
 export { getPrimaryOrganizationId } from "@/server/org";

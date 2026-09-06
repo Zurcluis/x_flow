@@ -1,7 +1,6 @@
 import { CalendarEngine } from "@/components/xflow/calendar/CalendarEngine";
 import { listBays, listAppointmentsBetween, listTechnicians } from "@/server/calendar";
 import { listVehicles } from "@/server/vehicles";
-import { listCustomers } from "@/server/customers";
 import { getPrimaryOrganizationId } from "@/server/org";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +12,10 @@ export default async function CalendarPage() {
   const rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 2, 1);
 
-  const [bays, technicians, vehicles, customers, appointments] = await Promise.all([
+  const [bays, technicians, vehicles, appointments] = await Promise.all([
     listBays(organizationId),
     listTechnicians(organizationId),
     listVehicles(organizationId),
-    listCustomers(organizationId),
     listAppointmentsBetween(organizationId, rangeStart, rangeEnd),
   ]);
 
@@ -44,7 +42,6 @@ export default async function CalendarPage() {
           label: `${v.make} ${v.model} (${v.plateDisplay})`,
           customerId: v.currentOwner?.customerId ?? null,
         }))}
-        customers={customers.map((c) => ({ id: c.id, name: c.name }))}
       />
     </div>
   );
