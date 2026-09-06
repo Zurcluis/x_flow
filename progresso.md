@@ -1,6 +1,6 @@
 # Progresso — X-Flow
 
-_Última atualização: 06/09/2026 (noite). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 06/09/2026 (noite, 3ª parte). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.3.3, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
@@ -14,7 +14,7 @@ _Última atualização: 06/09/2026 (noite). Ficheiro de continuação de sessão
 - **Neon Postgres 18.6** ligado e **15 migrações aplicadas** (35+ tabelas; 15: tabela `films` + `deliveries.belongings` JSONB)
 - Connection string (pooler) em `.env.local` como `DATABASE_URL` — coberto por `.env*` no `.gitignore` (não commitar)
 - **Seed global**: `node scripts/seed.mjs` (idempotente, truncate manual antes) — org, 5 perfis, 3 baias, catálogo, 6 materiais (3 críticos), 5 clientes, 6 viaturas, 5 orçamentos, 4 ordens com fases/tempos, check-ins, QC, agenda da semana, faturas, garantia+entrega
-- **Seed de películas**: `node scripts/seed-films.mjs` (idempotente, ON CONFLICT) — 15 películas reais (3M 2080, Avery SW900, XPEL Ultimate/Stealth, Stek DYNO, Inozetek, KPMF) com cor, GU, metallic, flake, custo/m e garantia
+- **Seed de películas**: `node scripts/seed-films.mjs` (substitui o catálogo da org: DELETE+INSERT) — 245 películas (100 do 3M 1080 + 136 Avery SWF extraídas automaticamente das colour cards oficiais em `public/catalogos/` pelos parsers `scripts/parse-3m-catalog.mjs` e `scripts/parse-avery-catalog.mjs` → `scripts/catalog-data/*.json`, + 9 curadas XPEL/Stek/Inozetek/KPMF)
 - **Migrações estruturais novas**: `node scripts/migrate.mjs` (idempotente por deteção de colunas/tabelas)
 
 ## Sessão 06/09 (noite) — Películas físicas no simulador + entregas reais (validado E2E)
@@ -33,6 +33,17 @@ _Última atualização: 06/09/2026 (noite). Ficheiro de continuação de sessão
 - **Slider antes/depois corrigido**: o input range só cobria uma faixa de 24px no fundo (a pega ↔ tinha pointer-events-none) — agora cobre toda a área da fotografia (`inset-0`, z-20, opacity-0) e arrasta em qualquer sítio; camadas com `pointer-events-none`
 - **ESLint**: `public/**` ignorado (JS/WASM de terceiros do MediaPipe)
 - Validação: typecheck, lint, 85/85 testes; E2E no browser — cantos do fundo com diff 0,0% e centro (viatura) ~73% alterado, com gloss black e PPF transparente; slider arrastado de 28→82 com clip-path a acompanhar; sem foto de check-in a silhueta vetorial mantém-se
+
+## Sessão 06/09 (noite, 3ª parte) — Estúdio 3D em WebGL + catálogo Avery + painel por marcas
+- **Estúdio 3D real no `/simulator`** (inspirado no Car Visualizer da Avery/Wrapstock, que é um iframe WebGL): novo `src/components/xflow/simulator/CarStudio3D.tsx` com three.js 0.185 + @react-three/fiber 9 + drei 10 (dinâmico com `ssr:false`); tabs "Estúdio 3D" (default) / "Foto real" (simulação canvas anterior, agora secundária)
+- **5 modelos de viatura** (`src/lib/car-models.ts` registry + chips no palco): 458 Desportivo (three.js, MIT), Sedão e Buggy Technic (BabylonJS Assets, Apache-2.0), Furgão Comercial e Miniatura (Khronos glTF samples, CC-BY) em `public/models/` + `CREDITS.md`; escala/posição normalizadas por bounding box; pintura por mesh OU por material conforme o modelo
+- **Material de pintura física mapeado do catálogo**: GU → rugosidade + clearcoat (gloss espelhado, matte veludo), metallic → metalness, chrome → espelho, carbono; PPF transparente preserva a cor de origem; luz de estúdio com Lightformers (sem HDR externo), ContactShadows, ACES; orbit + zoom, presets de câmara animados (3/4, Frente, Perfil, Traseira, Topo), rotação automática e screenshot PNG (`preserveDrawingBuffer`)
+- **Catálogo Avery Dennison extraído**: novo `scripts/parse-avery-catalog.mjs` lê a colour card oficial 2026 (`public/catalogos/Avery.pdf`) — 136 cores com acabamento (Gloss/Matte/Satin/Metallic/Pearl/Diamond/ColorFlow/Rugged) e cor amostrada por grelha (pitch por coluna, percentil 25); dedupe de nomes repetidos com acabamento/código
+- **Seed de películas: 245** (100 do 3M 1080 + 136 Avery SWF + 9 curadas XPEL/Stek/Inozetek/KPMF) — `node scripts/seed-films.mjs`
+- **Painel de películas por marca, sem scroll**: grelha 2 colunas no desktop (palco sticky à esquerda, `lg:sticky`); tabs de marca com contagens (3M · Avery · XPEL · Stek · Inozetek · KPMF); clicar numa cor aplica de imediato no 3D; rodapé com preço/m, garantia e CTA orçamento; swatches com tooltip de specs
+- **Modo "só chapa" implementado** na simulação de foto: `applyMode "panels"|"car"` em `film-simulation.ts` — `restrictToPanels()` exclui vidros (reflexo ≈ céu/fundo no topo), pneus/grelha/frisos (luminância < 30) e texturas (densidade de arestas > 26), com feather; chips "Só chapa metálica / Viatura toda" no modo foto
+- Validação: typecheck, lint, 85/85 testes; E2E no browser — troca de modelo muda o render (pixéis verificados), tabs de marca e aplicação instantânea de cor confirmadas, aside sticky ativo em ≥1024px
+- **Próximos passos sugeridos**: partial wrap (capô/techo em peças separadas), modelos de marcas reais (exigem licença comercial — Sketchfab/CGTrader — integrar em `car-models.ts`), share por URL, normal maps de flake/carbono
 
 ## Ainda por ligar (usa demo data)
 - `/vision` (fase 8 do blueprint — análise IA), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo), auth/perfis, RLS efetiva (owner faz bypass); RLS atualmente bypassed (owner) — rever políticas na altura do auth
