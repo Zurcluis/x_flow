@@ -27,6 +27,7 @@ import {
   ScanSearch,
   Box,
   Palette,
+  Monitor,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/xflow/Logo";
@@ -85,6 +86,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Sistema",
     items: [
       { label: "Configurações", href: "/settings", icon: Settings },
+      { label: "Painel Oficina", href: "/shop-floor", icon: Monitor },
       { label: "Design System", href: "/design-system", icon: Palette },
     ],
   },

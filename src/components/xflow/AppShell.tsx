@@ -50,6 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/qc/certificate/") ||
     pathname.startsWith("/warranties/certificate/") ||
     pathname.startsWith("/passport/") ||
+    pathname === "/shop-floor" ||
     pathname === "/login"
   ) {
     return <main className="min-h-screen bg-[#050606] text-[#f1ede5]">{children}</main>;
