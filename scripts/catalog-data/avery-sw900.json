@@ -1,0 +1,1090 @@
+[
+  {
+    "code": "LB5190001",
+    "name": "Silver",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#868c8c",
+    "page": 1
+  },
+  {
+    "code": "LB5250001",
+    "name": "Emerald",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#2d5f4c",
+    "page": 1
+  },
+  {
+    "code": "CP7790001",
+    "name": "Moss Green",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#476043",
+    "page": 1
+  },
+  {
+    "code": "LB5300001",
+    "name": "Gunmetal",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#3d3d3b",
+    "page": 1
+  },
+  {
+    "code": "LB5270001",
+    "name": "Frosty Blue",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#415a68",
+    "page": 1
+  },
+  {
+    "code": "LB5310001",
+    "name": "Charcoal",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#1f2323",
+    "page": 1
+  },
+  {
+    "code": "LB5200001",
+    "name": "Grey EU*",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#524a4a",
+    "page": 1
+  },
+  {
+    "code": "LB5170001",
+    "name": "Pink",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#6e2736",
+    "page": 1
+  },
+  {
+    "code": "LB5280001",
+    "name": "Blue",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#092338",
+    "page": 1
+  },
+  {
+    "code": "LB5220001",
+    "name": "Purple",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#151531",
+    "page": 1
+  },
+  {
+    "code": "LB5160001",
+    "name": "Cherry",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#63080e",
+    "page": 1
+  },
+  {
+    "code": "LB5290001",
+    "name": "Night Blue",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#0a1324",
+    "page": 1
+  },
+  {
+    "code": "LB5260001",
+    "name": "Garnet Red",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#55100e",
+    "page": 1
+  },
+  {
+    "code": "LB5240001",
+    "name": "Brown",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#502b1a",
+    "page": 1
+  },
+  {
+    "code": "CP7800001",
+    "name": "Brill-Blue",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#0d172b",
+    "page": 1
+  },
+  {
+    "code": "LB5230001",
+    "name": "Apple Green",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#3a7225",
+    "page": 1
+  },
+  {
+    "code": "BJ0820001",
+    "name": "Dove Grey EU*",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#807f2f",
+    "page": 1
+  },
+  {
+    "code": "BJ0860001",
+    "name": "Light Brown EU*",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#36322c",
+    "page": 1
+  },
+  {
+    "code": "BS9830001",
+    "name": "Stunning Orange",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#535125",
+    "page": 1
+  },
+  {
+    "code": "BJ0880001",
+    "name": "Hans Brown EU*",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#1a2a2f",
+    "page": 1
+  },
+  {
+    "code": "BT1800001",
+    "name": "Cool Teal",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#065b5d",
+    "page": 1
+  },
+  {
+    "code": "BJ0890001",
+    "name": "Light Grey EU*",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#a49028",
+    "page": 1
+  },
+  {
+    "code": "BT1790001",
+    "name": "Lively Green",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#1d7d18",
+    "page": 1
+  },
+  {
+    "code": "CP0050001",
+    "name": "Flamingo Dance",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#dae7eb",
+    "page": 1
+  },
+  {
+    "code": "BJ1030003",
+    "name": "Graphite EU*",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#504941",
+    "page": 1
+  },
+  {
+    "code": "BU4980001",
+    "name": "Black Rock Grey",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#3d3e3e",
+    "page": 1
+  },
+  {
+    "code": "BP1090001",
+    "name": "Dark Basalt",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#212420",
+    "page": 1
+  },
+  {
+    "code": "BJ0850003",
+    "name": "Dark Blue",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#0b1725",
+    "page": 1
+  },
+  {
+    "code": "BV3000001",
+    "name": "Space Silver EU*",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#795039",
+    "page": 1
+  },
+  {
+    "code": "BR9670001",
+    "name": "Energetic Yellow",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#5a5a47",
+    "page": 1
+  },
+  {
+    "code": "BJ0940001",
+    "name": "Gray Blue",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#1f1f21",
+    "page": 1
+  },
+  {
+    "code": "CQ7670001",
+    "name": "Cyber Green",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#9caea6",
+    "page": 1
+  },
+  {
+    "code": "CP7110001",
+    "name": "Spy Grey",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#6d6a68",
+    "page": 1
+  },
+  {
+    "code": "BG7460001",
+    "name": "ColorFlow™ Fresh Spring Gold/Silver",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#29343a",
+    "page": 1
+  },
+  {
+    "code": "CL8410001",
+    "name": "ColorFlow™ Frozen Ocean Cyan/Blue",
+    "finishLabel": "Pearl",
+    "finish": "gloss",
+    "hex": "#002b48",
+    "page": 1
+  },
+  {
+    "code": "BG7470001",
+    "name": "ColorFlow™ Roaring Thunder Blue/Red",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#0f394b",
+    "page": 1
+  },
+  {
+    "code": "CL8240001",
+    "name": "ColorFlow™ Moonstone Silver/Blue",
+    "finishLabel": "Pearl",
+    "finish": "gloss",
+    "hex": "#174b57",
+    "page": 1
+  },
+  {
+    "code": "BG7580001",
+    "name": "ColorFlow™ Rising Sun Red/Gold",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#3c4631",
+    "page": 1
+  },
+  {
+    "code": "CL8250001",
+    "name": "ColorFlow™ Solar Dawn Black/Red",
+    "finishLabel": "Pearl",
+    "finish": "gloss",
+    "hex": "#26191a",
+    "page": 1
+  },
+  {
+    "code": "BG7600001",
+    "name": "ColorFlow™ Rushing Riptide Cyan/Purple",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#0b3655",
+    "page": 1
+  },
+  {
+    "code": "BJ1080001",
+    "name": "ColorFlow™ Lightning Ridge Green/Purple",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#14414c",
+    "page": 1
+  },
+  {
+    "code": "BG7590001",
+    "name": "ColorFlow™ Urban Jungle Silver/Green",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#3b3128",
+    "page": 1
+  },
+  {
+    "code": "BJ0840001",
+    "name": "ColorFlow™ Gloss Roaring Thunder Blue/Red",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#424725",
+    "page": 1
+  },
+  {
+    "code": "BJ1010001",
+    "name": "Rising Sun Red/Gold",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#1a2c1c",
+    "page": 1
+  },
+  {
+    "code": "BJ1100001",
+    "name": "ColorFlow™ Gloss Rushing Riptide Cyan/Purple",
+    "finishLabel": "Matte Metallic",
+    "finish": "matte",
+    "hex": "#eaf2f5",
+    "page": 1
+  },
+  {
+    "code": "BJ0950001",
+    "name": "Urban Jungle Silver/Green",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#f0f4f6",
+    "page": 1
+  },
+  {
+    "code": "BD3030001",
+    "name": "White",
+    "finishLabel": "Diamond",
+    "finish": "gloss",
+    "hex": "#d1362c",
+    "page": 1
+  },
+  {
+    "code": "BD2800001",
+    "name": "Amber",
+    "finishLabel": "Diamond",
+    "finish": "gloss",
+    "hex": "#3b6f48",
+    "page": 1
+  },
+  {
+    "code": "BD3040001",
+    "name": "Red",
+    "finishLabel": "Diamond",
+    "finish": "gloss",
+    "hex": "#bd1410",
+    "page": 1
+  },
+  {
+    "code": "BD2890001",
+    "name": "Blue",
+    "finishLabel": "Diamond",
+    "finish": "gloss",
+    "hex": "#043887",
+    "page": 1
+  },
+  {
+    "code": "BI9310001",
+    "name": "Silver",
+    "finishLabel": "Diamond",
+    "finish": "gloss",
+    "hex": "#72878f",
+    "page": 1
+  },
+  {
+    "code": "AR1350001",
+    "name": "Textured Brushed Bronze",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#8b897a",
+    "page": 1
+  },
+  {
+    "code": "AR1280001",
+    "name": "Textured Brushed Steel",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#6a6a6a",
+    "page": 1
+  },
+  {
+    "code": "AR1300001",
+    "name": "Textured Brushed Aluminium",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#434341",
+    "page": 1
+  },
+  {
+    "code": "AR1310001",
+    "name": "Textured Brushed Black",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#2d2d2d",
+    "page": 1
+  },
+  {
+    "code": "AR1230001",
+    "name": "Textured Brushed Titanium",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#1a1a1a",
+    "page": 1
+  },
+  {
+    "code": "AS1880001",
+    "name": "Textured Carbon Fibre Black",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#121211",
+    "page": 1
+  },
+  {
+    "code": "CL6490001",
+    "name": "SWF Rugged Combat Green",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#606148",
+    "page": 1
+  },
+  {
+    "code": "CL6500001",
+    "name": "SWF Rugged Onyx Black",
+    "finishLabel": "Gloss Pearl",
+    "finish": "gloss",
+    "hex": "#141414",
+    "page": 1
+  },
+  {
+    "code": "CL6510001",
+    "name": "SWF Rugged Marsh Green",
+    "finishLabel": "Gloss Pearl",
+    "finish": "gloss",
+    "hex": "#2d3e24",
+    "page": 1
+  },
+  {
+    "code": "CL6530001",
+    "name": "SWF Rugged Bedrock Grey",
+    "finishLabel": "Satin Metallic",
+    "finish": "satin",
+    "hex": "#424649",
+    "page": 1
+  },
+  {
+    "code": "CP7130001",
+    "name": "Tutu Pink",
+    "finishLabel": "Pearl",
+    "finish": "gloss",
+    "hex": "#dca4b5",
+    "page": 1
+  },
+  {
+    "code": "BP2890001",
+    "name": "Light Green - O",
+    "finishLabel": "Pearl",
+    "finish": "gloss",
+    "hex": "#49494a",
+    "page": 1
+  },
+  {
+    "code": "BP2340001",
+    "name": "Dark Green - O",
+    "finishLabel": "Pearl",
+    "finish": "gloss",
+    "hex": "#454546",
+    "page": 1
+  },
+  {
+    "code": "CB1610002",
+    "name": "White",
+    "finishLabel": "Pearl",
+    "finish": "gloss",
+    "hex": "#616162",
+    "page": 1
+  },
+  {
+    "code": "BO8450001",
+    "name": "White Snow",
+    "finishLabel": "Gloss Pearl",
+    "finish": "gloss",
+    "hex": "#a5dbeb",
+    "page": 1
+  },
+  {
+    "code": "CR9280001",
+    "name": "Satin Sunset Ride",
+    "finishLabel": "Pearl",
+    "finish": "gloss",
+    "hex": "#e4ebf0",
+    "page": 1
+  },
+  {
+    "code": "CR8510001",
+    "name": "Dreamline Blue",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#e1eaef",
+    "page": 1
+  },
+  {
+    "code": "CR8490001",
+    "name": "Cosmic Rose",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#e1eaef",
+    "page": 1
+  },
+  {
+    "code": "CR8480001",
+    "name": "Smooth Sage",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#e1eaef",
+    "page": 1
+  },
+  {
+    "code": "AV2100001",
+    "name": "White",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#dc0001",
+    "page": 1
+  },
+  {
+    "code": "AV2080001",
+    "name": "Burgundy",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#6f0904",
+    "page": 1
+  },
+  {
+    "code": "BP1120001",
+    "name": "Soft Red - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#d51b21",
+    "page": 1
+  },
+  {
+    "code": "BP1150001",
+    "name": "Carmine Red - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#c3c901",
+    "page": 1
+  },
+  {
+    "code": "BP1170001",
+    "name": "Lime Green - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#009335",
+    "page": 1
+  },
+  {
+    "code": "BP1080001",
+    "name": "Rock Grey",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#484848",
+    "page": 1
+  },
+  {
+    "code": "BP1180001",
+    "name": "Grass Green - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#cc005b",
+    "page": 1
+  },
+  {
+    "code": "BU4990001",
+    "name": "Aqua Blue",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#00869a",
+    "page": 1
+  },
+  {
+    "code": "CR0480001",
+    "name": "Pool Party Pink NEW!",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#c5d9da",
+    "page": 1
+  },
+  {
+    "code": "CP0070001",
+    "name": "Misty Grey",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#c5c5c5",
+    "page": 1
+  },
+  {
+    "code": "CQ7560001",
+    "name": "Park Avenue Blue",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#d4e3e7",
+    "page": 1
+  },
+  {
+    "code": "BJ1050001",
+    "name": "Lightning Ridge Green/Purple",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#d6e2e6",
+    "page": 1
+  },
+  {
+    "code": "CR0510001",
+    "name": "Tropical Vacation Green NEW!",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#d6e3e7",
+    "page": 1
+  },
+  {
+    "code": "BM6150001",
+    "name": "Yellow - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#9d1100",
+    "page": 1
+  },
+  {
+    "code": "CB1510001",
+    "name": "Light Blue",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#009697",
+    "page": 1
+  },
+  {
+    "code": "AS8980001",
+    "name": "Emerald Green",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#004460",
+    "page": 1
+  },
+  {
+    "code": "CB1570001",
+    "name": "Silver",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#d0bda6",
+    "page": 1
+  },
+  {
+    "code": "BM5950001",
+    "name": "Dark Yellow - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#02bc01",
+    "page": 1
+  },
+  {
+    "code": "CB1690001",
+    "name": "Intense Blue",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#004617",
+    "page": 1
+  },
+  {
+    "code": "CB1500001",
+    "name": "Dark Green",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#003f13",
+    "page": 1
+  },
+  {
+    "code": "BM6090001",
+    "name": "Quick Silver - O",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#948077",
+    "page": 1
+  },
+  {
+    "code": "BM6110001",
+    "name": "Orange - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#015901",
+    "page": 1
+  },
+  {
+    "code": "CB1520001",
+    "name": "Blue",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#00429d",
+    "page": 1
+  },
+  {
+    "code": "CB1550001",
+    "name": "Grey",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#b24c54",
+    "page": 1
+  },
+  {
+    "code": "BP1220001",
+    "name": "Radioactive - O",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#207765",
+    "page": 1
+  },
+  {
+    "code": "CB1540001",
+    "name": "Light Grey",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#014fbd",
+    "page": 1
+  },
+  {
+    "code": "CB1530001",
+    "name": "Dark Blue",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#012758",
+    "page": 1
+  },
+  {
+    "code": "CB1560001",
+    "name": "Dark Grey",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#4a4c4b",
+    "page": 1
+  },
+  {
+    "code": "BL8230001",
+    "name": "Magnetic Burst",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#273d50",
+    "page": 1
+  },
+  {
+    "code": "BP1100001",
+    "name": "Red - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#020000",
+    "page": 1
+  },
+  {
+    "code": "CB1680001",
+    "name": "Indigo Blue",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#051326",
+    "page": 1
+  },
+  {
+    "code": "CB1420001",
+    "name": "Black",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#161211",
+    "page": 1
+  },
+  {
+    "code": "CB1660001",
+    "name": "Dark Blue",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#192441",
+    "page": 1
+  },
+  {
+    "code": "CB1620001",
+    "name": "Bright Blue",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#143542",
+    "page": 1
+  },
+  {
+    "code": "BP1140001",
+    "name": "Cardinal Red - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#060f23",
+    "page": 1
+  },
+  {
+    "code": "BM6170001",
+    "name": "Ambulance Yellow - O",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#cfdd7c",
+    "page": 1
+  },
+  {
+    "code": "BK9540001",
+    "name": "Light Pistachio",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#b7cac0",
+    "page": 1
+  },
+  {
+    "code": "BK9550001",
+    "name": "Sea-Breeze Blue",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#6d7575",
+    "page": 1
+  },
+  {
+    "code": "CB1580001",
+    "name": "Gold",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#8b774c",
+    "page": 1
+  },
+  {
+    "code": "CP7120001",
+    "name": "Pure Red",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#b1070f",
+    "page": 1
+  },
+  {
+    "code": "CP7080001",
+    "name": "Vibrant Violet",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#4e13a8",
+    "page": 1
+  },
+  {
+    "code": "CP7100001",
+    "name": "Turquoise Ocean NEW!",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#d0dfe4",
+    "page": 1
+  },
+  {
+    "code": "CB1630001",
+    "name": "Brown",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#8e746a",
+    "page": 1
+  },
+  {
+    "code": "BX8090001",
+    "name": "Mysterious Indigo",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#d5e3e6",
+    "page": 1
+  },
+  {
+    "code": "CQ7600001",
+    "name": "Frozen Wave",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#64adbd",
+    "page": 1
+  },
+  {
+    "code": "CB1590001",
+    "name": "Grey",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#515062",
+    "page": 1
+  },
+  {
+    "code": "BL8220001",
+    "name": "Eclipse",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#292822",
+    "page": 1
+  },
+  {
+    "code": "CB1600001",
+    "name": "Black",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#2d1829",
+    "page": 1
+  },
+  {
+    "code": "BR4180001",
+    "name": "Fun Purple",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#451f1f",
+    "page": 1
+  },
+  {
+    "code": "BR4220001",
+    "name": "Passion Red",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#364c57",
+    "page": 1
+  },
+  {
+    "code": "BX8070001",
+    "name": "Pride Prismatic Grey",
+    "finishLabel": "Gloss Metallic",
+    "finish": "gloss",
+    "hex": "#4f262c",
+    "page": 1
+  },
+  {
+    "code": "BU9400001",
+    "name": "Obsidian Black",
+    "finishLabel": "Gloss",
+    "finish": "gloss",
+    "hex": "#d2e0e3",
+    "page": 1
+  },
+  {
+    "code": "LB5320001",
+    "name": "White",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#191917",
+    "page": 1
+  },
+  {
+    "code": "CT8950001",
+    "name": "Black",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#111110",
+    "page": 1
+  },
+  {
+    "code": "LB5180001",
+    "name": "Orange",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#006d00",
+    "page": 1
+  },
+  {
+    "code": "LB5340001",
+    "name": "Blue EU*",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#00767b",
+    "page": 1
+  },
+  {
+    "code": "LB5330001",
+    "name": "Khaki Green",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#4e5643",
+    "page": 1
+  },
+  {
+    "code": "LB5350001",
+    "name": "Olive Green",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#373f2c",
+    "page": 1
+  },
+  {
+    "code": "LB5360001",
+    "name": "Dark Grey",
+    "finishLabel": "Matte",
+    "finish": "matte",
+    "hex": "#727176",
+    "page": 1
+  },
+  {
+    "code": "AW1690008",
+    "name": "White",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#8e9085",
+    "page": 1
+  },
+  {
+    "code": "BP1190001",
+    "name": "Bubblegum Pink - O",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#454545",
+    "page": 1
+  },
+  {
+    "code": "BP1160002",
+    "name": "Carmine Red - O",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#952927",
+    "page": 1
+  },
+  {
+    "code": "AW6720001",
+    "name": "Khaki Green",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#5e4d3b",
+    "page": 1
+  },
+  {
+    "code": "AW1680001",
+    "name": "Black",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#161616",
+    "page": 1
+  },
+  {
+    "code": "AW1700001",
+    "name": "White Pearl",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#c2c8b6",
+    "page": 1
+  },
+  {
+    "code": "CP0090001",
+    "name": "Jade",
+    "finishLabel": "Satin",
+    "finish": "satin",
+    "hex": "#bfcec4",
+    "page": 1
+  }
+]

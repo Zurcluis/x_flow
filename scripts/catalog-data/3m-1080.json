@@ -1,0 +1,802 @@
+[
+  {
+    "code": "1080-GP240",
+    "name": "Gloss White Gold Sparkle",
+    "hex": "#d3d7d8",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-GP292",
+    "name": "Gloss Galaxy Black",
+    "hex": "#14161a",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-GP282",
+    "name": "Gloss Ember Black",
+    "hex": "#24171f",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-GP272",
+    "name": "Gloss Midnight Blue",
+    "hex": "#172430",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-GP253",
+    "name": "Gloss Cinder Spark Red",
+    "hex": "#760824",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-MX12",
+    "name": "Matrix Black",
+    "hex": "#343535",
+    "finish": "matte",
+    "series": "Matrix",
+    "page": 1
+  },
+  {
+    "code": "1080-SB12",
+    "name": "Shadow Black",
+    "hex": "#383838",
+    "finish": "matte",
+    "series": "Shadow",
+    "page": 1
+  },
+  {
+    "code": "1080-SB26",
+    "name": "Shadow Military Green",
+    "hex": "#474f44",
+    "finish": "matte",
+    "series": "Shadow",
+    "page": 1
+  },
+  {
+    "code": "1080-BR120",
+    "name": "Brushed Aluminium",
+    "hex": "#9caca7",
+    "finish": "satin",
+    "series": "Brushed",
+    "page": 1
+  },
+  {
+    "code": "1080-BR201",
+    "name": "Brushed Steel",
+    "hex": "#4d585c",
+    "finish": "satin",
+    "series": "Brushed",
+    "page": 1
+  },
+  {
+    "code": "1080-BR230",
+    "name": "Brushed Titanium",
+    "hex": "#838474",
+    "finish": "satin",
+    "series": "Brushed",
+    "page": 1
+  },
+  {
+    "code": "1080-BR212",
+    "name": "Brushed Black Metallic",
+    "hex": "#242522",
+    "finish": "satin",
+    "series": "Brushed",
+    "page": 1
+  },
+  {
+    "code": "1080-CFS10",
+    "name": "Carbon Fiber White",
+    "hex": "#babbbb",
+    "finish": "carbon",
+    "series": "Carbon Fiber",
+    "page": 1
+  },
+  {
+    "code": "1080-CFS201",
+    "name": "Carbon Fiber Anthracite",
+    "hex": "#575b5d",
+    "finish": "carbon",
+    "series": "Carbon Fiber",
+    "page": 1
+  },
+  {
+    "code": "1080-CFS12",
+    "name": "Carbon Fiber Black",
+    "hex": "#262a2c",
+    "finish": "carbon",
+    "series": "Carbon Fiber",
+    "page": 1
+  },
+  {
+    "code": "1080-GP287",
+    "name": "Gloss Flip Electric Wave",
+    "hex": "#0053a4",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-SP277",
+    "name": "Satin Flip Glacial Frost",
+    "hex": "#1f5696",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 1
+  },
+  {
+    "code": "1080-SP276",
+    "name": "Satin Flip Caribbean Shimmer",
+    "hex": "#006360",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 1
+  },
+  {
+    "code": "1080-SP236",
+    "name": "Satin Flip Volcanic Flare",
+    "hex": "#2f201f",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 1
+  },
+  {
+    "code": "1080-GP281",
+    "name": "Gloss Flip Psychedelic",
+    "hex": "#2e3561",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-SP281",
+    "name": "Satin Flip Psychedelic",
+    "hex": "#2c292c",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 1
+  },
+  {
+    "code": "1080-GP278",
+    "name": "Gloss Flip Deep Space",
+    "hex": "#161a25",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-GP280",
+    "name": "Gloss Flip Ghost Pearl",
+    "hex": "#dee5ea",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 1
+  },
+  {
+    "code": "1080-SP280",
+    "name": "Satin Flip Ghost Pearl",
+    "hex": "#edece8",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 1
+  },
+  {
+    "code": "1080-GC451",
+    "name": "Gloss Silver Chrome*",
+    "hex": "#525a64",
+    "finish": "gloss",
+    "series": "Chrome",
+    "page": 1
+  },
+  {
+    "code": "1080-M10",
+    "name": "Matte White",
+    "hex": "#d8d9da",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-S10",
+    "name": "Satin White",
+    "hex": "#606267",
+    "finish": "satin",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-SP10",
+    "name": "Satin Pearl White",
+    "hex": "#d8d9da",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 2
+  },
+  {
+    "code": "1080-SP240",
+    "name": "Satin Frozen Vanilla",
+    "hex": "#53555a",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 2
+  },
+  {
+    "code": "1080-M54",
+    "name": "Matte Orange",
+    "hex": "#ff7a3a",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-M13",
+    "name": "Matte Hotrod Red",
+    "hex": "#ef2e1a",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-SP273",
+    "name": "Satin Vampire Red",
+    "hex": "#902628",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 2
+  },
+  {
+    "code": "1080-M67",
+    "name": "Matte Riviera Blue",
+    "hex": "#039cd6",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-M27",
+    "name": "Matte Dark Navy",
+    "hex": "#08212f",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-S57",
+    "name": "Satin Key West",
+    "hex": "#68d1cb",
+    "finish": "satin",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-S196",
+    "name": "Satin Apple Green",
+    "hex": "#1da557",
+    "finish": "satin",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-M26",
+    "name": "Matte Military Green",
+    "hex": "#4e5d45",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-S51",
+    "name": "Satin Battleship Grey",
+    "hex": "#617a81",
+    "finish": "satin",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-M21",
+    "name": "Matte Silver",
+    "hex": "#748489",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-S12",
+    "name": "Satin Black",
+    "hex": "#333037",
+    "finish": "satin",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-SP242",
+    "name": "Satin Gold Dust Black",
+    "hex": "#2e2b20",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 2
+  },
+  {
+    "code": "1080-M12",
+    "name": "Matte Black",
+    "hex": "#100d0f",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-M22",
+    "name": "Matte Deep Black",
+    "hex": "#1d2023",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-DM12",
+    "name": "Dead Matte Black",
+    "hex": "#141210",
+    "finish": "matte",
+    "series": "Dead Matte",
+    "page": 2
+  },
+  {
+    "code": "1080-M230",
+    "name": "Matte Grey Aluminium",
+    "hex": "#738386",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-S261",
+    "name": "Satin Dark Grey",
+    "hex": "#24282b",
+    "finish": "satin",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-S271",
+    "name": "Satin Thundercloud",
+    "hex": "#3f4f57",
+    "finish": "satin",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-M261",
+    "name": "Matte Dark Grey",
+    "hex": "#3e4649",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-M203",
+    "name": "Matte Red Metallic",
+    "hex": "#981d28",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-M227",
+    "name": "Matte Blue Metallic",
+    "hex": "#006eb9",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-M206",
+    "name": "Matte Pine Green Metallic",
+    "hex": "#324938",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-M211",
+    "name": "Matte Charcoal Metallic",
+    "hex": "#4a413e",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-M229",
+    "name": "Matte Copper Metallic",
+    "hex": "#c36e4e",
+    "finish": "matte",
+    "series": "Standard",
+    "page": 2
+  },
+  {
+    "code": "1080-SP59",
+    "name": "Satin Caramel Luster",
+    "hex": "#a4876c",
+    "finish": "satin",
+    "series": "Satin Flip / Pearl",
+    "page": 2
+  },
+  {
+    "code": "1080-S120",
+    "name": "Satin White Aluminium",
+    "hex": "#a8b6bb",
+    "finish": "satin",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G10",
+    "name": "Gloss White",
+    "hex": "#e5e5e6",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G79",
+    "name": "Gloss Light Ivory",
+    "hex": "#fcdcaa",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G15",
+    "name": "Gloss Bright Yellow",
+    "hex": "#ffce3d",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G25",
+    "name": "Gloss Sunflower",
+    "hex": "#ffab34",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G54",
+    "name": "Gloss Bright Orange",
+    "hex": "#ff7d24",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G14",
+    "name": "Gloss Burnt Orange",
+    "hex": "#ff621f",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G13",
+    "name": "Gloss Hotrod Red",
+    "hex": "#ff3a1a",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G83",
+    "name": "Gloss Dark Red",
+    "hex": "#e3331b",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G103",
+    "name": "Gloss Hot Pink",
+    "hex": "#df518e",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-GP258",
+    "name": "Gloss Plum Explosion",
+    "hex": "#282794",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 2
+  },
+  {
+    "code": "1080-G77",
+    "name": "Gloss Sky Blue",
+    "hex": "#4ed0f0",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G47",
+    "name": "Gloss Intense Blue",
+    "hex": "#0065b7",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G127",
+    "name": "Gloss Boat Blue",
+    "hex": "#00172e",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G3044",
+    "name": "Gloss Light Green",
+    "hex": "#6fc34b",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G46",
+    "name": "Gloss Kelly Green",
+    "hex": "#09a85e",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-GP99",
+    "name": "Gloss Black Rose",
+    "hex": "#3a1629",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 2
+  },
+  {
+    "code": "1080-GP298",
+    "name": "Gloss Wicked",
+    "hex": "#20203a",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 2
+  },
+  {
+    "code": "1080-G12",
+    "name": "Gloss Black",
+    "hex": "#303239",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G120",
+    "name": "Gloss White Aluminium",
+    "hex": "#afb0b3",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G251",
+    "name": "Gloss Sterling Silver",
+    "hex": "#7c8b8d",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G31",
+    "name": "Gloss Storm Grey",
+    "hex": "#a5b7b2",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G201",
+    "name": "Gloss Anthracite",
+    "hex": "#3b4447",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G203",
+    "name": "Gloss Red Metallic",
+    "hex": "#901d22",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G227",
+    "name": "Gloss Blue Metallic",
+    "hex": "#035c96",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G247",
+    "name": "Gloss Ice Blue",
+    "hex": "#356a91",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G217",
+    "name": "Gloss Steel Blue Metallic",
+    "hex": "#103a74",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G211",
+    "name": "Gloss Charcoal Metallic",
+    "hex": "#48403c",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G212",
+    "name": "Gloss Black Metallic",
+    "hex": "#121213",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G241",
+    "name": "Gloss Gold Metallic",
+    "hex": "#9e7736",
+    "finish": "gloss",
+    "series": "Metallic",
+    "page": 2
+  },
+  {
+    "code": "1080-G344",
+    "name": "Gloss Liquid Copper",
+    "hex": "#d46520",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G364",
+    "name": "Gloss Fiery Orange",
+    "hex": "#eb4d1c",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G363",
+    "name": "Gloss Dragon Fire Red",
+    "hex": "#c52316",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-S363",
+    "name": "Satin Smoldering Red",
+    "hex": "#c42f2d",
+    "finish": "satin",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G348",
+    "name": "Gloss Fierce Fuchsia",
+    "hex": "#952483",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G337",
+    "name": "Gloss Blue Fire",
+    "hex": "#0065b7",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G378",
+    "name": "Gloss Blue Raspberry",
+    "hex": "#04499e",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G377",
+    "name": "Gloss Cosmic Blue",
+    "hex": "#05418e",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G356",
+    "name": "Gloss Atomic Teal",
+    "hex": "#008ca2",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-GP291",
+    "name": "Gloss Glacier Grey",
+    "hex": "#18283d",
+    "finish": "gloss",
+    "series": "Sparkle / Flip",
+    "page": 2
+  },
+  {
+    "code": "1080-G335",
+    "name": "Gloss Lemon Sting",
+    "hex": "#c1a323",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-G336",
+    "name": "Gloss Green Envy",
+    "hex": "#09a149",
+    "finish": "gloss",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-S344",
+    "name": "Satin Canyon Copper",
+    "hex": "#d46520",
+    "finish": "satin",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-S347",
+    "name": "Satin Perfect Blue",
+    "hex": "#00669c",
+    "finish": "satin",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-S327",
+    "name": "Satin Ocean Shimmer",
+    "hex": "#008eaf",
+    "finish": "satin",
+    "series": "Series 300",
+    "page": 2
+  },
+  {
+    "code": "1080-S335",
+    "name": "Satin Bitter Yellow",
+    "hex": "#c1a323",
+    "finish": "satin",
+    "series": "Series 300",
+    "page": 2
+  }
+]

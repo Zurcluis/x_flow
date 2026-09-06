@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Vehicle } from "@/domains/vehicles/types";
 import { initialFinishPresets } from "@/lib/demo-data/vision-simulation-data";
 import { simulateFilmOnPhoto } from "@/lib/film-simulation";
@@ -12,17 +13,24 @@ import {
   Car,
   Sliders,
   Info,
+  Box,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FinishSelector } from "@/components/xflow/simulator/FinishSelector";
 import {
   calculateColorContrast,
   recommendCoverageLevel,
   formatCoverageLabel,
 } from "@/domains/intelligence/vision-analyzer";
 import { FinishPreset } from "@/domains/intelligence/types";
+
+// Canvas WebGL só no cliente (WebGL não existe em SSR)
+const CarStudio3D = dynamic(
+  () => import("@/components/xflow/simulator/CarStudio3D").then((m) => m.CarStudio3D),
+  { ssr: false, loading: () => null }
+);
 
 // Parâmetros de negócio — configuráveis, alinhados com o blueprint (33 €/h)
 const HOURLY_RATE_EUR = 33;
@@ -64,6 +72,16 @@ function presetTargetFamily(preset: FinishPreset): string {
   return "custom";
 }
 
+function shortBrand(brand: string): string {
+  if (/3m/i.test(brand)) return "3M";
+  if (/avery/i.test(brand)) return "Avery";
+  if (/xpel/i.test(brand)) return "XPEL";
+  if (/stek/i.test(brand)) return "Stek";
+  if (/inozetek/i.test(brand)) return "Inozetek";
+  if (/kpmf/i.test(brand)) return "KPMF";
+  return brand;
+}
+
 export function SimulatorView({
   vehicles: vehiclesProp,
   coverPhotos,
@@ -81,6 +99,22 @@ export function SimulatorView({
   const [selectedPreset, setSelectedPreset] = useState<FinishPreset>(presets[0]);
   const [selectedCoverage, setSelectedCoverage] = useState<"exterior" | "extended" | "integral">("extended");
   const [sliderPos, setSliderPos] = useState(50);
+  const [applyMode, setApplyMode] = useState<"panels" | "car">("panels");
+  const [view, setView] = useState<"3d" | "photo">("3d");
+  const [brandKey, setBrandKey] = useState<string | null>(null);
+
+  const brandGroups = useMemo(() => {
+    const map = new Map<string, { key: string; short: string; films: FinishPreset[] }>();
+    for (const f of presets) {
+      if (!map.has(f.brand)) {
+        map.set(f.brand, { key: f.brand, short: shortBrand(f.brand), films: [] });
+      }
+      map.get(f.brand)!.films.push(f);
+    }
+    return [...map.values()];
+  }, [presets]);
+  const activeBrand = brandKey ?? brandGroups[0]?.key ?? null;
+  const visibleFilms = brandGroups.find((g) => g.key === activeBrand)?.films ?? [];
 
   const selectedVehicle =
     vehicles.find((v) => v.id === selectedVehicleId) || vehicles[0];
@@ -98,7 +132,7 @@ export function SimulatorView({
   });
   const canSimulate =
     selectedPreset.textureEffect !== "carbon" && selectedPreset.glossGu !== undefined;
-  const simKey = `${selectedVehicle.id}|${selectedPreset.id}|${coverPhoto ? "foto" : "sem"}`;
+  const simKey = `${selectedVehicle.id}|${selectedPreset.id}|${coverPhoto ? "foto" : "sem"}|${applyMode}`;
 
   useEffect(() => {
     if (!coverPhoto || !canSimulate || !selectedPreset.glossGu) return;
@@ -109,6 +143,7 @@ export function SimulatorView({
       metallic: selectedPreset.metallic ?? 0,
       flakeScale: selectedPreset.flakeScale ?? 0,
       transparent: isClearFilm,
+      applyMode,
     })
       .then((url) => {
         if (!cancelled) setSimResult({ key: simKey, url });
@@ -119,7 +154,7 @@ export function SimulatorView({
     return () => {
       cancelled = true;
     };
-  }, [coverPhoto, simKey, canSimulate, isClearFilm, selectedPreset.glossGu, selectedPreset.colorHex, selectedPreset.metallic, selectedPreset.flakeScale]);
+  }, [coverPhoto, simKey, canSimulate, isClearFilm, selectedPreset.glossGu, selectedPreset.colorHex, selectedPreset.metallic, selectedPreset.flakeScale, applyMode]);
 
   const simUrl = simResult.key === simKey ? simResult.url : null;
   const simPending = Boolean(coverPhoto) && canSimulate && simUrl === null;
@@ -218,6 +253,66 @@ export function SimulatorView({
         })}
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
+      {/* Coluna esquerda: palco + análise */}
+      <div className="flex flex-col gap-4 min-w-0">
+      {/* Modo de visualização + área de aplicação (modo foto) */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setView("3d")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer border ${
+              view === "3d"
+                ? "bg-[#d3a548] text-[#050606] border-[#d3a548]"
+                : "bg-[#101314] text-[#a9adae] border-white/[0.08] hover:border-white/25"
+            }`}
+          >
+            <Box className="h-3.5 w-3.5" />
+            Estúdio 3D
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("photo")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all cursor-pointer border ${
+              view === "photo"
+                ? "bg-[#d3a548] text-[#050606] border-[#d3a548]"
+                : "bg-[#101314] text-[#a9adae] border-white/[0.08] hover:border-white/25"
+            }`}
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            Foto real
+          </button>
+        </div>
+
+        {view === "photo" && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-[#a9adae] shrink-0 mr-1">
+              Aplicar película a:
+            </span>
+            {(
+              [
+                ["panels", "Só chapa metálica"],
+                ["car", "Viatura toda"],
+              ] as const
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setApplyMode(mode)}
+                className={`px-2 py-1 rounded text-[11px] font-bold uppercase transition-all cursor-pointer ${
+                  applyMode === mode
+                    ? "bg-[#d3a548] text-[#050606]"
+                    : "bg-white/[0.04] text-[#a9adae] hover:bg-white/[0.08]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Visual Simulation Stage */}
       <div className="relative w-full h-80 sm:h-[26rem] rounded-[20px] overflow-hidden bg-gradient-to-b from-[#0e1214] to-[#060809] border border-white/[0.08] flex items-center justify-center p-6 shadow-2xl">
         {/* Background Ambient Studio Light */}
@@ -230,6 +325,21 @@ export function SimulatorView({
         />
 
         {/* Vehicle Render */}
+        {view === "3d" ? (
+          <div className="absolute inset-0 z-10">
+            <CarStudio3D
+              film={{
+                name: selectedPreset.name,
+                colorHex: selectedPreset.colorHex,
+                textureEffect: selectedPreset.textureEffect,
+                glossGu: selectedPreset.glossGu,
+                metallic: selectedPreset.metallic,
+                flakeScale: selectedPreset.flakeScale,
+                transparent: isClearFilm,
+              }}
+            />
+          </div>
+        ) : (
         <div className="relative z-10 w-full max-w-2xl h-full flex flex-col items-center justify-center select-none">
           {coverPhoto ? (
             <div className="relative w-full h-full flex items-center justify-center">
@@ -365,6 +475,7 @@ export function SimulatorView({
             </svg>
           )}
         </div>
+        )}
 
         {/* Floating Finish Badge on Stage */}
         <div className="absolute top-4 left-4 p-3 rounded-md bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-center gap-3">
@@ -497,19 +608,86 @@ export function SimulatorView({
           </span>
         </Card>
       </div>
+      </div>
 
-      {/* Finish Presets Grid */}
-      <div className="flex flex-col gap-3">
-        <h3 className="text-base font-bold text-[#f1ede5] flex items-center gap-2">
-          <Sliders className="h-4 w-4 text-[#d3a548]" />
-          <span>Catálogo de Acabamentos e Cores</span>
-        </h3>
+      {/* Painel de películas por marca — sempre visível, aplicação instantânea */}
+      <aside className="lg:sticky lg:top-4 rounded-[20px] border border-white/[0.08] bg-[#101314] flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden">
+        <div className="p-4 pb-2 shrink-0">
+          <h3 className="text-sm font-bold text-[#f1ede5] flex items-center gap-2">
+            <Sliders className="h-4 w-4 text-[#d3a548]" />
+            <span>Catálogo de Películas</span>
+            <span className="text-[10px] text-[#747a7c] font-mono ml-auto">{presets.length}</span>
+          </h3>
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {brandGroups.map((g) => (
+              <button
+                key={g.key}
+                type="button"
+                onClick={() => setBrandKey(g.key)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer border ${
+                  activeBrand === g.key
+                    ? "bg-[#d3a548] text-[#050606] border-[#d3a548]"
+                    : "bg-white/[0.04] text-[#a9adae] border-transparent hover:bg-white/[0.08]"
+                }`}
+              >
+                {g.short}
+                <span className="ml-1 opacity-60 font-mono text-[10px]">{g.films.length}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <FinishSelector
-          presets={presets}
-          selectedPresetId={selectedPreset.id}
-          onSelectPreset={setSelectedPreset}
-        />
+        <div className="overflow-y-auto px-4 pb-3 grid grid-cols-2 gap-1.5 min-h-0 content-start">
+          {visibleFilms.map((f) => {
+            const selected = f.id === selectedPreset.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setSelectedPreset(f)}
+                title={`${f.name} · ${f.textureEffect} · ${f.glossGu ?? "?"} GU · ${(f.costPerMeterCents / 100).toFixed(2)} €/m`}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-md border text-left transition-all cursor-pointer ${
+                  selected
+                    ? "bg-[#d3a548]/15 border-[#d3a548]"
+                    : "bg-white/[0.02] border-white/[0.05] hover:border-white/25"
+                }`}
+              >
+                <span
+                  className="h-5 w-5 rounded-full shrink-0 border border-white/25"
+                  style={{ backgroundColor: f.colorHex }}
+                />
+                <span className="min-w-0">
+                  <span className={`block text-[11px] font-semibold truncate ${selected ? "text-[#f7d46d]" : "text-[#f1ede5]"}`}>
+                    {f.name}
+                  </span>
+                  <span className="block text-[9px] uppercase tracking-wider font-mono text-[#747a7c]">
+                    {f.textureEffect} · {f.glossGu ?? "?"} GU
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="p-4 pt-3 border-t border-white/[0.06] shrink-0 flex items-center gap-3">
+          <span
+            className="h-8 w-8 rounded-md shrink-0 border border-white/25"
+            style={{ backgroundColor: selectedPreset.colorHex }}
+          />
+          <div className="min-w-0 flex-1">
+            <span className="block text-[12px] font-bold text-[#f1ede5] truncate">{selectedPreset.name}</span>
+            <span className="block text-[10px] text-[#a9adae] font-mono truncate">
+              {(selectedPreset.costPerMeterCents / 100).toFixed(2)} €/m · {selectedPreset.warrantyYears} anos
+            </span>
+          </div>
+          <Link href={quoteHref}>
+            <Button className="bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d] font-bold h-9 px-3 text-xs">
+              Orçamento
+              <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </Link>
+        </div>
+      </aside>
       </div>
     </div>
   );

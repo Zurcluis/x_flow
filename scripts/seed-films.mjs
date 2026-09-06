@@ -1,9 +1,11 @@
-// Seed do catálogo de películas (tabela films) — fonte de verdade: docs/catalogos-peliculas/
-// Dados (códigos, acabamentos, garantias) verificados nos catálogos/TDS oficiais a 06/09/2026.
-// Cores hex aproximadas de fotografia de produto — afinar com amostras físicas (L*a*b*/GU).
+// Seed do catálogo de películas (tabela films).
+// Fonte: docs/catalogos-peliculas/ (TDS oficiais) + scripts/catalog-data/ (extração automática
+// dos PDFs oficiais, ex.: scripts/parse-3m-catalog.mjs sobre public/catalogos/3M.pdf).
 // Uso: node scripts/seed-films.mjs  (substitui o catálogo da organização)
 import pg from "pg";
 import fs from "node:fs";
+import path from "node:path";
+import url from "node:url";
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
@@ -21,31 +23,79 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-// [name, brand, sku, type, finish, colorHex, glossGu, metallic, flakeScale, costCents, warrantyYears]
-const FILMS = [
-  // 3M Wrap Film Series 2080 — Product Bulletin set/2024 (docs/catalogos-peliculas/3m-2080-bulletin.pdf)
-  ["2080 Gloss Black", "3M Wrap Film Series 2080", "G12", "chrome_delete", "gloss", "#0e0f10", 85, 0, 0, 1800, 7],
-  ["2080 Matte Deep Black", "3M Wrap Film Series 2080", "M22", "vinyl_wrap", "matte", "#1b1c1e", 10, 0, 0, 2800, 7],
-  ["2080 Matte Blue Metallic", "3M Wrap Film Series 2080", "M227", "vinyl_wrap", "matte", "#1f3a5f", 12, 0.35, 0.5, 2900, 7],
-  // Avery Dennison SW900 — swatch poster oficial (avery-sw900-catalogo-cores.pdf)
-  ["SW900 Gloss Black", "Avery Dennison SW900", "SW900-190-O", "vinyl_wrap", "gloss", "#0d0e10", 85, 0, 0, 2950, 7],
-  ["SW900 Gloss Dark Grey", "Avery Dennison SW900", "SW900-865-O", "vinyl_wrap", "gloss", "#4a4d50", 85, 0, 0, 2950, 7],
-  ["SW900 Matte Black", "Avery Dennison SW900", "SW900-180-O", "vinyl_wrap", "matte", "#161718", 10, 0, 0, 2950, 7],
-  ["SW900 Matte Metallic Anthracite", "Avery Dennison SW900", "SW900-858-M", "vinyl_wrap", "matte", "#2e3134", 14, 0.2, 0.3, 3050, 7],
-  // XPEL — TDS oficiais xpel.com/product-specifications (10 anos)
-  ["Ultimate Plus PPF", "XPEL", "UPSC", "clear_ppf_gloss", "gloss", "#c9cdd1", 92, 0, 0, 5500, 10],
-  ["Stealth PPF", "XPEL", "STSC", "clear_ppf_matte", "matte", "#c9cdd1", 12, 0, 0, 6000, 10],
-  // Stek — stekautomotive.com: DYNOshield 12 anos, DYNOmatte 10 anos
-  ["DYNOshield", "Stek Automotive", "DYNS", "clear_ppf_gloss", "gloss", "#c9cdd1", 93, 0, 0, 4200, 12],
-  ["DYNOmatte", "Stek Automotive", "DYNM", "clear_ppf_matte", "matte", "#282d30", 11, 0, 0, 4800, 10],
-  // Inozetek — inozetek.com: wrap SuperGloss (MSG025, SG004) + INOcolor PPF DPPF (10 anos, gloss >85 GU)
-  ["Super Gloss Metallic Midnight Purple", "Inozetek", "MSG025", "vinyl_wrap", "gloss", "#2f2140", 90, 0.55, 0.8, 3150, 7],
-  ["Super Gloss Nardo Grey", "Inozetek", "SG004", "vinyl_wrap", "gloss", "#74797d", 90, 0, 0, 3150, 7],
-  ["INOcolor Metallic Midnight Purple PPF", "Inozetek", "DPPF901", "color_ppf", "gloss", "#2f2140", 88, 0.55, 0.8, 5500, 10],
-  ["INOcolor Frozen Matte Ultimate Grey PPF", "Inozetek", "DPPF809", "color_ppf", "matte", "#8d9196", 12, 0.15, 0.3, 5500, 10],
-  // KPMF (ORAFOL) — kpmfvehiclewrap.com: K75320 Matt Anthracite Cast VWS IV
-  ["Matt Anthracite Cast VWS IV", "KPMF", "K75320", "vinyl_wrap", "matte", "#2e3134", 14, 0.2, 0.3, 2900, 7],
+const GU = { gloss: 85, satin: 30, matte: 12, carbon: 20 };
+const COST = { gloss: 2500, satin: 2800, matte: 2800, carbon: 3800 };
+
+function filmRow({ name, brand, sku, type, finish, colorHex, glossGu, metallic, flakeScale, costPerMeterCents, warrantyYears }) {
+  return [
+    name, brand, sku, type, finish, colorHex,
+    glossGu ?? GU[finish] ?? 85,
+    metallic ?? 0,
+    flakeScale ?? 0,
+    costPerMeterCents ?? COST[finish] ?? 2500,
+    warrantyYears ?? 7,
+  ];
+}
+
+// — 3M 1080: extração automática do colour card oficial (scripts/catalog-data/3m-1080.json)
+const catalogDir = path.join(path.dirname(url.fileURLToPath(import.meta.url)), "catalog-data");
+const m3 = JSON.parse(fs.readFileSync(path.join(catalogDir, "3m-1080.json"), "utf8"));
+const films3m = m3.map((f) =>
+  filmRow({
+    name: f.name,
+    brand: "3M Wrap Film Series 1080",
+    sku: f.code,
+    type: "vinyl_wrap",
+    finish: f.finish,
+    colorHex: f.hex,
+    metallic: /metallic|sparkle|flip|chrome/i.test(f.name) ? 0.35 : 0,
+    flakeScale: /sparkle|flip/i.test(f.name) ? 0.6 : 0,
+  })
+);
+
+// — Avery Dennison Supreme Wrapping Film: extração automática da colour card 2026
+const avery = JSON.parse(fs.readFileSync(path.join(catalogDir, "avery-sw900.json"), "utf8"));
+const GU_AVERY = { gloss: 85, satin: 30, matte: 12 };
+// brand+name é único na BD: desambigua nomes repetidos com o acabamento e, se necessário, o código
+const nameCounts = new Map();
+for (const f of avery) nameCounts.set(f.name, (nameCounts.get(f.name) ?? 0) + 1);
+const averySeen = new Map();
+const filmsAvery = avery.map((f) => {
+  let name = f.name;
+  if ((nameCounts.get(name) ?? 0) > 1) name = `${f.name} (${f.finishLabel})`;
+  averySeen.set(name, (averySeen.get(name) ?? 0) + 1);
+  if ((averySeen.get(name) ?? 0) > 1) name = `${name} ${f.code.slice(-4)}`;
+  return filmRow({
+    name,
+    brand: "Avery Dennison Supreme Wrapping Film",
+    sku: f.code,
+    type: "vinyl_wrap",
+    finish: f.finish,
+    colorHex: f.hex,
+    glossGu: GU_AVERY[f.finish],
+    metallic: /metallic|pearl|diamond/i.test(f.finishLabel) ? 0.35 : 0,
+    flakeScale: /metallic|pearl|diamond/i.test(f.finishLabel) ? 0.5 : 0,
+  });
+});
+
+// — Demais marcas: dados verificados nos TDS oficiais (docs/catalogos-peliculas/)
+const curated = [
+  // XPEL — TDS oficiais (10 anos)
+  { name: "Ultimate Plus PPF", brand: "XPEL", sku: "UPSC", type: "clear_ppf_gloss", finish: "gloss", colorHex: "#c9cdd1", glossGu: 92, costPerMeterCents: 5500, warrantyYears: 10 },
+  { name: "Stealth PPF", brand: "XPEL", sku: "STSC", type: "clear_ppf_matte", finish: "matte", colorHex: "#c9cdd1", glossGu: 12, costPerMeterCents: 6000, warrantyYears: 10 },
+  // Stek — site oficial (DYNOshield 12 anos)
+  { name: "DYNOshield", brand: "Stek Automotive", sku: "DYNS", type: "clear_ppf_gloss", finish: "gloss", colorHex: "#c9cdd1", glossGu: 93, costPerMeterCents: 4200, warrantyYears: 12 },
+  { name: "DYNOmatte", brand: "Stek Automotive", sku: "DYNM", type: "clear_ppf_matte", finish: "matte", colorHex: "#282d30", glossGu: 11, costPerMeterCents: 4800, warrantyYears: 10 },
+  // Inozetek — inozetek.com (wrap 7 anos; INOcolor PPF 10 anos, gloss >85 GU)
+  { name: "Super Gloss Metallic Midnight Purple", brand: "Inozetek", sku: "MSG025", type: "vinyl_wrap", finish: "gloss", colorHex: "#2f2140", glossGu: 90, metallic: 0.55, flakeScale: 0.8, costPerMeterCents: 3150, warrantyYears: 7 },
+  { name: "Super Gloss Nardo Grey", brand: "Inozetek", sku: "SG004", type: "vinyl_wrap", finish: "gloss", colorHex: "#74797d", glossGu: 90, costPerMeterCents: 3150, warrantyYears: 7 },
+  { name: "INOcolor Metallic Midnight Purple PPF", brand: "Inozetek", sku: "DPPF901", type: "color_ppf", finish: "gloss", colorHex: "#2f2140", glossGu: 88, metallic: 0.55, flakeScale: 0.8, costPerMeterCents: 5500, warrantyYears: 10 },
+  { name: "INOcolor Frozen Matte Ultimate Grey PPF", brand: "Inozetek", sku: "DPPF809", type: "color_ppf", finish: "matte", colorHex: "#8d9196", glossGu: 12, metallic: 0.15, flakeScale: 0.3, costPerMeterCents: 5500, warrantyYears: 10 },
+  // KPMF (ORAFOL) — kpmfvehiclewrap.com
+  { name: "Matt Anthracite Cast VWS IV", brand: "KPMF", sku: "K75320", type: "vinyl_wrap", finish: "matte", colorHex: "#2e3134", glossGu: 14, metallic: 0.2, flakeScale: 0.3, costPerMeterCents: 2900, warrantyYears: 7 },
 ];
+
+const FILMS = [...films3m, ...filmsAvery, ...curated.map(filmRow)];
 
 const client = new pg.Client({ connectionString: DATABASE_URL });
 await client.connect();
@@ -63,15 +113,14 @@ const orgId = orgRows[0].id;
 await client.query(`DELETE FROM films WHERE organization_id = $1`, [orgId]);
 
 for (const f of FILMS) {
-  const [name, brand, sku, type, finish, colorHex, gu, metallic, flake, cost, warranty] = f;
   await client.query(
     `INSERT INTO films
       (organization_id, name, brand, sku, type, finish, color_hex, gloss_gu, metallic, flake_scale,
        cost_per_meter_cents, warranty_years)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-    [orgId, name, brand, sku, type, finish, colorHex, gu, metallic, flake, cost, warranty]
+    [orgId, ...f]
   );
 }
 
-console.log(`Films: ${FILMS.length} inseridas a partir dos catálogos oficiais.`);
+console.log(`Films: ${FILMS.length} inseridas (${films3m.length} 3M 1080 + ${filmsAvery.length} Avery SWF + ${curated.length} curadas).`);
 await client.end();

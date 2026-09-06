@@ -19,6 +19,11 @@ export interface FilmSimParams {
   transparent?: boolean;
   /** Isola a viatura do ambiente (default: true). false pinta a imagem toda. */
   isolateCar?: boolean;
+  /**
+   * "panels" (default): pinta só a chapa — exclui vidros, grelha, pneus e frisos.
+   * "car": pinta toda a silhueta da viatura.
+   */
+  applyMode?: "panels" | "car";
 }
 
 const MAX_DIM = 1200;
@@ -27,6 +32,12 @@ const BG_EDGE_T2 = 3 * 22 * 22;
 /** Frações mínima/máxima de pixéis de viatura para confiar na segmentação */
 const CAR_FRACTION_MIN = 0.08;
 const CAR_FRACTION_MAX = 0.96;
+/** Luminância sRGB abaixo da qual um pixel da viatura é pneu/grelha/friso escuro */
+const DARK_TRIM_CUT = 30;
+/** Distância RGB máx. ao fundo para considerar reflexo de vidro (vidro reflete o ambiente) */
+const GLASS_BG_DIST2 = 42 * 42;
+/** Densidade de arestas (gradiente médio 0-255) acima da qual há textura de grelha/vidro */
+const EDGE_DENSITY_CUT = 26;
 
 function hexToLinear(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1, 7), 16);
@@ -211,10 +222,163 @@ function buildCarAlpha(d: Uint8ClampedArray, w: number, h: number): Uint8Array {
 }
 
 /**
+ * Máscara "só chapa": dentro da silhueta da viatura, remove vidros, grelha,
+ * pneus e frisos para o filme pintar apenas as superfícies metálicas.
+ * Heurística por pixel (sobre a máscara da viatura):
+ *  - escuro profundo → pneu/grelha/friso (DARK_TRIM_CUT)
+ *  - densidade de arestas alta → textura de grelha/malha/borracha (EDGE_DENSITY_CUT)
+ *  - cor próxima do céu/fundo na metade superior → reflexo de vidro (GLASS_BG_DIST2)
+ */
+function restrictToPanels(
+  d: Uint8ClampedArray,
+  w: number,
+  h: number,
+  carAlpha: Uint8Array
+): Uint8Array {
+  const n = w * h;
+
+  // Luminância e gradiente (Sobel simplificado |dx|+|dy|) por pixel
+  const lum = new Uint8Array(n);
+  const grad = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const p = i * 4;
+    lum[i] = (0.2126 * d[p] + 0.7152 * d[p + 1] + 0.0722 * d[p + 2]) | 0;
+  }
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      const gx = Math.abs(lum[i + 1] - lum[i - 1]);
+      const gy = Math.abs(lum[i + w] - lum[i - w]);
+      grad[i] = Math.min(255, gx + gy);
+    }
+  }
+
+  // Densidade de arestas média em janela 7×7 (textura local)
+  const R = 3;
+  const edgeDensity = new Uint8Array(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      let c = 0;
+      for (let dy = -R; dy <= R; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= h) continue;
+        for (let dx = -R; dx <= R; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= w) continue;
+          acc += grad[yy * w + xx];
+          c++;
+        }
+      }
+      edgeDensity[y * w + x] = (acc / c) | 0;
+    }
+  }
+
+  // Bounding box da silhueta (para delimitar a zona dos vidros)
+  let by0 = h, by1 = 0, carCount = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (carAlpha[y * w + x] > 127) {
+        if (y < by0) by0 = y;
+        if (y > by1) by1 = y;
+        carCount++;
+      }
+    }
+  }
+  if (carCount === 0) return carAlpha;
+  const upperLimit = by0 + (by1 - by0) * 0.55; // vidros concentram-se no topo
+
+  // Cor de referência do fundo: média dos pixéis não-viatura no topo da imagem
+  // (céu/fundo de estúdio — os vidros refletem-na). Fallback: todo o fundo.
+  let br = 0, bg = 0, bb = 0, bgCount = 0;
+  const topRows = Math.max(1, Math.round(h * 0.2));
+  for (let y = 0; y < topRows; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (carAlpha[i] > 127) continue;
+      const p = i * 4;
+      br += d[p]; bg += d[p + 1]; bb += d[p + 2];
+      bgCount++;
+    }
+  }
+  if (bgCount < w) {
+    for (let i = 0; i < n; i++) {
+      if (carAlpha[i] > 127) continue;
+      const p = i * 4;
+      br += d[p]; bg += d[p + 1]; bb += d[p + 2];
+      bgCount++;
+    }
+  }
+  br /= bgCount; bg /= bgCount; bb /= bgCount;
+
+  // Classificação por pixel + medida de segurança: se a heurística de vidro
+  // remover a maior parte da zona superior, está desativada (cor do carro ≈ fundo).
+  let upperCar = 0;
+  let upperGlass = 0;
+  const glassLike = new Uint8Array(n);
+  for (let y = 0; y < h; y++) {
+    if (y >= upperLimit) break;
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (carAlpha[i] < 128) continue;
+      upperCar++;
+      const p = i * 4;
+      const dr = d[p] - br, dg = d[p + 1] - bg, dbb = d[p + 2] - bb;
+      if (dr * dr + dg * dg + dbb * dbb < GLASS_BG_DIST2) {
+        glassLike[i] = 1;
+        upperGlass++;
+      }
+    }
+  }
+  const glassActive = upperCar > 0 && upperGlass / upperCar < 0.6;
+
+  const mask = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    if (carAlpha[i] < 128) continue;
+    let keep = true;
+    if (lum[i] < DARK_TRIM_CUT || edgeDensity[i] > EDGE_DENSITY_CUT) {
+      keep = false;
+    } else if (glassActive && glassLike[i]) {
+      keep = false;
+    }
+    mask[i] = keep ? 255 : 0;
+  }
+
+  // Feather: 2 passagens de box blur 3×3 para transição suave nas bordas
+  let src = mask;
+  let dst = new Uint8Array(n);
+  for (let pass = 0; pass < 2; pass++) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        let acc = 0;
+        let count = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= h) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            if (xx < 0 || xx >= w) continue;
+            acc += src[yy * w + xx];
+            count++;
+          }
+        }
+        dst[i] = (acc / count) | 0;
+      }
+    }
+    const tmp = src;
+    src = dst;
+    dst = tmp;
+  }
+  return src;
+}
+
+/**
  * Aplica uma película à fotografia devolvendo um dataURL JPEG.
  * Modelo: saída = cor_filme × difusão(Y normalizada, achatada consoante GU)
  *         + especular(Y, GU, metálico) + sparkle de flocos.
  * Com `isolateCar`, só os pixéis da viatura (segmentados) são alterados.
+ * Com `applyMode: "panels"` (default), dentro da viatura pinta só a chapa.
  */
 export async function simulateFilmOnPhoto(
   imgSrc: string,
@@ -236,10 +400,12 @@ export async function simulateFilmOnPhoto(
   const d = imageData.data;
 
   const isolate = params.isolateCar !== false;
+  const panelsOnly = params.applyMode !== "car";
   let carAlpha: Uint8Array | null = null;
   if (isolate) {
     carAlpha = await segmentVehicle(canvas);
     if (!carAlpha) carAlpha = buildCarAlpha(d, w, h);
+    if (panelsOnly) carAlpha = restrictToPanels(d, w, h, carAlpha);
   }
 
   // Mediana da luminância para auto-exposição (só viatura quando segmentado)
