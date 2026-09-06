@@ -33,7 +33,7 @@ export async function createVehicleAction(
       vin: input.vin,
       currentMileage: input.currentMileage,
       notes: input.notes,
-      customerId: input.customerId,
+      customerId: input.customerId ?? input.currentOwner?.customerId,
     };
 
     const vehicle = await createVehicle(organizationId, createInput);

@@ -12,9 +12,10 @@ import { normalizePlate } from "@/domains/vehicles/plate-normalizer";
 interface VehiclesViewProps {
   initialVehicles: Vehicle[];
   customers: Customer[];
+  coverPhotos: Record<string, string>;
 }
 
-export function VehiclesView({ initialVehicles, customers }: VehiclesViewProps) {
+export function VehiclesView({ initialVehicles, customers, coverPhotos }: VehiclesViewProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBodyType, setSelectedBodyType] = useState<string>("all");
@@ -161,7 +162,11 @@ export function VehiclesView({ initialVehicles, customers }: VehiclesViewProps) 
       {filteredVehicles.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredVehicles.map((vehicle) => (
-            <VehicleCard key={vehicle.id} vehicle={vehicle} />
+            <VehicleCard
+              key={vehicle.id}
+              vehicle={vehicle}
+              coverUrl={coverPhotos[vehicle.id]}
+            />
           ))}
         </div>
       ) : (

@@ -33,14 +33,15 @@ function mapVehicle(row: Row, owner?: Row): Vehicle {
     photoUrl: (row.photo_url as string) ?? undefined,
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
-    currentOwner: owner
-      ? {
-          customerId: String(owner.customer_id),
-          customerName: String(owner.customer_name),
-          customerType: owner.customer_type as "individual" | "business",
-          since: iso(owner.started_at).slice(0, 10),
-        }
-      : undefined,
+    currentOwner:
+      owner && owner.customer_id
+        ? {
+            customerId: String(owner.customer_id),
+            customerName: String(owner.customer_name),
+            customerType: owner.customer_type as "individual" | "business",
+            since: iso(owner.started_at).slice(0, 10),
+          }
+        : undefined,
   };
 }
 
@@ -75,6 +76,23 @@ export async function getVehicleById(
   );
   if (rows.length === 0) return null;
   return mapVehicle(rows[0], rows[0]);
+}
+
+export async function listVehicleFrontCovers(
+  organizationId: string
+): Promise<Record<string, string>> {
+  const { rows } = await getDb().query<Row>(
+    `SELECT DISTINCT ON (ch.vehicle_id)
+            ch.vehicle_id, p.photo_url
+     FROM checkin_photos p
+     JOIN checkins ch ON ch.id = p.checkin_id
+     WHERE ch.organization_id = $1 AND p.angle = 'front'
+     ORDER BY ch.vehicle_id, p.created_at DESC`,
+    [organizationId]
+  );
+  const covers: Record<string, string> = {};
+  for (const r of rows) covers[String(r.vehicle_id)] = String(r.photo_url);
+  return covers;
 }
 
 export async function getVehiclePassport(

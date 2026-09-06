@@ -21,26 +21,45 @@ const COLOR_SWATCHES: Record<string, string> = {
 
 interface VehicleCardProps {
   vehicle: Vehicle;
+  coverUrl?: string;
 }
 
-export function VehicleCard({ vehicle }: VehicleCardProps) {
+export function VehicleCard({ vehicle, coverUrl }: VehicleCardProps) {
   const swatchColor = COLOR_SWATCHES[vehicle.originalColorFamily] || "#52525b";
 
   return (
     <Card className="flex flex-col justify-between p-5 bg-[#101314] border border-white/[0.08] hover:border-white/20 transition-all duration-150 group">
       <div>
-        {/* Top bar: License Plate Badge & Body Type */}
-        <div className="flex items-center justify-between gap-2">
-          {/* Portuguese License Plate Style Badge */}
-          <div className="inline-flex items-center rounded-[6px] border border-white/20 bg-[#080a0b] px-2.5 py-1 text-xs font-bold tracking-widest text-[#f1ede5] shadow-inner font-mono">
-            <span className="text-[#6e93b5] mr-1.5 text-[11px] font-sans font-black">P</span>
-            <span>{vehicle.plateDisplay}</span>
+        {/* Cover: front photo of the vehicle */}
+        {coverUrl ? (
+          <div className="relative -mx-5 -mt-5 mb-4 h-36 overflow-hidden rounded-t-[14px] bg-[#080a0b]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverUrl}
+              alt={`${vehicle.make} ${vehicle.model}`}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#101314] via-transparent to-transparent" />
+            <div className="absolute top-3 left-5">
+              <div className="inline-flex items-center rounded-[6px] border border-white/20 bg-[#080a0b] px-2.5 py-1 text-xs font-bold tracking-widest text-[#f1ede5] shadow-inner font-mono">
+                <span className="text-[#6e93b5] mr-1.5 text-[11px] font-sans font-black">P</span>
+                <span>{vehicle.plateDisplay}</span>
+              </div>
+            </div>
           </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            {/* Top bar: License Plate Badge & Body Type */}
+            <div className="inline-flex items-center rounded-[6px] border border-white/20 bg-[#080a0b] px-2.5 py-1 text-xs font-bold tracking-widest text-[#f1ede5] shadow-inner font-mono">
+              <span className="text-[#6e93b5] mr-1.5 text-[11px] font-sans font-black">P</span>
+              <span>{vehicle.plateDisplay}</span>
+            </div>
 
-          <Badge variant="outline" className="text-[11px] uppercase tracking-wider">
-            {vehicle.bodyType}
-          </Badge>
-        </div>
+            <Badge variant="outline" className="text-[11px] uppercase tracking-wider">
+              {vehicle.bodyType}
+            </Badge>
+          </div>
+        )}
 
         {/* Vehicle Make, Model & Year */}
         <div className="mt-4">
