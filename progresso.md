@@ -1,6 +1,6 @@
 # Progresso — X-Flow
 
-_Última atualização: 03/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 04/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.3.3, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
@@ -9,6 +9,12 @@ _Última atualização: 03/10/2026. Ficheiro de continuação de sessão — diz
 - `README.md` reescrito (03/10): setup, credenciais demo, scripts, arquitectura
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 04/10/2026 — E2E de auth no browser (35/35)
+- **Browser MCP extension indisponível outra vez** (3 timeouts seguidos) — em vez de HTTP puro, o E2E corre num Chromium headless do playwright instalado em `CulturaBuilder/.../node_modules/playwright` (via `createRequire`; fallback channel `chrome`/`msedge` porque o build de browsers local era anterior ao do pacote)
+- **`scripts/e2e-auth-browser.mjs`** (novo, idempotente): 35 checks — T1 /login com chips demo; T2 password errada → "Credenciais inválidas."; T3 rate limit (11 tentativas ghost@ → "Demasiadas tentativas." após 10); T4 login Patrícia → dashboard com "Centro de Comando" + nome no Topbar; T5 20 páginas internas 200 sob RLS da role `xflow_app` com dados amostrados da BD (customers/vehicles/quotes/production/stock/invoices/team), incluindo /calendar, /deliveries, /warranties, /team, /tools, /time-book, /b2b, /my-day, /reports, /settings, /design-system, /shop-floor, /simulator; T6 logout via dropdown do perfil (botão está dentro do menu — abrir pill primeiro) → /login; T7 `next=%2Fcustomers` respeitado; T8 `next=https://evil.example` bloqueado (safeNext → /); T9a cookie forjado → redirect /login; T9b /login com cookie forjado renderiza o form (sem loop); T10 5 rotas públicas por token 200 sem sessão (portal, quotes/public, checkins/report, warranties/certificate, qc/certificate) + token inválido → 404
+- **Nota T10**: `/warranties/certificate/[token]` valida o token (404 para inválido) mas o corpo é `WarrantyCertificateView` com demo data (`initialWarrantiesData.find(...)` na view) — já estava no pendente "certificados QC/garantia públicos ainda têm fallback demo"
+- Validação: 35/35 checks, typecheck OK, lint OK, 92/92 testes; commit + push feito
 
 ## Sessão 03/10/2026 — Autenticação + RLS efetiva (com agentes paralelos)
 - **Migração 16** (`auth_sessions.sql`): `profiles.password_hash` + `last_login_at` (scrypt N=16384/r=8/p=1, formato `scrypt:N:r:p:<saltHex>:<hashHex>`, NFKC), tabela `auth_sessions` (token 32 bytes base64url, SHA-256 hex na BD, cookie `xflow_session` httpOnly/sameSite=lax/secure 30 dias), políticas `profiles_self`, `memberships_org`, `auth_sessions_any` (permissiva — o hash do token é a credencial)
@@ -118,8 +124,7 @@ _Última atualização: 03/10/2026. Ficheiro de continuação de sessão — diz
 6. Verificação no browser (dev server): sidebar com secções e colapso (80px), topbar global nas páginas, h1 30px, CardTitle 20px, radius 18px, shadow token, certificado com classes print. Validação: typecheck, lint e 85/85 testes OK.
 
 ## Pendente
-- **E2E no browser (primeira tarefa da próxima sessão)**: fluxo de login/logout no `/login` (chips demo), páginas internas com RLS pela role `xflow_app`, rotas públicas por token; cookie forjado → /login sem loop
-- H1s de listagem misturam `text-2xl` e `text-2xl lg:text-3xl` — unificar noutro pass
+- ~~E2E no browser (primeira tarefa da próxima sessão)~~ — FEITO em 04/10 (ver sessão 04/10); regressão futura: `node scripts/e2e-auth-browser.mjs` com dev server ligado
 - Topbar chrome não aparece em <lg (mobile tem header/drawer/bottom-nav próprios) — avaliar ações rápidas no drawer mobile
 - Filtro `pathname.startsWith(item.href)` na nav pode dar falsos positivos futuros (ex.: `/tools` vs `/tooling`) — considerar `route matching` por segmentos
 - Valores de cor/GU do seed de películas são aproximações de datasheets — afinar com leituras reais (L*a*b*/GU)
@@ -128,6 +133,7 @@ _Última atualização: 03/10/2026. Ficheiro de continuação de sessão — diz
 - Dev server: `npm run dev` em `localhost:3000`. Reiniciar após alterações em `.env.local` (DATABASE_URL_APP). 
 - Auth demo: password `xflow-demo-2026` para os técnicos/patrícia; Luís usa a password pessoal dele.
 - `node scripts/verify-rls.mjs` valida a RLS por linha de comandos (10 checks).
+- `node scripts/e2e-auth-browser.mjs` corre o E2E de auth no browser (35 checks; usa o playwright instalado em CulturaBuilder/.../node_modules, não faz parte do package.json).
 - Git: commitar + push no fim de cada sessão (a pedido de Luís).
 
 ## Retomar
