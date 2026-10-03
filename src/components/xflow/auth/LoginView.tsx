@@ -137,7 +137,7 @@ export function LoginView({ next }: LoginViewProps) {
           </div>
 
           <p className="text-[11px] text-[#8a9092] text-center pt-5 mt-5 border-t border-white/[0.06]">
-            Demo: qualquer perfil com a password xflow-demo-2026
+            Demo: restantes perfis com a password xflow-demo-2026
           </p>
         </div>
       </div>

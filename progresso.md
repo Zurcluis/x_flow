@@ -25,7 +25,7 @@ _Última atualização: 03/10/2026. Ficheiro de continuação de sessão — diz
 - **Review de segurança (builder-review)**: 37/37 páginas com guard confirmado; RLS testada com role temporária (isolamento por org, fluxo de login, token público não expõe customers); typecheck/lint/92 testes OK
 - **Validação**: `node scripts/migrate.mjs` (16→20), `node scripts/verify-rls.mjs` (10 checks: ligação direta como xflow_app, RLS em 40 tabelas, 41 políticas, org fixada, token flow, sem GUC → 0 linhas), E2E por HTTP com sessão criada direto na BD: 19 páginas internas 200 (com dados renderizados: clientes/viaturas/orçamentos presentes no HTML), sem cookie → 307 `/login?next=%2F`, cookie forjado → 307 `/login`, rotas públicas por token 200 sem sessão
 - **Pendentes desta sessão**: E2E no browser (login/logout/loop) — browser MCP indisponível durante a sessão; multi-tenant: GUC por REQUEST (hoje o pool fixa a org x-motion por conexão — com 1 org correto, com 2ª org a RLS fica decorativa; plano: checkout per-request com `set_config`); rate limit persistente (in-memory hoje); P2 do review: erros das ações devolvem `e.message` do Postgres, `auth_sessions_any` USING(true), `__Host-` prefix no cookie em prod, demo fallbacks em QC/garantia públicos
-- **Credenciais demo**: password `xflow-demo-2026` para os 5 perfis (luis=admin, patricia=workshop_manager, joao/ricardo/miguel=technicians)
+- **Credenciais demo**: password `xflow-demo-2026` para patricia=workshop_manager, joao/ricardo/miguel=technicians; Luís (luis@xmotion.pt, admin) definiu password pessoal em 03/10 via `scripts/set-password.mjs`
 
 ## Base de dados (Neon, 06/09/2026)
 - **Neon Postgres 18.6** ligado e **15 migrações aplicadas** (35+ tabelas; 15: tabela `films` + `deliveries.belongings` JSONB)
@@ -126,7 +126,7 @@ _Última atualização: 03/10/2026. Ficheiro de continuação de sessão — diz
 
 ## Notas práticas
 - Dev server: `npm run dev` em `localhost:3000`. Reiniciar após alterações em `.env.local` (DATABASE_URL_APP). 
-- Auth demo: login com os 5 emails (`luis@xmotion.pt` etc.) + password `xflow-demo-2026`.
+- Auth demo: password `xflow-demo-2026` para os técnicos/patrícia; Luís usa a password pessoal dele.
 - `node scripts/verify-rls.mjs` valida a RLS por linha de comandos (10 checks).
 - Git: commitar + push no fim de cada sessão (a pedido de Luís).
 

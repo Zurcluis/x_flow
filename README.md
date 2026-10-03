@@ -52,9 +52,10 @@ Credenciais demo (password `xflow-demo-2026`):
 
 | Email | Papel |
 | --- | --- |
-| `luis@xmotion.pt` | admin |
 | `patricia@xmotion.pt` | workshop_manager |
 | `joao@xmotion.pt`, `ricardo@xmotion.pt`, `miguel@xmotion.pt` | technician |
+
+O admin `luis@xmotion.pt` tem password pessoal definida via `node scripts/set-password.mjs luis@xmotion.pt` (password passada na env `XFLOW_PASSWORD`).
 
 ## Scripts
 
