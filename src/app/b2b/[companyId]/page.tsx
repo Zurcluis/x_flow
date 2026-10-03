@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { B2BCompanyDetailView } from "./B2BCompanyDetailView";
 import { listB2BAccounts } from "@/server/b2b";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function B2BCompanyDetailPage({
 }: {
   params: Promise<{ companyId: string }>;
 }) {
+  await requireAuth();
   const { companyId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const accounts = await listB2BAccounts(organizationId);

@@ -1,14 +1,31 @@
 # Progresso — X-Flow
 
-_Última atualização: 06/09/2026 (noite, 3ª parte). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 03/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.3.3, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
-- Health: typecheck OK, lint OK, 85/85 testes a passar
+- Health: typecheck OK, lint OK, 92/92 testes a passar
 - **Git a funcionar**: repo em `main`, tudo commitado e pushed para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo)
-- `README.md` ainda é o template default do create-next-app
+- `README.md` reescrito (03/10): setup, credenciais demo, scripts, arquitectura
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 03/10/2026 — Autenticação + RLS efetiva (com agentes paralelos)
+- **Migração 16** (`auth_sessions.sql`): `profiles.password_hash` + `last_login_at` (scrypt N=16384/r=8/p=1, formato `scrypt:N:r:p:<saltHex>:<hashHex>`, NFKC), tabela `auth_sessions` (token 32 bytes base64url, SHA-256 hex na BD, cookie `xflow_session` httpOnly/sameSite=lax/secure 30 dias), políticas `profiles_self`, `memberships_org`, `auth_sessions_any` (permissiva — o hash do token é a credencial)
+- **Migração 17** (`rls_policies_all.sql`): RLS nas 40 tabelas + 38 políticas `org_isolation_*` completas (tabelas org diretas, filhas por FK, OR-clauses por token público: `quotes.public_token`, `checkins.token`, `deliveries.token`, `warranties.token`, `qc_inspections.certificate_number`), orgs por `bootstrap_org_slug`
+- **Migração 18**: helper `current_organization_id()` null-safe (`NULLIF`) — `RESET` deixa `''` (não NULL) e o cast `''::uuid` quebrava políticas; verificado com script
+- **Migração 19**: membros da org veem perfis da equipa (os `JOIN profiles` do dashboard/agenda ficavam a NULL com política "só o próprio")
+- **Migração 20**: separação leitura/escrita — profiles (SELECT org/próprio/lookup; UPDATE só o próprio) e organization_memberships (SELECT org/próprio; escrita org-strict); política legada `org_isolation_memberships` removida
+- **Role `xflow_app`** (`scripts/create-db-role.mjs`): role não-owner com RLS efetiva; grants ALL em tabelas/sequences + `ALTER DEFAULT PRIVILEGES`; `DATABASE_URL_APP` gravado em `.env.local` com ligação DIRETA (sem pooler — GUCs de sessão vazam via pgbouncer transaction-mode); `db.ts` falha arranque em produção sem `DATABASE_URL_APP`
+- **`src/server/auth.ts`**: `loginAndCreateSession` (rate limit in-memory 10/15min IP+email, dummy-hash no miss contra timing enumeration, user_agent/ip registados, RESETs em try/finally), `getOptionalAuth`/`requireAuth` (redirect /login), `requirePublicToken` (5 kinds: quote/checkin/delivery/warranty/qc_certificate → notFound se inválido), `logoutCurrentSession`, `canSeeFinancials` (admin | workshop_manager)
+- **`src/proxy.ts`**: fast-path por presença de cookie (matcher exclui estáticos/catálogos/modelos/mediapipe); sem redirect /login→/ (causava loop infinito com cookie revogado — a página de login já redireciona com sessão válida)
+- **Wiring**: `requireAuth()` em 37 páginas internas (7 eram client components → reestruturadas em server page + view extraída); `requirePublicToken` nas 5 públicas; `loginAction`/`logoutAction` em `src/app/actions/auth.ts`; página `/login` com chips demo; Topbar com perfil real + "Terminar sessão"; layout passa `user` ao AppShell
+- **Server actions protegidas (P0 do review)**: 28 ações em 9 ficheiros chamam `requireAuth()` e usam `auth.organizationId` (não o org hardcoded); as 2 ações públicas (`approvePublicQuoteAction`/`rejectPublicQuoteAction`) resolvem a org pelo token (`quote.organizationId`); open redirect no `next` do login validado
+- **Bug real apanhado**: `getWarrantyByToken` passava o token como `warrantyId` (query `w.id = token` → sempre null → certificado de garantia público mostrava sempre dados demo); corrigido para filtrar por `w.token`
+- **Review de segurança (builder-review)**: 37/37 páginas com guard confirmado; RLS testada com role temporária (isolamento por org, fluxo de login, token público não expõe customers); typecheck/lint/92 testes OK
+- **Validação**: `node scripts/migrate.mjs` (16→20), `node scripts/verify-rls.mjs` (10 checks: ligação direta como xflow_app, RLS em 40 tabelas, 41 políticas, org fixada, token flow, sem GUC → 0 linhas), E2E por HTTP com sessão criada direto na BD: 19 páginas internas 200 (com dados renderizados: clientes/viaturas/orçamentos presentes no HTML), sem cookie → 307 `/login?next=%2F`, cookie forjado → 307 `/login`, rotas públicas por token 200 sem sessão
+- **Pendentes desta sessão**: E2E no browser (login/logout/loop) — browser MCP indisponível durante a sessão; multi-tenant: GUC por REQUEST (hoje o pool fixa a org x-motion por conexão — com 1 org correto, com 2ª org a RLS fica decorativa; plano: checkout per-request com `set_config`); rate limit persistente (in-memory hoje); P2 do review: erros das ações devolvem `e.message` do Postgres, `auth_sessions_any` USING(true), `__Host-` prefix no cookie em prod, demo fallbacks em QC/garantia públicos
+- **Credenciais demo**: password `xflow-demo-2026` para os 5 perfis (luis=admin, patricia=workshop_manager, joao/ricardo/miguel=technicians)
 
 ## Base de dados (Neon, 06/09/2026)
 - **Neon Postgres 18.6** ligado e **15 migrações aplicadas** (35+ tabelas; 15: tabela `films` + `deliveries.belongings` JSONB)
@@ -46,7 +63,9 @@ _Última atualização: 06/09/2026 (noite, 3ª parte). Ficheiro de continuação
 - **Próximos passos sugeridos**: partial wrap (capô/techo em peças separadas), modelos de marcas reais (exigem licença comercial — Sketchfab/CGTrader — integrar em `car-models.ts`), share por URL, normal maps de flake/carbono
 
 ## Ainda por ligar (usa demo data)
-- `/vision` (fase 8 do blueprint — análise IA), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo), auth/perfis, RLS efetiva (owner faz bypass); RLS atualmente bypassed (owner) — rever políticas na altura do auth
+- `/vision` (fase 8 do blueprint — análise IA), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo); certificados QC/garantia públicos ainda têm fallback demo
+- Multi-tenant: GUC `app.current_organization_id` é fixado por CONEXÃO (x-motion) — com 2.ª org, RLS fica decorativa; migrar para GUC por request
+- Auth: rate limit persistente (tabela), mensagens de erro genéricas nas ações (hoje devolvem `e.message` do Postgres), prefixo `__Host-` no cookie em prod
 - Fotos de check-in guardadas como data URL na BD (TEXT) — migrar para object storage quando existir auth/Storage
 - Faturas/garantias/stock/ferramentas/B2B: leitura ligada à BD, escritas ainda demo (entregas agora com escrita real)
 
@@ -82,11 +101,6 @@ _Última atualização: 06/09/2026 (noite, 3ª parte). Ficheiro de continuação
 - **Simulador de acabamentos** (7b7c76a): simulação visual sobre a **foto real** da viatura (blend modes por textura: gloss/matte/satin/carbon), slider antes/depois, silhueta vetorial de fallback, aviso de representação (requisito blueprint); **estimativa determinística** (material por cobertura 14/17/21m + contraste, horas 24/30/36 + contraste/SUV, 33 €/h, preço ×2,5 com margem); zonas críticas em contraste alto; sincronização automática da cobertura recomendada; "Criar Orçamento com este Acabamento" leva vehicle+finish+coverage para `/quotes/new` com banner de referência.
 - Validação: typecheck, lint 0 erros, testado E2E no browser (check-in 00-GA-23 com 6 fotos/3 danos; orçamento ORC-2026-997 emitido → aceite no portal → WO-2026-232 criada; marcação agendada; propostas eliminadas/bloqueadas conforme esperado).
 
-## Ainda por ligar (usa demo data)
-- `/vision` (fase 8 do blueprint — análise IA), `/qc/certificate/[n]` e `/passport/[plate]` (reescritas de corpo completo), auth/perfis, RLS efetiva (owner faz bypass); RLS atualmente bypassed (owner) — rever políticas na altura do auth
-- Fotos de check-in guardadas como data URL na BD (TEXT) — migrar para object storage quando existir auth/Storage
-- Entregas/faturas/garantias/stock/ferramentas/B2B: leitura ligada à BD, escritas ainda demo
-
 ## O que foi feito na sessão 04/09/2026 (mudanças visuais)
 1. **Piso tipográfico subido** (83 ficheiros): `9px/10px → 11px` (badges/eyebrows), `11px → 12px` (metadados). Zero texto abaixo de 11px.
 2. **Muted clareado para WCAG AA**: `#747a7c` → `#8a9092` em todo o src (incl. `--text-muted` em `src/styles/tokens.css`). Contraste: 4.28:1 → 5.76:1.
@@ -104,14 +118,16 @@ _Última atualização: 06/09/2026 (noite, 3ª parte). Ficheiro de continuação
 6. Verificação no browser (dev server): sidebar com secções e colapso (80px), topbar global nas páginas, h1 30px, CardTitle 20px, radius 18px, shadow token, certificado com classes print. Validação: typecheck, lint e 85/85 testes OK.
 
 ## Pendente
-- **Médio prazo**: ligar a app às tabelas Neon (substituir demo data), README real
+- **E2E no browser (primeira tarefa da próxima sessão)**: fluxo de login/logout no `/login` (chips demo), páginas internas com RLS pela role `xflow_app`, rotas públicas por token; cookie forjado → /login sem loop
 - H1s de listagem misturam `text-2xl` e `text-2xl lg:text-3xl` — unificar noutro pass
 - Topbar chrome não aparece em <lg (mobile tem header/drawer/bottom-nav próprios) — avaliar ações rápidas no drawer mobile
 - Filtro `pathname.startsWith(item.href)` na nav pode dar falsos positivos futuros (ex.: `/tools` vs `/tooling`) — considerar `route matching` por segmentos
 - Valores de cor/GU do seed de películas são aproximações de datasheets — afinar com leituras reais (L*a*b*/GU)
 
 ## Notas práticas
-- Dev server: `npm run dev` em `localhost:3000` (não está a correr entre sessões).
+- Dev server: `npm run dev` em `localhost:3000`. Reiniciar após alterações em `.env.local` (DATABASE_URL_APP). 
+- Auth demo: login com os 5 emails (`luis@xmotion.pt` etc.) + password `xflow-demo-2026`.
+- `node scripts/verify-rls.mjs` valida a RLS por linha de comandos (10 checks).
 - Git: commitar + push no fim de cada sessão (a pedido de Luís).
 
 ## Retomar

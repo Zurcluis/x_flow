@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { VehiclePassportView } from "./VehiclePassportView";
 import { getVehiclePassport } from "@/server/vehicles";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function VehiclePassportPage({
 }: {
   params: Promise<{ vehicleId: string }>;
 }) {
+  await requireAuth();
   const { vehicleId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const vehicle = await getVehiclePassport(organizationId, vehicleId);

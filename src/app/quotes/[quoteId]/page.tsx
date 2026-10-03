@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { QuoteDetailView } from "./QuoteDetailView";
 import { getQuoteById } from "@/server/quotes";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function QuoteDetailPage({
 }: {
   params: Promise<{ quoteId: string }>;
 }) {
+  await requireAuth();
   const { quoteId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const quote = await getQuoteById(organizationId, quoteId);

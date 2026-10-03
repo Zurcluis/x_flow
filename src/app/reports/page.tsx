@@ -10,10 +10,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/formatting";
 import { getReportsData } from "@/server/reports";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
+  await requireAuth();
   const { serviceStats, quarterlyRevenue, avgMargin, laborEfficiency, scrapRate } = await getReportsData();
 
   return (

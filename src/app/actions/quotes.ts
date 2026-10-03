@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 import {
   approveQuote,
   createQuote,
@@ -22,6 +22,7 @@ export async function createQuoteAction(
   | { ok: true; quoteId: string; publicToken: string; quoteNumber: string }
   | { ok: false; error: string }
 > {
+  const auth = await requireAuth();
   try {
     if (!input.vehicleId || !input.customerId) {
       return { ok: false, error: "Viatura e cliente são obrigatórios." };
@@ -30,7 +31,7 @@ export async function createQuoteAction(
       return { ok: false, error: "O orçamento precisa de pelo menos uma opção." };
     }
 
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const quote = await createQuote(organizationId, input);
     revalidatePath("/quotes");
     revalidatePath("/");
@@ -51,8 +52,9 @@ export async function createQuoteAction(
 export async function deleteQuoteAction(
   quoteId: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const result = await deleteQuote(organizationId, quoteId);
     if (result.ok) {
       revalidatePath("/quotes");
@@ -76,7 +78,7 @@ export async function rejectPublicQuoteAction(
     if (quote.status === "approved") {
       return { ok: false, error: "Este orçamento já foi aprovado." };
     }
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = quote.organizationId;
     await rejectQuote(organizationId, quote.id);
     revalidatePath("/quotes");
     return { ok: true };
@@ -92,7 +94,8 @@ export async function approveQuoteAction(
   quoteId: string,
   selectedOptionId?: string
 ): Promise<ApproveQuoteResult> {
-  const organizationId = await getPrimaryOrganizationId();
+  const auth = await requireAuth();
+  const organizationId = auth.organizationId;
   const result = await approveQuote(organizationId, quoteId);
   if (result.ok && selectedOptionId) {
     await getDb().query(
@@ -119,7 +122,7 @@ export async function approvePublicQuoteAction(
     return { ok: false, error: "Este orçamento já foi aprovado." };
   }
 
-  const organizationId = await getPrimaryOrganizationId();
+  const organizationId = quote.organizationId;
   const result = await approveQuote(organizationId, quote.id);
   if (result.ok && selectedOptionId) {
     await getDb().query(

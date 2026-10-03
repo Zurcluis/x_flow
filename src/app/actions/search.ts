@@ -2,16 +2,17 @@
 
 import { SearchResultItem } from "@/domains/search/types";
 import { getDb } from "@/lib/db";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export async function searchDatabaseAction(
   query: string
 ): Promise<SearchResultItem[]> {
+  const auth = await requireAuth();
   const q = query.trim();
   if (q.length < 2) return [];
 
   const db = getDb();
-  const organizationId = await getPrimaryOrganizationId();
+  const organizationId = auth.organizationId;
   const like = `%${q}%`;
 
   const results: SearchResultItem[] = [];

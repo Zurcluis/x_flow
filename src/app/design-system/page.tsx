@@ -22,8 +22,13 @@ import {
   Calendar,
   AlertTriangle,
 } from "lucide-react";
+import { requireAuth } from "@/server/auth";
 
-export default function DesignSystemCatalogPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DesignSystemCatalogPage() {
+  await requireAuth();
+
   return (
     <div className="flex flex-col gap-10 py-4 max-w-5xl">
       {/* Header */}

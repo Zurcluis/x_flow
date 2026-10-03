@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { PhaseKey } from "@/domains/production/types";
 import { WorkOrder } from "@/domains/checkins/types";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 import {
   addTimeEntry,
   completePhase,
@@ -16,7 +16,8 @@ export async function updateWorkOrderStatusAction(
   workOrderId: string,
   status: WorkOrder["status"]
 ) {
-  const organizationId = await getPrimaryOrganizationId();
+  const auth = await requireAuth();
+  const organizationId = auth.organizationId;
   const result = await updateWorkOrderStatus(organizationId, workOrderId, status);
   if (result.ok) {
     revalidatePath("/production");
@@ -26,6 +27,7 @@ export async function updateWorkOrderStatusAction(
 }
 
 export async function completePhaseAction(workOrderId: string, phaseId: string) {
+  await requireAuth();
   const result = await completePhase(workOrderId, phaseId);
   if (result.ok) {
     revalidatePath(`/production/${workOrderId}`);
@@ -35,6 +37,7 @@ export async function completePhaseAction(workOrderId: string, phaseId: string) 
 }
 
 export async function startPhaseAction(workOrderId: string, phaseId: string) {
+  await requireAuth();
   const result = await startPhase(workOrderId, phaseId);
   if (result.ok) {
     revalidatePath(`/production/${workOrderId}`);
@@ -48,6 +51,7 @@ export async function toggleChecklistItemAction(
   itemId: string,
   completed: boolean
 ) {
+  await requireAuth();
   const result = await toggleChecklistItem(itemId, completed, "João Martins");
   if (result.ok) revalidatePath(`/production/${workOrderId}`);
   return result;
@@ -60,6 +64,7 @@ export async function addTimeEntryAction(
   hoursSpent: number,
   notes?: string
 ) {
+  await requireAuth();
   const result = await addTimeEntry(workOrderId, phaseKey, technicianName, hoursSpent, notes);
   if (result.ok) {
     revalidatePath(`/production/${workOrderId}`);

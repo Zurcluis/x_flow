@@ -2,11 +2,13 @@ import { WarrantiesView } from "./WarrantiesView";
 import { listWarranties } from "@/server/finance";
 import { listWorkOrders } from "@/server/production";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 import { WarrantyRecord } from "./WarrantiesView";
 
 export const dynamic = "force-dynamic";
 
 export default async function WarrantiesPage() {
+  await requireAuth();
   const organizationId = await getPrimaryOrganizationId();
   const [warranties, workOrders] = await Promise.all([
     listWarranties(organizationId),

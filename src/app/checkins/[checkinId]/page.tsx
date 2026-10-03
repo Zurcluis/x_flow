@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CheckinDetailView } from "./CheckinDetailView";
 import { getCheckinById } from "@/server/checkins";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function CheckinDetailPage({
 }: {
   params: Promise<{ checkinId: string }>;
 }) {
+  await requireAuth();
   const { checkinId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const checkin = await getCheckinById(organizationId, checkinId);

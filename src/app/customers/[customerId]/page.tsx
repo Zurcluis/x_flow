@@ -5,6 +5,7 @@ import { CustomerDetailView } from "./CustomerDetailView";
 import { getCustomerById, listCustomers } from "@/server/customers";
 import { listVehicles } from "@/server/vehicles";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ customerId: string }>;
 }) {
+  await requireAuth();
   const { customerId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const [customer, vehicles, allCustomers] = await Promise.all([

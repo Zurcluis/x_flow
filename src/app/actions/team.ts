@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { TeamMember, WorkshopTool } from "@/lib/demo-data/tools-team-data";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 import {
   createTeamMember,
   listTeam,
@@ -18,6 +18,7 @@ export type TeamActionResult =
 export async function createTeamMemberAction(
   input: TeamMemberCreateInput
 ): Promise<TeamActionResult> {
+  const auth = await requireAuth();
   try {
     if (!input.name?.trim()) {
       return { ok: false, error: "O nome do colaborador é obrigatório." };
@@ -25,7 +26,7 @@ export async function createTeamMemberAction(
     if (!input.role?.trim()) {
       return { ok: false, error: "A função é obrigatória." };
     }
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const member = await createTeamMember(organizationId, {
       name: input.name.trim(),
       role: input.role.trim(),
@@ -50,8 +51,9 @@ export async function setTeamMemberStatusAction(
   memberId: string,
   status: TeamMember["status"]
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     await setTeamMemberStatus(organizationId, memberId, status);
     revalidatePath("/team");
     return { ok: true };
@@ -67,8 +69,9 @@ export async function setToolStatusAction(
   toolId: string,
   status: WorkshopTool["status"]
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     await setToolStatus(organizationId, toolId, status);
     revalidatePath("/tools");
     return { ok: true };
@@ -81,6 +84,7 @@ export async function setToolStatusAction(
 }
 
 export async function getTeamAction(): Promise<TeamMember[]> {
-  const organizationId = await getPrimaryOrganizationId();
+  const auth = await requireAuth();
+  const organizationId = auth.organizationId;
   return listTeam(organizationId);
 }

@@ -4,6 +4,7 @@
 // Uso: node scripts/seed.mjs
 import pg from "pg";
 import fs from "node:fs";
+import { hashPassword, DEMO_PASSWORD } from "./auth-crypto.mjs";
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
@@ -51,9 +52,10 @@ for (const p of [
   { name: "Miguel Costa", email: "miguel@xmotion.pt", phone: "910000004" },
   { name: "Patrícia Sousa", email: "patricia@xmotion.pt", phone: "910000005" },
 ]) {
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
   const { rows } = await client.query(
-    `INSERT INTO profiles (name, email, phone) VALUES ($1,$2,$3) RETURNING id`,
-    [p.name, p.email, p.phone]
+    `INSERT INTO profiles (name, email, phone, password_hash) VALUES ($1,$2,$3,$4) RETURNING id`,
+    [p.name, p.email, p.phone, passwordHash]
   );
   profiles[p.name] = rows[0].id;
 }

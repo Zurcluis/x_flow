@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 import {
   createDelivery,
   DeliveryCreateInput,
@@ -14,13 +14,15 @@ export type DeliveryActionResult =
   | { ok: false; error: string };
 
 export async function listDeliveryCandidatesAction() {
-  const organizationId = await getPrimaryOrganizationId();
+  const auth = await requireAuth();
+  const organizationId = auth.organizationId;
   return listDeliveryCandidates(organizationId);
 }
 
 export async function createDeliveryAction(
   input: Omit<DeliveryCreateInput, "deliveredByName"> & { deliveredByName?: string }
 ): Promise<DeliveryActionResult> {
+  const auth = await requireAuth();
   try {
     if (!input.workOrderId) {
       return { ok: false, error: "Selecione a ordem de trabalho a entregar." };
@@ -28,7 +30,7 @@ export async function createDeliveryAction(
     if (!input.receiverName?.trim()) {
       return { ok: false, error: "O nome de quem levanta a viatura é obrigatório." };
     }
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const { id } = await createDelivery(organizationId, {
       workOrderId: input.workOrderId,
       deliveredByName: input.deliveredByName?.trim() || "Equipa X-Motion",
@@ -52,8 +54,9 @@ export async function createDeliveryAction(
 export async function markInvoicePaidAction(
   invoiceId: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     await markInvoicePaid(organizationId, invoiceId);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${invoiceId}`);

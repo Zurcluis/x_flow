@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Vehicle } from "@/domains/vehicles/types";
 import { createVehicle, VehicleCreateInput } from "@/server/vehicles";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export type VehicleActionResult =
   | { ok: true; vehicle: Vehicle }
@@ -12,6 +12,7 @@ export type VehicleActionResult =
 export async function createVehicleAction(
   input: Partial<Vehicle> & { customerId?: string }
 ): Promise<VehicleActionResult> {
+  const auth = await requireAuth();
   try {
     if (!input.plateDisplay?.trim()) {
       return { ok: false, error: "A matrícula é obrigatória." };
@@ -20,7 +21,7 @@ export async function createVehicleAction(
       return { ok: false, error: "Marca e modelo são obrigatórios." };
     }
 
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const createInput: VehicleCreateInput = {
       plateDisplay: input.plateDisplay.trim().toUpperCase(),
       plateNormalized: (input.plateNormalized ?? input.plateDisplay).replace(/[\s-]/g, "").toUpperCase(),

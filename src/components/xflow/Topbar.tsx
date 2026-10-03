@@ -10,19 +10,50 @@ import {
   ChevronDown,
   Sparkles,
   Search,
+  LogOut,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AiSidePanel } from "@/components/xflow/ai/AiSidePanel";
 import { CommandPaletteModal } from "@/components/xflow/search/CommandPaletteModal";
 import { initialDashboardData } from "@/lib/demo-data/dashboard-data";
+import { logoutAction } from "@/app/actions/auth";
+import type { OrganizationRole } from "@/server/auth";
+import { cn } from "@/lib/utils";
+
+export interface ShellUser {
+  name: string;
+  email: string;
+  role: OrganizationRole;
+}
+
+const ROLE_LABELS: Record<OrganizationRole, string> = {
+  admin: "Administrador",
+  workshop_manager: "Gestor de Oficina",
+  technician: "Técnico",
+  customer: "Cliente",
+  b2b_user: "Utilizador B2B",
+};
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toUpperCase() || "X";
+}
 
 interface TopbarProps {
   unreadCount?: number;
+  user?: ShellUser | null;
 }
 
-export function Topbar({ unreadCount = initialDashboardData.user.unreadNotifications }: TopbarProps) {
+export function Topbar({
+  unreadCount = initialDashboardData.user.unreadNotifications,
+  user = null,
+}: TopbarProps) {
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Global Ctrl+K / Cmd+K listener
   useEffect(() => {
@@ -123,20 +154,72 @@ export function Topbar({ unreadCount = initialDashboardData.user.unreadNotificat
             </button>
 
             {/* User Profile Pill */}
-            <div className="flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-full bg-[#15191a] border border-white/[0.08] hover:border-white/20 transition-all cursor-pointer select-none">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e7c77c]/20 text-xs font-bold text-[#f7d46d] border border-[#d3a548]/40">
-                {initialDashboardData.user.initials}
+            {user ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen((prev) => !prev)}
+                  className={cn(
+                    "flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-full bg-[#15191a] border transition-all cursor-pointer select-none",
+                    profileOpen ? "border-[#d3a548]/50" : "border-white/[0.08] hover:border-white/20"
+                  )}
+                  aria-expanded={profileOpen}
+                  aria-haspopup="menu"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e7c77c]/20 text-xs font-bold text-[#f7d46d] border border-[#d3a548]/40">
+                    {getInitials(user.name)}
+                  </div>
+                  <div className="flex flex-col text-left pr-1">
+                    <span className="text-xs font-semibold text-[#f1ede5] leading-tight">
+                      {user.name}
+                    </span>
+                    <span className="text-[11px] text-[#8a9092] leading-tight">
+                      {ROLE_LABELS[user.role]}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 text-[#8a9092] transition-transform",
+                      profileOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+
+                {profileOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full mt-2 w-60 rounded-md bg-[#101314] border border-white/[0.12] p-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.55)] z-50 flex flex-col gap-0.5"
+                  >
+                    <div className="px-3 py-2.5 border-b border-white/[0.06] flex flex-col">
+                      <span className="text-xs font-semibold text-[#f1ede5] leading-tight">
+                        {user.name}
+                      </span>
+                      <span className="text-[11px] text-[#8a9092] leading-tight mt-0.5">
+                        {user.email}
+                      </span>
+                    </div>
+                    <form action={logoutAction}>
+                      <button
+                        type="submit"
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-sm text-xs text-[#a9adae] hover:text-[#f05a50] hover:bg-white/[0.04] transition-colors text-left cursor-pointer"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        <span>Terminar sessão</span>
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
-              <div className="flex flex-col text-left pr-1">
-                <span className="text-xs font-semibold text-[#f1ede5] leading-tight">
-                  {initialDashboardData.user.name}
-                </span>
-                <span className="text-[11px] text-[#8a9092] leading-tight">
-                  {initialDashboardData.user.role}
-                </span>
-              </div>
-              <ChevronDown className="h-3.5 w-3.5 text-[#8a9092]" />
-            </div>
+            ) : (
+              <Link href="/login">
+                <div className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full bg-[#15191a] border border-white/[0.08] hover:border-[#d3a548]/50 transition-all cursor-pointer select-none">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e7c77c]/20 text-[#f7d46d] border border-[#d3a548]/40">
+                    <LogIn className="h-4 w-4" />
+                  </div>
+                  <span className="text-xs font-semibold text-[#f1ede5]">Entrar</span>
+                </div>
+              </Link>
+            )}
           </div>
         </div>
       </header>

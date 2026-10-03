@@ -1,3 +1,4 @@
+import { requirePublicToken } from "@/server/auth";
 import { getQuoteByToken } from "@/server/quotes";
 import { ClientPortalView } from "./ClientPortalView";
 
@@ -9,6 +10,7 @@ export default async function ClientPortalPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
+  await requirePublicToken("quote", token);
   const quote = await getQuoteByToken(token);
 
   if (!quote || !quote.vehiclePlate) {

@@ -1,4 +1,5 @@
 import React from "react";
+import { Lock } from "lucide-react";
 import {
   KpiCard,
   VehicleRenderSilhouette,
@@ -16,20 +17,48 @@ import {
   BarChartSparkline,
   StarRating,
 } from "@/components/xflow/MetricSparkCard";
+import { Card } from "@/components/ui/card";
 import { getDashboardData } from "@/server/dashboard";
+import { requireAuth, canSeeFinancials } from "@/server/auth";
 import { formatCurrency, formatPercentage } from "@/lib/formatting";
 
 export const dynamic = "force-dynamic";
 
+function FinancialRestrictedCard() {
+  return (
+    <Card className="flex flex-col justify-between p-5 bg-[#101314] border border-white/[0.08] min-h-[140px]">
+      <div>
+        <span className="text-xs font-medium text-[#a9adae] tracking-wide">
+          Métricas financeiras
+        </span>
+        <div className="flex items-center gap-2 mt-2">
+          <Lock className="h-4 w-4 text-[#8a9092]" />
+          <span className="text-2xl font-bold tracking-tight text-[#8a9092]">
+            •••
+          </span>
+        </div>
+      </div>
+      <div className="flex items-end justify-between gap-4 mt-3">
+        <span className="text-xs text-[#8a9092] font-medium">
+          Visível para gestores
+        </span>
+      </div>
+    </Card>
+  );
+}
+
 export default async function CentroDeComandoPage() {
+  const auth = await requireAuth();
   const data = await getDashboardData();
+  const canSeeMoney = canSeeFinancials(auth.role);
+  const firstName = auth.name.split(" ")[0] ?? auth.name;
 
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
       <div className="flex flex-col pb-4 border-b border-white/[0.04]">
         <span className="text-xs font-medium text-[#a9adae] tracking-wide">
-          {data.user.greeting}
+          Olá, {firstName}
         </span>
         <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
           Centro de Comando
@@ -125,24 +154,32 @@ export default async function CentroDeComandoPage() {
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {/* 1. Faturação do Mês */}
-        <MetricCard
-          title="Faturação do Mês"
-          value={formatCurrency(data.metrics.monthlyRevenue.value)}
-          change={formatPercentage(data.metrics.monthlyRevenue.changePercentage, true)}
-          subtitle={data.metrics.monthlyRevenue.comparisonText}
-        >
-          <SparklineWave data={data.metrics.monthlyRevenue.sparkline} />
-        </MetricCard>
+        {canSeeMoney ? (
+          <MetricCard
+            title="Faturação do Mês"
+            value={formatCurrency(data.metrics.monthlyRevenue.value)}
+            change={formatPercentage(data.metrics.monthlyRevenue.changePercentage, true)}
+            subtitle={data.metrics.monthlyRevenue.comparisonText}
+          >
+            <SparklineWave data={data.metrics.monthlyRevenue.sparkline} />
+          </MetricCard>
+        ) : (
+          <FinancialRestrictedCard />
+        )}
 
         {/* 2. Margem Estimada */}
-        <MetricCard
-          title="Margem Estimada"
-          value={formatCurrency(data.metrics.estimatedMargin.value)}
-          change={formatPercentage(data.metrics.estimatedMargin.changePercentage, true)}
-          subtitle={`${data.metrics.estimatedMargin.marginRate}% de margem`}
-        >
-          <SparklineWave data={data.metrics.estimatedMargin.sparkline} />
-        </MetricCard>
+        {canSeeMoney ? (
+          <MetricCard
+            title="Margem Estimada"
+            value={formatCurrency(data.metrics.estimatedMargin.value)}
+            change={formatPercentage(data.metrics.estimatedMargin.changePercentage, true)}
+            subtitle={`${data.metrics.estimatedMargin.marginRate}% de margem`}
+          >
+            <SparklineWave data={data.metrics.estimatedMargin.sparkline} />
+          </MetricCard>
+        ) : (
+          <FinancialRestrictedCard />
+        )}
 
         {/* 3. Taxa de Ocupação */}
         <MetricCard

@@ -2,11 +2,13 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { listDeliveryCandidates } from "@/server/deliveries";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 import { NewDeliveryWizard } from "./NewDeliveryWizard";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewDeliveryPage() {
+  await requireAuth();
   const organizationId = await getPrimaryOrganizationId();
   const candidates = await listDeliveryCandidates(organizationId);
 

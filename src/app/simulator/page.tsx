@@ -3,10 +3,12 @@ import { listVehicles, listVehicleFrontCovers } from "@/server/vehicles";
 import { listFilms } from "@/server/films";
 import { getPrimaryOrganizationId } from "@/server/org";
 import { initialFinishPresets } from "@/lib/demo-data/vision-simulation-data";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function SimulatorPage() {
+  await requireAuth();
   const organizationId = await getPrimaryOrganizationId();
   const [vehicles, coverPhotos, films] = await Promise.all([
     listVehicles(organizationId),

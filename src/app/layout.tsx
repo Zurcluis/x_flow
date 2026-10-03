@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppShell } from "@/components/xflow/AppShell";
+import { getOptionalAuth } from "@/server/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,15 +20,21 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const auth = await getOptionalAuth();
+
   return (
     <html lang="pt-PT" className="dark" suppressHydrationWarning>
       <body className="bg-[#050606] text-[#f1ede5] min-h-screen" suppressHydrationWarning>
-        <AppShell>{children}</AppShell>
+        <AppShell
+          user={auth ? { name: auth.name, email: auth.email, role: auth.role } : null}
+        >
+          {children}
+        </AppShell>
       </body>
     </html>
   );

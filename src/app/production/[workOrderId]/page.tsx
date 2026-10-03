@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { WorkOrderDetailView } from "./WorkOrderDetailView";
 import { getWorkOrderDetail } from "@/server/production";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function WorkOrderDetailPage({
 }: {
   params: Promise<{ workOrderId: string }>;
 }) {
+  await requireAuth();
   const { workOrderId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const detail = await getWorkOrderDetail(organizationId, workOrderId);

@@ -16,7 +16,7 @@ import {
   ConflictInfo,
   BayInput,
 } from "@/server/calendar";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export type AppointmentResult =
   | { ok: true; appointmentId?: string; conflicts?: ConflictInfo[] }
@@ -26,7 +26,8 @@ export async function getAppointmentConflictsAction(
   input: AppointmentInput,
   excludeAppointmentId?: string
 ): Promise<ConflictInfo[]> {
-  const organizationId = await getPrimaryOrganizationId();
+  const auth = await requireAuth();
+  const organizationId = auth.organizationId;
   return getAppointmentConflicts(organizationId, input, excludeAppointmentId);
 }
 
@@ -34,8 +35,9 @@ export async function saveAppointmentAction(
   input: AppointmentInput,
   appointmentId?: string
 ): Promise<AppointmentResult> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const conflicts = await getAppointmentConflicts(organizationId, input, appointmentId);
     if (conflicts.length > 0) {
       return { ok: false, error: "CONFLICT", conflicts };
@@ -61,8 +63,9 @@ export async function forceSaveAppointmentAction(
   input: AppointmentInput,
   appointmentId?: string
 ): Promise<AppointmentResult> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     if (appointmentId) {
       await updateAppointment(organizationId, appointmentId, input);
     } else {
@@ -86,8 +89,9 @@ export async function moveAppointmentAction(
   newEndIso: string,
   bayId?: string
 ): Promise<AppointmentResult> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     await moveAppointment(organizationId, appointmentId, new Date(newStartIso), new Date(newEndIso), bayId);
     revalidatePath("/calendar");
     revalidatePath("/");
@@ -101,8 +105,9 @@ export async function moveAppointmentAction(
 }
 
 export async function cancelAppointmentAction(appointmentId: string): Promise<AppointmentResult> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     await cancelAppointment(organizationId, appointmentId);
     revalidatePath("/calendar");
     revalidatePath("/");
@@ -122,8 +127,9 @@ export type AppointmentStatusValue = AppointmentStatus;
 export async function createBayAction(
   input: BayInput
 ): Promise<{ ok: true; bay: WorkshopBay } | { ok: false; error: string }> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const bay = await createBay(organizationId, input);
     revalidatePath("/calendar");
     return { ok: true, bay };
@@ -136,8 +142,9 @@ export async function updateBayAction(
   bayId: string,
   input: Partial<BayInput>
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     await updateBay(organizationId, bayId, input);
     revalidatePath("/calendar");
     return { ok: true };
@@ -147,8 +154,9 @@ export async function updateBayAction(
 }
 
 export async function deleteBayAction(bayId: string): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const r = await deleteBay(organizationId, bayId);
     if (!r.ok) return r;
     revalidatePath("/calendar");
@@ -163,8 +171,9 @@ export async function assignVehicleToBayAction(
   bayId: string,
   date: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const r = await assignVehicleToBay(organizationId, vehicleId, bayId, date);
     if (r.ok) revalidatePath("/calendar");
     return r;

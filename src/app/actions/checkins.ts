@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createCheckin, CreateCheckinInput } from "@/server/checkins";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export async function createCheckinAction(
   input: CreateCheckinInput
@@ -10,8 +10,9 @@ export async function createCheckinAction(
   | { ok: true; checkinId: string; token: string }
   | { ok: false; error: string }
 > {
+  const auth = await requireAuth();
   try {
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const checkin = await createCheckin(organizationId, input);
     revalidatePath("/checkins");
     revalidatePath("/");

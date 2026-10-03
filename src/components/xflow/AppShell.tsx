@@ -14,6 +14,7 @@ import {
 import { Sidebar, MAIN_NAV, NAV_SECTIONS, type NavItem } from "@/components/xflow/Sidebar";
 import { Topbar } from "@/components/xflow/Topbar";
 import { Logo } from "@/components/xflow/Logo";
+import type { ShellUser } from "@/components/xflow/Topbar";
 import { cn } from "@/lib/utils";
 
 function DrawerLink({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
@@ -38,7 +39,13 @@ function DrawerLink({ item, onNavigate }: { item: NavItem; onNavigate: () => voi
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  user = null,
+}: {
+  children: React.ReactNode;
+  user?: ShellUser | null;
+}) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -110,7 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Global Topbar — pesquisa, IA, ações rápidas e perfil (desktop) */}
         <div className="hidden lg:block px-4 sm:px-6 lg:px-8 max-w-[1680px] w-full mx-auto">
-          <Topbar />
+          <Topbar user={user} />
         </div>
 
         {/* Page Inner Container */}

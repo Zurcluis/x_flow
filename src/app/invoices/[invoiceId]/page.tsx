@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { InvoiceDetailView } from "./InvoiceDetailView";
 import { getInvoiceById } from "@/server/finance";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function InvoiceDetailPage({
 }: {
   params: Promise<{ invoiceId: string }>;
 }) {
+  await requireAuth();
   const { invoiceId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const invoice = await getInvoiceById(organizationId, invoiceId);

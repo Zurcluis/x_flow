@@ -212,11 +212,15 @@ export async function getWarrantyById(
 export async function getWarrantyByToken(token: string): Promise<WarrantyCertificate | null> {
   const db = getDb();
   const { rows } = await db.query<Row>(
-    `SELECT organization_id FROM warranties WHERE token = $1 LIMIT 1`,
+    `SELECT w.*, v.plate_display, v.make || ' ' || v.model AS vehicle_model_full,
+            c.name AS customer_name
+     FROM warranties w
+     JOIN vehicles v ON v.id = w.vehicle_id
+     JOIN customers c ON c.id = w.customer_id
+     WHERE w.token = $1`,
     [token]
   );
-  if (rows.length === 0) return null;
-  return getWarrantyById(String(rows[0].organization_id), token);
+  return rows.length > 0 ? mapWarranty(rows[0]) : null;
 }
 
 export async function getPassportByPlate(

@@ -2,6 +2,7 @@ import { NewQuoteView } from "./NewQuoteView";
 import { listVehicles } from "@/server/vehicles";
 import { listCustomers } from "@/server/customers";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function NewQuotePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireAuth();
   const sp = await searchParams;
   const organizationId = await getPrimaryOrganizationId();
   const [vehicles, customers] = await Promise.all([

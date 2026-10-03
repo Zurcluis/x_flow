@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { Customer } from "@/domains/crm/types";
 import {
   createCustomer,
-  getPrimaryOrganizationId,
   CustomerCreateInput,
 } from "@/server/customers";
+import { requireAuth } from "@/server/auth";
 
 export type ActionResult =
   | { ok: true; customer: Customer }
@@ -15,6 +15,7 @@ export type ActionResult =
 export async function createCustomerAction(
   input: Partial<Customer> & { b2bDetails?: CustomerCreateInput["b2bDetails"] }
 ): Promise<ActionResult> {
+  const auth = await requireAuth();
   try {
     if (!input.name?.trim()) {
       return { ok: false, error: "O nome do cliente é obrigatório." };
@@ -23,7 +24,7 @@ export async function createCustomerAction(
       return { ok: false, error: "Introduz pelo menos um contacto (telefone ou email)." };
     }
 
-    const organizationId = await getPrimaryOrganizationId();
+    const organizationId = auth.organizationId;
     const customer = await createCustomer(organizationId, {
       type: input.type ?? "individual",
       name: input.name.trim(),

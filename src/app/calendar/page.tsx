@@ -2,10 +2,12 @@ import { CalendarEngine } from "@/components/xflow/calendar/CalendarEngine";
 import { listBays, listAppointmentsBetween, listTechnicians } from "@/server/calendar";
 import { listVehicles } from "@/server/vehicles";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function CalendarPage() {
+  await requireAuth();
   const organizationId = await getPrimaryOrganizationId();
 
   const now = new Date();

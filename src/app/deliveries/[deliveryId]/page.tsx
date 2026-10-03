@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DeliveryDetailView } from "./DeliveryDetailView";
 import { getDeliveryById } from "@/server/finance";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function DeliveryDetailPage({
 }: {
   params: Promise<{ deliveryId: string }>;
 }) {
+  await requireAuth();
   const { deliveryId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const delivery = await getDeliveryById(organizationId, deliveryId);

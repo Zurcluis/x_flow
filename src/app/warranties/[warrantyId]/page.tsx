@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { WarrantyDetailView } from "./WarrantyDetailView";
 import { getWarrantyById } from "@/server/finance";
 import { getPrimaryOrganizationId } from "@/server/org";
+import { requireAuth } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function WarrantyDetailPage({
 }: {
   params: Promise<{ warrantyId: string }>;
 }) {
+  await requireAuth();
   const { warrantyId } = await params;
   const organizationId = await getPrimaryOrganizationId();
   const warranty = await getWarrantyById(organizationId, warrantyId);
