@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   DollarSign,
   Building,
   ShieldCheck,
   Save,
   Check,
+  ArrowRight,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -56,6 +59,31 @@ export function SettingsView() {
           {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
           <span>{saved ? "Configurações Guardadas!" : "Guardar Alterações"}</span>
         </Button>
+      </div>
+
+      {/* Atalhos */}
+      <div className="flex flex-col gap-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
+          Atalhos
+        </span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Link href="/settings/pricing" className="group block">
+            <Card className="p-5 flex items-center gap-4 bg-[#101314] border border-white/[0.06] group-hover:border-[#d3a548]/40 transition-colors cursor-pointer h-full">
+              <div className="p-2.5 rounded-md bg-[#d3a548]/10 border border-[#d3a548]/30 shrink-0">
+                <Wallet className="h-5 w-5 text-[#d3a548]" />
+              </div>
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-sm font-bold text-[#f1ede5] group-hover:text-[#f7d46d] transition-colors">
+                  Orçamentos e preços
+                </span>
+                <span className="text-xs text-[#a9adae]">
+                  Rubricas mensais, base financeira, fórmulas e kits
+                </span>
+              </div>
+              <ArrowRight className="h-4 w-4 text-[#8a9092] ml-auto shrink-0 group-hover:text-[#d3a548] transition-colors" />
+            </Card>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -17,7 +17,7 @@ export function WorkOrderPhaseStepper({
     <div className="flex flex-col gap-3 p-4 rounded-[18px] bg-[#101314] border border-white/[0.08]">
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-          Fases Técnicas da Obra (8 Etapas Sequenciais)
+          Fases Técnicas da Obra
         </span>
         <span className="text-[12px] text-[#8a9092]">
           {phases.filter((p) => p.status === "completed").length} de {phases.length} concluídas

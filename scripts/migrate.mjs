@@ -152,6 +152,55 @@ if (!hasSplit) {
   console.log("20260828000020 já aplicada.");
 }
 
+// 000021 — preços flexíveis: políticas, rubricas, fórmulas, kits, fornecedores, linhas de custo e snapshots
+const pricingTables = await client.query(
+  `SELECT count(*)::int AS n FROM information_schema.tables
+   WHERE table_schema='public' AND table_name='pricing_policies'`
+);
+if (pricingTables.rows[0].n === 0) {
+  const migration21 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000021_pricing_flexibility.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration21);
+  console.log("OK: 20260828000021");
+} else {
+  console.log("20260828000021 já aplicada.");
+}
+
+// 000022 — corretiva: completa rubricas e kits de referência (guardas por nome/código)
+const missingSeed = (
+  await client.query(
+    `SELECT count(*)::int AS n
+     FROM organizations o
+     WHERE o.slug = 'x-motion'
+       AND NOT EXISTS (SELECT 1 FROM pricing_expense_items pei WHERE pei.organization_id = o.id AND pei.name = 'Renda do pavilhão')`
+  )
+).rows[0].n;
+if (missingSeed > 0) {
+  const migration22 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000022_correct_pricing_seeds.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration22);
+  console.log("OK: 20260828000022");
+} else {
+  console.log("20260828000022 já aplicada.");
+}
+
+// 000023 — fases de subcontratação: chave 'subcontracted' + referência/custo real na fase
+const subletPhaseColumn = await hasColumn("work_order_phases", "supplier_service_id");
+if (!subletPhaseColumn) {
+  const migration23 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000023_work_order_sublet_phases.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration23);
+  console.log("OK: 20260828000023");
+} else {
+  console.log("20260828000023 já aplicada.");
+}
+
 // Backfill de passwords demo (idempotente): só preenche password_hash IS NULL
 const teamEmails = [
   "luis@xmotion.pt",

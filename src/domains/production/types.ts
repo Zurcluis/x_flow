@@ -6,7 +6,8 @@ export type PhaseKey =
   | "assembly"
   | "thermal_cure"
   | "detailing_finish"
-  | "quality_control";
+  | "quality_control"
+  | "subcontracted";
 
 export type PhaseStatus = "pending" | "in_progress" | "completed";
 

@@ -1,5 +1,5 @@
 import { requirePublicToken } from "@/server/auth";
-import { getQuoteByToken } from "@/server/quotes";
+import { getPublicQuoteByToken } from "@/server/quotes";
 import { ClientPortalView } from "./ClientPortalView";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export default async function ClientPortalPage({
 }) {
   const { token } = await params;
   await requirePublicToken("quote", token);
-  const quote = await getQuoteByToken(token);
+  const quote = await getPublicQuoteByToken(token);
 
   if (!quote || !quote.vehiclePlate) {
     return (
@@ -25,5 +25,5 @@ export default async function ClientPortalPage({
     );
   }
 
-  return <ClientPortalView quote={quote} />;
+  return <ClientPortalView quote={quote} token={token} />;
 }

@@ -1,5 +1,5 @@
 import { PublicQuoteView } from "./PublicQuoteView";
-import { getQuoteByToken } from "@/server/quotes";
+import { getPublicQuoteByToken } from "@/server/quotes";
 import { requirePublicToken } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export default async function PublicQuotePage({
 }) {
   const { token } = await params;
   await requirePublicToken("quote", token);
-  const quote = await getQuoteByToken(token);
+  const quote = await getPublicQuoteByToken(token);
 
   return <PublicQuoteView quote={quote} token={token} />;
 }

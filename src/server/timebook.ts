@@ -97,6 +97,7 @@ const PHASE_NAMES: Record<string, string> = {
   thermal_cure: "Cura Térmica",
   detailing_finish: "Detalhes e Acabamento",
   quality_control: "Controlo de Qualidade",
+  subcontracted: "Subcontratação",
 };
 
 export { getPrimaryOrganizationId };

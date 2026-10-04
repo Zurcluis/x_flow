@@ -8,10 +8,10 @@ const BOOTSTRAP_ORG_SLUG = "x-motion";
 
 export async function restoreBootstrapOrg(client: PoolClient): Promise<void> {
   await client.query(
-    `SELECT set_config('app.bootstrap_org_slug', '${BOOTSTRAP_ORG_SLUG}', false)`
-  );
-  await client.query(
-    "SELECT set_config('app.current_organization_id', id::text, false) FROM organizations WHERE slug = current_setting('app.bootstrap_org_slug')"
+    `SELECT set_config('app.bootstrap_org_slug', '${BOOTSTRAP_ORG_SLUG}', false);
+     SELECT set_config('app.current_organization_id', organizations.id::text, false)
+     FROM organizations
+     WHERE slug = current_setting('app.bootstrap_org_slug');`
   );
 }
 

@@ -6,6 +6,15 @@ export type QuoteStatus =
   | "rejected"
   | "expired";
 
+import type {
+  AdjustKind,
+  CostLineType,
+  CostLineUnit,
+  QuoteCostLine,
+  ServiceLine,
+  ServiceLineMode,
+} from "@/domains/pricing/types";
+
 export type OptionTier = "essential" | "recommended" | "premium";
 
 export interface QuoteOptionItem {
@@ -85,4 +94,135 @@ export interface Quote {
   events: QuoteEvent[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ===== Orçamentos flexíveis (contrato partilhado entre servidor e interfaces) =====
+
+export interface QuoteOptionItemInput {
+  serviceName: string;
+  bodyPartCode: string;
+  bodyPartName: string;
+  materialName: string;
+  areaM2: number;
+  laborHours: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface CreateQuoteServiceLine {
+  name: string;
+  description?: string | null;
+  mode: ServiceLineMode;
+  hours: number;
+  notes?: string | null;
+  sortOrder: number;
+}
+
+export interface CreateQuoteCostLine {
+  lineType: CostLineType;
+  name: string;
+  quantity: number;
+  unit: CostLineUnit;
+  unitCost: number;
+  wasteRatePercent: number;
+  totalCost: number;
+  kitId?: string | null;
+  supplierServiceId?: string | null;
+  materialId?: string | null;
+  deductedHours?: number | null;
+  notes?: string | null;
+  sortOrder: number;
+}
+
+export interface QuoteOptionInput {
+  tier: OptionTier;
+  name: string;
+  description?: string | null;
+  isRecommended?: boolean;
+  warrantyYears?: number;
+  discountRate?: number;
+  kind: "flexible" | "configurator";
+  serviceLines?: CreateQuoteServiceLine[];
+  costLines?: CreateQuoteCostLine[];
+  items?: QuoteOptionItemInput[];
+  manualPriceBeforeVat?: number | null;
+  adjustKind?: AdjustKind;
+  adjustValue?: number;
+  adjustReason?: string | null;
+}
+
+export interface CreateQuoteInput {
+  vehicleId: string;
+  customerId: string;
+  notes?: string | null;
+  intent: "draft" | "send";
+  options: QuoteOptionInput[];
+}
+
+// Rascunho editável: contrato de carregamento entre servidor e interface.
+export interface DraftQuoteOption {
+  optionId: string;
+  kind: "flexible" | "configurator";
+  tier: OptionTier;
+  name: string;
+  discountRate: number;
+  serviceLines: ServiceLine[];
+  costLines: QuoteCostLine[];
+  items: QuoteOptionItemInput[];
+  adjustKind: AdjustKind;
+  adjustValue: number;
+  adjustReason: string | null;
+}
+
+export interface DraftQuoteData {
+  quoteId: string;
+  quoteNumber: string;
+  status: QuoteStatus;
+  vehicleId: string;
+  customerId: string;
+  notes: string | null;
+  options: DraftQuoteOption[];
+}
+
+// DTO público: só campos destinados ao cliente. Custos, margens, horas e
+// parâmetros internos nunca atravessam esta fronteira.
+
+export interface PublicQuoteOptionLine {
+  kind: "service" | "material";
+  name: string;
+  description?: string | null;
+  quantity?: number | null;
+  unitLabel?: string | null;
+}
+
+export interface PublicQuoteOption {
+  id: string;
+  tier: OptionTier;
+  name: string;
+  description?: string | null;
+  isRecommended: boolean;
+  warrantyYears: number;
+  taxableBase: number;
+  vatRate: number;
+  vatAmount: number;
+  totalWithVat: number;
+  discountRate: number;
+  discountAmount: number;
+  displayLines: PublicQuoteOptionLine[];
+}
+
+export interface PublicQuote {
+  id: string;
+  quoteNumber: string;
+  status: QuoteStatus;
+  customerName: string;
+  vehiclePlate: string;
+  vehicleModel: string;
+  vehicleYear?: number | null;
+  vehicleColor?: string | null;
+  expiresAt: string;
+  notes?: string | null;
+  selectedOptionId?: string | null;
+  approvedByName?: string | null;
+  options: PublicQuoteOption[];
 }

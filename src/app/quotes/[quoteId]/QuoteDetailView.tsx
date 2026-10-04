@@ -4,12 +4,15 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
   Share2,
   ExternalLink,
   MessageCircle,
   CheckCircle2,
   Check,
+  Loader2,
+  Pencil,
   RefreshCw,
   Trash2,
 } from "lucide-react";
@@ -19,7 +22,11 @@ import { Card } from "@/components/ui/card";
 import { QuoteOptionSelector } from "@/components/xflow/quotes/QuoteOptionSelector";
 import { QuoteFinancialSummary } from "@/components/xflow/quotes/QuoteFinancialSummary";
 import { Quote } from "@/domains/quotes/types";
-import { approveQuoteAction, deleteQuoteAction } from "@/app/actions/quotes";
+import {
+  approveQuoteAction,
+  deleteQuoteAction,
+  emitQuoteAction,
+} from "@/app/actions/quotes";
 
 interface QuoteDetailViewProps {
   quote: Quote;
@@ -32,6 +39,8 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
   const [selectedOptionId, setSelectedOptionId] = useState<string>("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [emitting, setEmitting] = useState(false);
+  const [emitError, setEmitError] = useState<string | null>(null);
 
   const currentOptionId =
     selectedOptionId ||
@@ -73,6 +82,18 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
     } else {
       console.error("Falha ao aprovar orçamento:", result.error);
     }
+  };
+
+  const handleEmitQuote = async () => {
+    setEmitting(true);
+    setEmitError(null);
+    const result = await emitQuoteAction(quote.id);
+    setEmitting(false);
+    if (!result.ok) {
+      setEmitError(result.error ?? "Erro ao emitir a proposta.");
+      return;
+    }
+    setQuote({ ...quote, status: "sent" });
   };
 
   const handleDelete = async () => {
@@ -166,6 +187,28 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {quote.status === "draft" && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-[#15191a]"
+                onClick={() => router.push(`/quotes/new?draft=${quote.id}`)}
+              >
+                <Pencil className="h-4 w-4 text-[#d3a548]" />
+                <span>Editar rascunho</span>
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleEmitQuote} disabled={emitting}>
+                {emitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+                <span>{emitting ? "A emitir…" : "Emitir e gerar link seguro"}</span>
+              </Button>
+            </>
+          )}
+
           <a
             href={`https://wa.me/?text=${whatsappMessage}`}
             target="_blank"
@@ -234,6 +277,10 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
         {deleteError && (
           <p className="text-xs font-semibold text-[#f05a50]">{deleteError}</p>
         )}
+
+        {emitError && (
+          <p className="text-xs font-semibold text-[#f05a50]">{emitError}</p>
+        )}
       </div>
 
       {/* Main Grid: Options Comparer + Confidential Financials */}
@@ -286,6 +333,13 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
         <div className="lg:col-span-4 flex flex-col gap-4">
           <div className="sticky top-6 flex flex-col gap-4">
             <QuoteFinancialSummary financials={activeOption} />
+
+            {quote.status === "draft" && (
+              <div className="flex items-start gap-2 p-3 rounded-md bg-[#d3a548]/10 border border-[#d3a548]/30 text-[11px] text-[#f7d46d]">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>Rascunho — o link só fica ativo depois de emitir.</span>
+              </div>
+            )}
 
             {/* Public Link Box */}
             <Card className="p-4 flex flex-col gap-2 bg-[#15191a]">
