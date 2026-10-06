@@ -46,7 +46,7 @@ describe("X-Flow Global Search Engine — Omnibox & Command Palette", () => {
   });
 
   it("finds invoices and warranties by official document numbers", () => {
-    const invoiceResults = searchGlobalIndex("FT 2026/042");
+    const invoiceResults = searchGlobalIndex("FT2026/70");
     expect(invoiceResults.length).toBeGreaterThan(0);
     expect(invoiceResults.some((r) => r.category === "invoices")).toBe(true);
 

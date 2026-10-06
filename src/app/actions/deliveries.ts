@@ -6,7 +6,6 @@ import {
   createDelivery,
   DeliveryCreateInput,
   listDeliveryCandidates,
-  markInvoicePaid,
 } from "@/server/deliveries";
 
 export type DeliveryActionResult =
@@ -47,24 +46,6 @@ export async function createDeliveryAction(
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Erro ao registar a entrega.",
-    };
-  }
-}
-
-export async function markInvoicePaidAction(
-  invoiceId: string
-): Promise<{ ok: boolean; error?: string }> {
-  const auth = await requireAuth();
-  try {
-    const organizationId = auth.organizationId;
-    await markInvoicePaid(organizationId, invoiceId);
-    revalidatePath("/invoices");
-    revalidatePath(`/invoices/${invoiceId}`);
-    return { ok: true };
-  } catch (e) {
-    return {
-      ok: false,
-      error: e instanceof Error ? e.message : "Erro ao registar o pagamento.",
     };
   }
 }

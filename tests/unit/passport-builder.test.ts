@@ -44,7 +44,7 @@ describe("Passport Builder & Milestone Counter", () => {
       date: "2026-08-28 17:00",
       type: "invoice",
       title: "Fatura",
-      subtitle: "FT 2026/042",
+      subtitle: "FT2026/42",
       description: "Paga",
     },
     {

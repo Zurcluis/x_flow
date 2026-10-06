@@ -149,6 +149,30 @@ const customers = [
     phone: "916789234", preferredChannel: "whatsapp", status: "lead",
     notes: "Lead via Instagram. Interessado em PPF frontal para o Audi RS6.",
   },
+  {
+    type: "business", name: "HM MOTOR", legalName: null,
+    nif: null, email: "geral@hmmotor.pt", phone: "911223344",
+    preferredChannel: "whatsapp", status: "active",
+    notes: "Cliente âncora B2B — ~23 faturas entre 2025 e 2026 (histórico real X-Motion). NIF a confirmar.",
+    b2b: { discountRate: 5, paymentTermsDays: 30, priorityLevel: "vip",
+      commercialNotes: "Cliente mais frequente do histórico real. Prazo 30 dias." },
+  },
+  {
+    type: "business", name: "Carclasse", legalName: "Carclasse — Comércio de Automóveis, Lda.",
+    nif: "503048852", email: "geral@carclasse.pt", phone: "911223355",
+    preferredChannel: "email", status: "active",
+    notes: "Concessionário de Barcelos (NIF validado nas faturas reais: FT2026/30).",
+    b2b: { discountRate: 5, paymentTermsDays: 30, priorityLevel: "high",
+      commercialNotes: "NIF validado no documento real FT2026/30." },
+  },
+  {
+    type: "business", name: "RSB Automóveis", legalName: "RSB Automóveis Unip. Lda",
+    nif: "517793253", email: "geral@rsbautomoveis.pt", phone: "911223366",
+    preferredChannel: "whatsapp", status: "active",
+    notes: "Parceiro automóvel de Vila Verde (NIF validado nas faturas reais: FT2026/9).",
+    b2b: { discountRate: 5, paymentTermsDays: 30, priorityLevel: "high",
+      commercialNotes: "NIF validado no documento real FT2026/9." },
+  },
 ];
 
 const customerIds = {};
@@ -194,6 +218,10 @@ for (const v of [
   { plate: "MN-78-OP", make: "Mercedes", model: "GLC 300", year: 2023, body: "suv", color: "Branco Polar", family: "white", owner: "AutoStand Prime Barcelos", km: 41000 },
   { plate: "QR-90-ST", make: "Tesla", model: "Model 3", year: 2024, body: "sedan", color: "Vermelho Multicamadas", family: "red", km: 15400, owner: "Ana Ferreira" },
   { plate: "UV-12-WX", make: "Ferrari", model: "296 GTB", year: 2023, body: "coupe", color: "Rosso Corsa", family: "red", km: 7200, owner: "Apex Track & Club" },
+  { plate: "02-NA-74", make: "BMW", model: "320d Touring", year: 2021, body: "wagon", color: "Cinza Estoril", family: "grey", km: 88000, owner: "HM MOTOR" },
+  { plate: "44-TX-88", make: "BMW", model: "M340i", year: 2023, body: "sedan", color: "Preto Safira", family: "black", km: 21000, owner: "HM MOTOR" },
+  { plate: "99-PZ-11", make: "Audi", model: "A4 Avant", year: 2020, body: "wagon", color: "Branco Ibis", family: "white", km: 64000, owner: "Carclasse" },
+  { plate: "33-RT-91", make: "Volkswagen", model: "Golf GTI", year: 2019, body: "hatchback", color: "Vermelho Tornado", family: "red", km: 76500, owner: "RSB Automóveis" },
 ]) {
   const { rows } = await client.query(
     `INSERT INTO vehicles
@@ -462,22 +490,80 @@ for (const a of appointments) {
 }
 
 // ── 13. Faturas �─────────────────────────────────────────────────────────────
+const nifByCustomer = Object.fromEntries(customers.map((c) => [c.name, c.nif ?? null]));
+const vehicleModelByPlate = {
+  "UV-12-WX": "Ferrari 296 GTB",
+  "QR-90-ST": "Tesla Model 3",
+  "EF-34-GH": "Porsche 911 Carrera",
+  "99-PZ-11": "Audi A4 Avant",
+  "44-TX-88": "BMW M340i",
+  "02-NA-74": "BMW 320d Touring",
+  "33-RT-91": "Volkswagen Golf GTI",
+};
 const invoices = [
-  { number: "FT-2026/041", vehicle: "UV-12-WX", customer: "Apex Track & Club", wo: woFerrari, subtotal: 4300, status: "paid", daysAgo: 3 },
-  { number: "FT-2026/040", vehicle: "QR-90-ST", customer: "Ana Ferreira", wo: null, subtotal: 450, status: "paid", daysAgo: 8 },
-  { number: "FT-2026/039", vehicle: "EF-34-GH", customer: "AutoStand Prime Barcelos", wo: null, subtotal: 1950, status: "pending", daysAgo: 5 },
+  { number: "FT2026/41", plate: "UV-12-WX", customer: "Apex Track & Club", wo: woFerrari, status: "paid", daysAgo: 3, method: "bank_transfer",
+    lines: [
+      { description: "Fornecimento de material técnico — STEK DYNOshield PPF Gloss (UV-12-WX)", quantity: 5, unitPrice: 650 },
+      { description: "Aplicação técnica (UV-12-WX)", quantity: 1, unitPrice: 1050 },
+    ] },
+  { number: "FT2026/40", plate: "QR-90-ST", customer: "Ana Ferreira", wo: null, status: "paid", daysAgo: 8, method: "mbway",
+    lines: [
+      { description: "Fornecimento de material técnico — Vinil 3M 2080 Gloss Black (QR-90-ST)", quantity: 2, unitPrice: 180 },
+      { description: "Aplicação técnica (QR-90-ST)", quantity: 1, unitPrice: 90 },
+    ] },
+  { number: "FT2026/39", plate: "EF-34-GH", customer: "AutoStand Prime Barcelos", wo: null, status: "pending", daysAgo: 5, method: "bank_transfer",
+    lines: [
+      { description: "Fornecimento de material técnico — Avery SW900 Satin Grey (EF-34-GH)", quantity: 8, unitPrice: 170 },
+      { description: "Aplicação técnica (EF-34-GH)", quantity: 1, unitPrice: 590 },
+    ] },
+  { number: "FT2026/30", plate: "99-PZ-11", customer: "Carclasse", wo: null, status: "paid", daysAgo: 21, method: "bank_transfer",
+    lines: [
+      { description: "Fornecimento de material técnico — Vinil Oracal 970-932 (99-PZ-11)", quantity: 18, unitPrice: 65 },
+      { description: "Aplicação técnica (99-PZ-11)", quantity: 1, unitPrice: 887.92 },
+    ] },
+  { number: "FT2026/28", plate: "44-TX-88", customer: "HM MOTOR", wo: null, status: "overdue", daysAgo: 26, method: "bank_transfer",
+    lines: [
+      { description: "Fornecimento de material técnico — Vinil decorativo (44-TX-88)", quantity: 1, unitPrice: 90 },
+      { description: "Aplicação técnica (44-TX-88)", quantity: 1, unitPrice: 90 },
+    ] },
+  { number: "FT2026/16", plate: "02-NA-74", customer: "HM MOTOR", wo: null, status: "paid", daysAgo: 60, method: "bank_transfer",
+    lines: [
+      { description: "Fornecimento de material técnico — Vinil decorativo (02-NA-74)", quantity: 3, unitPrice: 65 },
+      { description: "Aplicação técnica (02-NA-74)", quantity: 1, unitPrice: 90 },
+    ] },
+  { number: "FT2026/9", plate: "33-RT-91", customer: "RSB Automóveis", wo: null, status: "paid", daysAgo: 75, method: "bank_transfer",
+    lines: [
+      { description: "Fornecimento de material técnico — Vinil decorativo (33-RT-91)", quantity: 2, unitPrice: 65 },
+      { description: "Aplicação técnica (33-RT-91)", quantity: 1, unitPrice: 85 },
+    ] },
 ];
 for (const inv of invoices) {
-  const vat = inv.subtotal * 0.23;
-  await client.query(
+  const subtotal = inv.lines.reduce((acc, l) => acc + l.quantity * l.unitPrice, 0);
+  const vat = Math.round(subtotal * 0.23 * 100) / 100;
+  const total = Math.round((subtotal + vat) * 100) / 100;
+  const isPaid = inv.status === "paid";
+  const issuedAt = d(-inv.daysAgo);
+  const dueAt = isPaid ? d(-inv.daysAgo + 30) : inv.status === "overdue" ? d(-15) : d(18);
+  const { rows: invRows } = await client.query(
     `INSERT INTO invoices
       (organization_id, invoice_number, work_order_id, customer_id, customer_name, customer_nif,
-       vehicle_plate, vehicle_model, subtotal, vat_rate, vat_amount, total_amount, payment_status, issued_at, due_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
-    [orgId, inv.number, inv.wo, customerIds[inv.customer], inv.customer, "509123456",
-     inv.vehicle, inv.vehicle, inv.subtotal, 23, vat, inv.subtotal + vat, inv.status,
-     d(-inv.daysAgo), d(-inv.daysAgo + 30)]
+       vehicle_plate, vehicle_model, subtotal, vat_rate, vat_amount, total_amount,
+       payment_method, payment_status, issued_at, due_at, paid_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+     RETURNING id`,
+    [orgId, inv.number, inv.wo, customerIds[inv.customer], inv.customer, nifByCustomer[inv.customer],
+     inv.plate, vehicleModelByPlate[inv.plate], subtotal.toFixed(2), 23, vat.toFixed(2), total.toFixed(2),
+     inv.method, inv.status, issuedAt, dueAt, isPaid ? d(-inv.daysAgo + 4) : null]
   );
+  const invoiceId = invRows[0].id;
+  for (const line of inv.lines) {
+    const lineTotal = Math.round(line.quantity * line.unitPrice * 100) / 100;
+    await client.query(
+      `INSERT INTO invoice_lines (invoice_id, description, quantity, unit_price, vat_rate, line_total)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [invoiceId, line.description, line.quantity, line.unitPrice.toFixed(2), 23, lineTotal.toFixed(2)]
+    );
+  }
 }
 
 // ── 14. Garantias �───────────────────────────────────────────────────────────

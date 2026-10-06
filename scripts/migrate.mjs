@@ -201,6 +201,18 @@ if (!subletPhaseColumn) {
   console.log("20260828000023 já aplicada.");
 }
 
+// 000024 — núcleo de tesouraria: transactions, categorias, recorrentes e contas
+if (!(await hasTable("transactions"))) {
+  const migration24 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000024_finance_treasury.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration24);
+  console.log("OK: 20260828000024");
+} else {
+  console.log("20260828000024 já aplicada.");
+}
+
 // Backfill de passwords demo (idempotente): só preenche password_hash IS NULL
 const teamEmails = [
   "luis@xmotion.pt",

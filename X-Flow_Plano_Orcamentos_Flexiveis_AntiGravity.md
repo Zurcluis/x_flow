@@ -1,4 +1,4 @@
-# X-Flow — Plano de implementação de orçamentos flexíveis
+Analisa este plano sem implementar nada.# X-Flow — Plano de implementação de orçamentos flexíveis
 
 **Destinatário:** agente de desenvolvimento no AntiGravity  
 **Projeto:** X-Flow, sistema de gestão da X-Motion  

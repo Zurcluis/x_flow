@@ -22,7 +22,10 @@ export async function listInvoices(organizationId: string): Promise<Invoice[]> {
   const db = getDb();
   const { rows } = await db.query<Row>(
     `SELECT i.*, v.make || ' ' || v.model AS vehicle_model_full
-     FROM invoices i JOIN vehicles v ON v.plate_display = i.vehicle_plate
+     FROM invoices i
+     LEFT JOIN vehicles v
+       ON v.organization_id = i.organization_id
+      AND v.plate_normalized = regexp_replace(upper(i.vehicle_plate), '[\\s-]', '', 'g')
      WHERE i.organization_id = $1
      ORDER BY i.issued_at DESC`,
     [organizationId]
@@ -35,19 +38,36 @@ export async function listInvoices(organizationId: string): Promise<Invoice[]> {
     [organizationId]
   );
 
-  return rows.map((r) => {
+  return rows.map(mapInvoiceRow(linesById(lineRows)));
+}
+
+function linesById(
+  lineRows: Row[]
+): (invoiceId: string) => Row[] {
+  const map = new Map<string, Row[]>();
+  for (const l of lineRows) {
+    const key = String(l.invoice_id);
+    const list = map.get(key) ?? [];
+    list.push(l);
+    map.set(key, list);
+  }
+  return (invoiceId) => map.get(invoiceId) ?? [];
+}
+
+function mapInvoiceRow(linesFor: (invoiceId: string) => Row[]) {
+  return (r: Row): Invoice => {
     const id = String(r.id);
     return {
       id,
       invoiceNumber: String(r.invoice_number),
       workOrderId: String(r.work_order_id ?? ""),
-      quoteId: undefined,
+      quoteId: r.quote_id ? String(r.quote_id) : undefined,
       customerId: String(r.customer_id),
       customerName: String(r.customer_name),
       customerNif: String(r.customer_nif),
       customerAddress: undefined,
       vehiclePlate: String(r.vehicle_plate),
-      vehicleModel: String(r.vehicle_model),
+      vehicleModel: String(r.vehicle_model_full ?? r.vehicle_model ?? ""),
       subtotal: num(r.subtotal),
       vatRate: num(r.vat_rate),
       vatAmount: num(r.vat_amount),
@@ -57,26 +77,56 @@ export async function listInvoices(organizationId: string): Promise<Invoice[]> {
       issuedAt: iso(r.issued_at),
       dueAt: iso(r.due_at).slice(0, 10),
       paidAt: r.paid_at ? iso(r.paid_at) : undefined,
-      lines: lineRows
-        .filter((l) => String(l.invoice_id) === id)
-        .map((l) => ({
-          id: String(l.id),
-          description: String(l.description),
-          quantity: num(l.quantity),
-          unitPrice: num(l.unit_price),
-          vatRate: num(l.vat_rate),
-          lineTotal: num(l.line_total),
-        })),
+      lines: linesFor(id).map((l) => ({
+        id: String(l.id),
+        description: String(l.description),
+        quantity: num(l.quantity),
+        unitPrice: num(l.unit_price),
+        vatRate: num(l.vat_rate),
+        lineTotal: num(l.line_total),
+      })),
     };
-  });
+  };
 }
 
 export async function getInvoiceById(
   organizationId: string,
   invoiceId: string
 ): Promise<Invoice | null> {
-  const invoices = await listInvoices(organizationId);
-  return invoices.find((i) => i.id === invoiceId) ?? null;
+  const db = getDb();
+  const { rows } = await db.query<Row>(
+    `SELECT i.*, v.make || ' ' || v.model AS vehicle_model_full
+     FROM invoices i
+     LEFT JOIN vehicles v
+       ON v.organization_id = i.organization_id
+      AND v.plate_normalized = regexp_replace(upper(i.vehicle_plate), '[\\s-]', '', 'g')
+     WHERE i.organization_id = $1 AND i.id = $2`,
+    [organizationId, invoiceId]
+  );
+  if (rows.length === 0) return null;
+
+  const { rows: lineRows } = await db.query<Row>(
+    `SELECT il.* FROM invoice_lines il WHERE il.invoice_id = $1`,
+    [invoiceId]
+  );
+
+  return mapInvoiceRow(linesById(lineRows))(rows[0]);
+}
+
+export async function getInvoiceByWorkOrderId(
+  organizationId: string,
+  workOrderId: string
+): Promise<Invoice | null> {
+  const db = getDb();
+  const { rows } = await db.query<Row>(
+    `SELECT id, invoice_number FROM invoices
+     WHERE organization_id = $1 AND work_order_id = $2
+     ORDER BY issued_at DESC LIMIT 1`,
+    [organizationId, workOrderId]
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return { id: String(r.id), invoiceNumber: String(r.invoice_number) } as Invoice;
 }
 
 function mapBelongings(r: Row): Delivery["belongings"] {
@@ -271,19 +321,19 @@ export async function getPassportByPlate(
     }
   }
   const { rows: invRows } = await db.query<Row>(
-    `SELECT id, invoice_number, total_amount, payment_status, issued_at FROM invoices
-     WHERE vehicle_plate = (SELECT plate_display FROM vehicles WHERE id = $1)`,
+    `SELECT i.id, i.invoice_number, i.total_amount, i.payment_status, i.issued_at FROM invoices i
+     WHERE regexp_replace(upper(i.vehicle_plate), '[\\s-]', '', 'g') = (SELECT plate_normalized FROM vehicles WHERE id = $1)`,
     [vehicleId]
   );
   for (const r of invRows) {
-    events.push({ id: `inv-${r.id}`, date: iso(r.issued_at), type: "invoice", title: `Fatura ${r.invoice_number}`, subtitle: `${Number(r.total_amount).toFixed(2)} €`, description: `Pagamento: ${r.payment_status}`, badgeText: String(r.payment_status), badgeVariant: r.payment_status === "paid" ? "success" : "gold" });
+    events.push({ id: `inv-${r.id}`, date: iso(r.issued_at), type: "invoice", title: `Fatura ${r.invoice_number}`, subtitle: `${Number(r.total_amount).toFixed(2)} €`, description: `Pagamento: ${r.payment_status}`, badgeText: String(r.payment_status), badgeVariant: r.payment_status === "paid" ? "success" : "gold", linkHref: `/invoices/${r.id}` });
   }
   const { rows: wtyRows } = await db.query<Row>(
-    `SELECT id, certificate_number, material_name, warranty_years, starts_at, expires_at, batch_number FROM warranties WHERE vehicle_id = $1`,
+    `SELECT id, certificate_number, material_name, warranty_years, starts_at, expires_at, batch_number, token FROM warranties WHERE vehicle_id = $1`,
     [vehicleId]
   );
   for (const r of wtyRows) {
-    events.push({ id: `wty-${r.id}`, date: String(r.starts_at), type: "warranty", title: `Garantia ${r.warranty_years} anos`, subtitle: `Certificado ${r.certificate_number}`, description: `Material ${r.material_name}, lote ${r.batch_number}.`, badgeText: "Garantia", badgeVariant: "success", linkHref: `/warranties/certificate/wty-2026-001` });
+    events.push({ id: `wty-${r.id}`, date: String(r.starts_at), type: "warranty", title: `Garantia ${r.warranty_years} anos`, subtitle: `Certificado ${r.certificate_number}`, description: `Material ${r.material_name}, lote ${r.batch_number}.`, badgeText: "Garantia", badgeVariant: "success", linkHref: `/warranties/certificate/${r.token}` });
   }
 
   events.sort((a, b) => b.date.localeCompare(a.date));

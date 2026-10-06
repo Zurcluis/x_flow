@@ -1,5 +1,8 @@
 import { getDb } from "@/lib/db";
-import { DeliveryCheckinBelonging } from "@/domains/finance/types";
+import {
+  DeliveryCheckinBelonging,
+  InvoicePaymentInput,
+} from "@/domains/finance/types";
 
 type Row = Record<string, unknown>;
 
@@ -137,14 +140,50 @@ export async function createDelivery(
 
 export async function markInvoicePaid(
   organizationId: string,
-  invoiceId: string
+  invoiceId: string,
+  payment?: InvoicePaymentInput,
+  profileId?: string
 ): Promise<void> {
-  const { rowCount } = await getDb().query(
-    `UPDATE invoices SET payment_status = 'paid', paid_at = NOW()
-     WHERE id = $1 AND organization_id = $2 AND payment_status <> 'paid'`,
-    [invoiceId, organizationId]
-  );
-  if (rowCount === 0) {
-    throw new Error("Fatura não encontrada ou já paga.");
+  const db = getDb();
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<Row>(
+      `UPDATE invoices
+       SET payment_status = 'paid',
+           paid_at = COALESCE($3::timestamptz, NOW()),
+           payment_method = COALESCE($4, payment_method)
+       WHERE id = $1 AND organization_id = $2 AND payment_status <> 'paid'
+       RETURNING id, invoice_number, total_amount, vat_amount, customer_name`,
+      [invoiceId, organizationId, payment?.occurredAt ?? null, payment?.method ?? null]
+    );
+    if (rows.length === 0) {
+      throw new Error("Fatura não encontrada ou já paga.");
+    }
+    const inv = rows[0];
+    await client.query(
+      `INSERT INTO transactions
+        (organization_id, type, occurred_at, amount, bank_account_id, description,
+         payment_method, reference, vat_amount, source_type, source_id, created_by)
+       VALUES
+         ($1,'income',COALESCE($2::timestamptz, NOW()),$3,NULL,$4,$5,$6,$7,'invoice_payment',$8,$9)`,
+      [
+        organizationId,
+        payment?.occurredAt ?? null,
+        Number(inv.total_amount).toFixed(2),
+        `Cobrança ${inv.invoice_number} — ${inv.customer_name}`,
+        payment?.method ?? "bank_transfer",
+        payment?.reference?.trim() || null,
+        Number(inv.vat_amount ?? 0).toFixed(2),
+        invoiceId,
+        profileId ?? null,
+      ]
+    );
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
   }
 }

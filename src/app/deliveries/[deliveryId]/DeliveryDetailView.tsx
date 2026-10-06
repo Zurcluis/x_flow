@@ -13,9 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { BelongingsChecklist } from "@/components/xflow/deliveries/BelongingsChecklist";
 
-import { Delivery } from "@/domains/finance/types";
+import { Delivery, Invoice } from "@/domains/finance/types";
 
-export function DeliveryDetailView({ delivery }: { delivery: Delivery }) {
+interface DeliveryDetailViewProps {
+  delivery: Delivery;
+  linkedInvoice?: Pick<Invoice, "id" | "invoiceNumber"> | null;
+}
+
+export function DeliveryDetailView({ delivery, linkedInvoice }: DeliveryDetailViewProps) {
 
 
   return (
@@ -61,12 +66,14 @@ export function DeliveryDetailView({ delivery }: { delivery: Delivery }) {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5">
-          <Link href="/invoices/inv-1">
-            <Button variant="outline" size="sm" className="bg-[#15191a]">
-              <CreditCard className="h-4 w-4 text-[#d3a548]" />
-              <span>Ver Fatura FT 2026/042</span>
-            </Button>
-          </Link>
+          {linkedInvoice && (
+            <Link href={`/invoices/${linkedInvoice.id}`}>
+              <Button variant="outline" size="sm" className="bg-[#15191a]">
+                <CreditCard className="h-4 w-4 text-[#d3a548]" />
+                <span>Ver Fatura {linkedInvoice.invoiceNumber}</span>
+              </Button>
+            </Link>
+          )}
 
           <Link href={`/passport/${delivery.vehiclePlate}`} target="_blank">
             <Button variant="primary" size="sm" className="bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-bold">

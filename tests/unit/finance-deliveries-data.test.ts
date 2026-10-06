@@ -10,7 +10,7 @@ describe("Finance, Deliveries, Warranties & Passport Datasets Integrity", () => 
   it("should have valid invoices with 23% VAT and matching line totals", () => {
     expect(initialInvoicesData.length).toBeGreaterThan(0);
     const invoice1 = initialInvoicesData[0];
-    expect(invoice1.invoiceNumber).toBe("FT 2026/042");
+    expect(invoice1.invoiceNumber).toBe("FT2026/70");
     expect(invoice1.subtotal).toBe(4000.0);
     expect(invoice1.vatAmount).toBe(920.0);
     expect(invoice1.totalAmount).toBe(4920.0);

@@ -26,8 +26,8 @@ describe("Invoice Calculator with Portuguese VAT (23%)", () => {
   });
 
   it("should format invoice numbers according to Portuguese standard", () => {
-    expect(formatInvoiceNumber(42, 2026)).toBe("FT 2026/042");
-    expect(formatInvoiceNumber(1, 2026)).toBe("FT 2026/001");
-    expect(formatInvoiceNumber(125, 2026)).toBe("FT 2026/125");
+    expect(formatInvoiceNumber(42, 2026)).toBe("FT2026/42");
+    expect(formatInvoiceNumber(1, 2026)).toBe("FT2026/1");
+    expect(formatInvoiceNumber(125, 2026)).toBe("FT2026/125");
   });
 });

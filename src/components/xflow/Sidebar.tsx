@@ -20,7 +20,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Key,
-  CreditCard,
+  Wallet,
   Building2,
   Clock,
   CheckSquare,
@@ -77,7 +77,7 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Gestão",
     items: [
       { label: "Equipa", href: "/team", icon: UserCheck },
-      { label: "Faturação", href: "/invoices", icon: CreditCard },
+      { label: "Finanças", href: "/finance", icon: Wallet },
       { label: "Garantias", href: "/warranties", icon: ShieldCheck },
       { label: "Relatórios", href: "/reports", icon: BarChart2 },
     ],

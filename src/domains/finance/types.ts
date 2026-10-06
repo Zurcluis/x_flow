@@ -18,7 +18,7 @@ export interface InvoiceLine {
 
 export interface Invoice {
   id: string;
-  invoiceNumber: string; // e.g. "FT 2026/042"
+  invoiceNumber: string; // e.g. "FT2026/42" (formato weoInvoice real)
   workOrderId: string;
   quoteId?: string;
   customerId: string;
@@ -133,4 +133,116 @@ export interface PassportFullRecord {
     expiresAt: string;
     certificateNumber: string;
   };
+}
+
+// ── Tesouraria (Fase 2 — Gestão Financeira) ──────────────────────────────────
+
+export type TransactionType = "income" | "expense" | "transfer";
+export type TransactionSourceType =
+  | "manual"
+  | "invoice_payment"
+  | "recurring"
+  | "import"
+  | "tax_payment";
+
+export interface TransactionCategory {
+  id: string;
+  name: string;
+  kind:
+    | "operational"
+    | "tax"
+    | "payroll"
+    | "rent"
+    | "marketing"
+    | "supplier"
+    | "other";
+  isRecurring: boolean;
+  vatDefaultRate: number;
+}
+
+export interface BankAccount {
+  id: string;
+  name: string;
+  iban?: string;
+  bic?: string;
+  kind: "bank" | "cash" | "mbway";
+  initialBalance: number;
+  active: boolean;
+}
+
+export interface RecurringRule {
+  id: string;
+  name: string;
+  categoryId?: string;
+  categoryName?: string;
+  type: "income" | "expense";
+  amount: number;
+  vatRate: number;
+  frequency: "monthly" | "quarterly" | "yearly";
+  dayOfMonth: number;
+  startsAt: string;
+  endsAt?: string;
+  active: boolean;
+  notes?: string;
+}
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  occurredAt: string;
+  amount: number;
+  categoryId?: string;
+  categoryName?: string;
+  bankAccountId?: string;
+  bankAccountName?: string;
+  description?: string;
+  paymentMethod: string;
+  reference?: string;
+  vatAmount: number;
+  sourceType: TransactionSourceType;
+  sourceId?: string;
+  sourceLabel?: string;
+  recurringRuleId?: string;
+  periodKey?: string;
+}
+
+export interface TreasurySummary {
+  currentBalance: number;
+  monthIncome: number;
+  monthExpense: number;
+  monthNet: number;
+  recurringMonthlyTotal: number;
+  pendingInvoiceTotal: number;
+  pendingInvoiceCount: number;
+  overdueInvoiceTotal: number;
+  overdueInvoiceCount: number;
+}
+
+export interface TransactionCreateInput {
+  type: Exclude<TransactionType, "transfer">;
+  occurredAt: string;
+  amount: number;
+  categoryId?: string;
+  bankAccountId?: string;
+  description?: string;
+  paymentMethod?: string;
+  reference?: string;
+  vatAmount?: number;
+}
+
+export interface RecurringRuleCreateInput {
+  name: string;
+  type: "income" | "expense";
+  amount: number;
+  categoryId?: string;
+  vatRate?: number;
+  frequency?: "monthly" | "quarterly" | "yearly";
+  dayOfMonth?: number;
+  notes?: string;
+}
+
+export interface InvoicePaymentInput {
+  method: PaymentMethod;
+  occurredAt: string;
+  reference?: string;
 }

@@ -44,6 +44,6 @@ export function calculateInvoiceTotals(
 }
 
 export function formatInvoiceNumber(seq: number, year: number = 2026): string {
-  const padded = String(seq).padStart(3, "0");
-  return `FT ${year}/${padded}`;
+  // Formato real weoInvoice (histórico X-Motion): FT2025/2, FT2026/30 — sem espaços nem zeros à esquerda.
+  return `FT${year}/${seq}`;
 }

@@ -1,14 +1,48 @@
 # Progresso — X-Flow
 
-_Última atualização: 04/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 06/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.3.3, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
-- Health: typecheck OK, lint OK, 92/92 testes a passar
+- Health: typecheck OK, lint OK, 181/181 testes (27 ficheiros)
 - **Git a funcionar**: repo em `main`, tudo commitado e pushed para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo)
 - `README.md` reescrito (03/10): setup, credenciais demo, scripts, arquitectura
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 06/10/2026 — Faturação real + Tesouraria (Fases 0-3 do plano v2.0)
+- **Plano**: `X-Flow_Plano_Melhoria_Faturacao_AntiGravity.md` (v2.0) — decisão registada: **X-Flow NUNCA emite faturas fiscais** (weoInvoice, Certificado AT nº 1137/AT continua a faturar); X-Flow é sistema de controlo gerencial que espelha/regista
+- **ETL das faturas reais** (`scripts/import-faturacao.mjs`, DRY_RUN=1 suportado): lê `docs/X-motion/Faturação/Faturacao25-26.xlsx` (46 faturas 2025 + 37 faturas 2026 = 83; coluna "Valor" = total COM IVA, subtotal = valor/1.23; numeração real com barra: `FT2025/2`, `FT2026/30`), valida totais 42.883,14 € / 28.459,25 €, clientes por nome/razão social normalizados (HM MOTOR NIF null, Carclasse 503048852, RSB 517793253); **executado: 83 faturas inseridas na Neon** (86 no total com as 3 demo); idempotente
+- **Numeração alinhada**: `formatInvoiceNumber` agora produz `FT2026/42` (sem espaço nem zeros à esquerda — formato real weoInvoice); faturas demo renumeradas para **FT2026/70-72** (fora da sequência real 1..69); fatura real FT2026/39 limpa de linhas demo; testes atualizados (181/181)
+- **Fase 1**: `InvoiceSummaryCard.tsx` com emitente real (Fábio Domingos da Costa Pereira, Unip., Lda · NIF 518035247 · Barcelos · IBAN PT50.0036.0096.99100129889.26 · BIC MPIOPTPL), badges dinâmicos paid/pending/overdue/cancelled, aviso juros de mora DL 32/2003; `src/server/finance.ts` com match de matrícula normalizada (`regexp_replace(upper(plate),'[\s-]','','g')`), `getInvoiceByWorkOrderId(orgId, woId)`; entregas recebem `linkedInvoice` (link dinâmico real, fim dos links hardcoded)
+- **Fase 2 — Migração 24** (`20260828000024_finance_treasury.sql`): `transaction_categories` (kind: operational/tax/payroll/rent/marketing/supplier/other), `bank_accounts` (bank/cash/mbway), `recurring_rules` (monthly/quarterly/yearly, day_of_month), `transactions` (income/expense/transfer, source_type manual/invoice_payment/recurring/import/tax_payment, **imutável por convenção — anulação é registo reverso**, `period_key 'YYYY-MM'` para dedupe de recorrentes); RLS org_isolation
+- **Servidor de tesouraria** (`src/server/treasury.ts`): `ensureDefaultCategories` (20 categorias + contas BCP/Caixa + 9 recorrentes), CRUD de rubricas, `createTransaction`, `listTransactions` com filtros, `generateDueRecurring` (lazy por period_key, idempotente), `getTreasurySummary` (saldo, mês, break-even vs. recorrentes, pendências)
+- **`markInvoicePaid` atómico** (`src/server/deliveries.ts`): UPDATE da fatura + INSERT da transação `invoice_payment` em transação única; `markInvoicePaidAction` movida para `src/app/actions/finance.ts`
+- **Ecrãs `/finance`**: dashboard (saldo, entradas/saídas do mês, break-even, gap de faturação vs. custos — exposto sem conclusão, cenário de pessoal a confirmar; nota "espelho do weoInvoice"), `/finance/movements` (lista + modal de registo saída/entrada com categoria, conta, método, IVA), `/finance/recurring` (lista + criar + ativar/desativar); `FinanceSubNav` partilhado
+- **Sidebar**: entrada "Faturação" → "Finanças" (`/finance`, ícone Wallet); `/invoices` continua acessível como lista de faturas
+- **Seed em produção (Neon)**: `scripts/seed-treasury-defaults.mjs` (idempotente, espelha `ensureDefaultCategories`) → 20 categorias, 2 contas, 9 recorrentes (Renda 630,74 d1 · Acordo de transição — a formalizar 833,33 d5 · Marketing 500 d5 · Contabilidade 170,73 d10 · Seguro 80 d10 · Multirriscos 33,83 d10 · Luz 81,30 d15 · Água 65,04 d15 · Limpeza 56,91 d15); `scripts/generate-recurring-month.mjs` gerou os 9 movimentos de outubro 2026 (idempotente por period_key)
+- **Rubrica neutra**: nome do acordo passou a "Acordo de transição — a formalizar" (categoria "Acordo de transição") conforme plano v2.0 §fase; notas "Acordo verbal ativo, por formalizar (20.000 € em 24 meses)"
+- **Bug real apanhado (42P08)**: `generateDueRecurring` tinha `$3` deduzido como varchar no SELECT e text na comparação `t.period_key = $3` → "inconsistent types deduced"; corrigido com `$3::text` explícito (também no script utilitário) — teria rebentado a 1ª carga de `/finance`
+- **Lição re-confirmada**: PowerShell 5.1 `Set-Content`/`Get-Content` corrompe UTF-8 → duplicados mojibake na BD (12 categorias + 3 rubricas) criados por seed reescrito via PowerShell; limpos com `scripts/cleanup-xart-labels.mjs` (deteção por padrão `Ã|â€`, re-reatamento de movimentos, idempotente, removido no fim). Ficheiros com acentos: só Edit/Write tools
+- **Pendentes desta sessão**: browser MCP em modo extension timeouts (verificação visual de /finance pendente — páginas respondem 200 via HTTP); demo search (`finance-deliveries-data.ts` inv-1) usa linkHref `/invoices/inv-1` (incoerência remanescente no CommandPalette/global-search-engine); Fases 4-7 do plano v2.0 (impostos/calendário fiscal, conciliação, exportação)
+
+## Sessão 04/10/2026 (2ª parte) — Preços flexíveis completos (plan v1.2 + 4 agentes em ondas)
+- **Implementação por agentes paralelos** (onda 1: migração+engine; onda 2: servidor+ecrã+fluxo; onda 3: E2E+rascunhos+fases), consolidada pelo orquestrador
+- **Migração 21** (`20260828000021_pricing_flexibility.sql`): 10 tabelas (pricing_policies com versioning draft/active, pricing_expense_items com versioning por name, pricing_formulas/pricing_formula_versions, consumable_kits, suppliers/supplier_services, quote_service_lines/quote_cost_lines, quote_pricing_snapshots); RLS `org_isolation_*` + OR por token público nas linhas de orçamento; **trigger de imutabilidade do snapshot**: UPDATE nunca, DELETE só quando a quote-mãe está em `draft`; seeds condicionais (10 rubricas, 3 kits, 2 fórmulas v1 published, política v1 `manual`)
+- **Migração 22** (corretiva): guardas das seeds em 21 usavam "org não tem rubricas nenhuma" → só a 1ª rubrica e 1º kit foram semeados; corrigido para guarda por nome/código + migratória corretiva para bases já afetadas
+- **Migração 23** (`20260828000023_work_order_sublet_phases.sql`): CHECK de `phase_key` estendido com `subcontracted` + colunas `supplier_service_id`, `sublet_base_cost`, `sublet_fee_cost` nas fases
+- **Motor puro** (`src/domains/pricing/engine.ts`, 54 testes): `resolvePricingContext` (método manual: base diária 172€/8h; método mensal: total de rubricas / dias produtivos), tarifas completa 46,50€/h e pontual 71,50€/h (25€/h de acréscimo), lucro 25€/h, desperdício 15%, IVA 23%, taxa de gestão sublet 15% + dedução de horas internas (Regra 1); `computeSuggestion`/`computeFinalFinancials`/`validateQuotePricing`/`validatePolicy`
+- **Servidor** (`src/server/pricing.ts` + `src/app/actions/pricing.ts`, 7 ações): versões de rubricas (arquiva ativa, version+1), kits/fornecedores/serviços, publicar fórmula, política draft/publish; `createQuote` em `src/server/quotes.ts` recalcula no servidor e grava **snapshot imutável revision 1** (payload com policy/rates/rubricas/fórmula; `vatRate` no `quote_options` é FRAÇÃO 0.23 — nas snapshots é PERCENTAGEM 23; `kind: "flexible"` no payload)
+- **Ecrã `/settings/pricing`** (4 tabs): Despesas e reservas (10 rubricas versionadas, totais O=3013,99 / C=833,33 / Total=3847,32), Base financeira (manual vs mensal, tarifas 46,50/71,50, simulação de dias), Fórmulas (2 cartões com componentes, publicação com vigência), Kits e fornecedores (kits 8/20/40€, fornecedores com "Fase interna substituída"); cartão-link na /settings
+- **`/quotes/new` modo duplo**: "Serviço direto" (default com política ativa) + "Configurador de peças (PPF)" intacto; `FlexibleQuoteSummary` (sugestão, preço manual, IVA, diferença, composição interna, chips, restaurar); sem política → banner e modo desativado
+- **Rascunhos editáveis**: `updateDraftQuote`/`loadDraftQuote` (+ ações), `/quotes/new?draft=<id>` pré-preenche, botão "Editar rascunho" na ficha; apaga snapshots/opções e recria à revision 1 (preserva `quote_number`/`created_at`); `src/domains/quotes/draft-mapping.ts` + 15 testes; % desconto/ajuste € carregam como preço manual; drafts de configurador só com 3 opções essencial/recomendada/premium
+- **Fases de produção ↔ sublet** (`src/server/production-phases-map.ts`, +21 testes): na aprovação de opção flexível, fases internas com horas **proporcionais à opção aprovada** (fim das fixas 2/2,5/4/18 h — violação do plano §10.6), 1 fase `subcontracted` por linha sublet com custo real (base + taxa 15%) no slot da fase substituída; idempotente (re-aprovação devolve a mesma WO)
+- **Bug pré-existente corrigido**: `restoreBootstrapOrg` em `src/lib/db.ts` tinha corrida de cold-start (dois `set_config` com `await` intermédio → RLS escondia dados no arranque); agora num único round-trip
+- **Mojibake reparado** (dupla codificação latin1↔utf8) em `ExpensesTab.tsx`/`KitsSuppliersTab.tsx` (69 sequências) com script one-off em Temp
+- **Smoke-test E2E** `scripts/e2e-pricing-smoke.mjs` (19/19): D1-D4 (BD: rubricas/kits/fórmulas/política), U1-U11 (login, 4 tabs com valores, modo direto com sugestão 3h×46,50=139,50 + IVA 23%), U12-D5-U13-U14 (emissão real → ficha 171,59 com IVA → snapshot na BD → vista pública → portal); formatação pt-PT: sem separador de milhares para 4 dígitos (3013,99 €) e 0-2 casas
+- **Commit `1d87235` pushed** (40 ficheiros, +13332/-293): código, 3 migrações, 3 ficheiros de testes, smoke-test, plano (`X-Flow_Plano_Orcamentos_Flexiveis_AntiGravity.md`) e `docs/X-motion/ANALISE-CONSOLIDADA.md`
+- **Nota**: `docs/X-motion/` tem 130 ficheiros de negócio NÃO commitados (proposta de transição societária PDF, contrato de renda DOC, scans sem OCR ~11,5 MB) — decisão do Luís: só código + docs md
+- **Pendentes desta sessão**: **Vercel 500** em todas as rotas que tocam na BD (login POST, /quotes/public/[token]) — páginas sem BD respondem; build local de produção funciona (login OK) → suspeita `DATABASE_URL` no projeto Vercel; CLI logged out, `npx vercel login` pendente do Luís; UI de produção não distingue visualmente fases `subcontracted`; custo real do sublet não alimenta margem real (§7); `deleteQuote` falha em orçamentos com snapshot (por design da trigger)
 
 ## Sessão 04/10/2026 — E2E de auth no browser (35/35)
 - **Browser MCP extension indisponível outra vez** (3 timeouts seguidos) — em vez de HTTP puro, o E2E corre num Chromium headless do playwright instalado em `CulturaBuilder/.../node_modules/playwright` (via `createRequire`; fallback channel `chrome`/`msedge` porque o build de browsers local era anterior ao do pacote)
@@ -124,7 +158,10 @@ _Última atualização: 04/10/2026. Ficheiro de continuação de sessão — diz
 6. Verificação no browser (dev server): sidebar com secções e colapso (80px), topbar global nas páginas, h1 30px, CardTitle 20px, radius 18px, shadow token, certificado com classes print. Validação: typecheck, lint e 85/85 testes OK.
 
 ## Pendente
-- ~~E2E no browser (primeira tarefa da próxima sessão)~~ — FEITO em 04/10 (ver sessão 04/10); regressão futura: `node scripts/e2e-auth-browser.mjs` com dev server ligado
+- **Vercel 500 em rotas de BD** (04/10): login POST e /quotes/public/[token] → 500 no deployment `x-flow-roan.vercel.app`; páginas sem BD respondem e a build local de produção funciona → provável `DATABASE_URL` ausente/errada no projeto Vercel. Retomar com `npx vercel login` → `vercel env ls`/`vercel logs`, ou configurar a env no dashboard e redeployar
+- **Fases 4-7 do plano de faturação v2.0**: ligação dinâmica OT/orçamento→fatura (parcial nas entregas), impostos/calendário fiscal, conciliação bancária, exportação; seguir `X-Flow_Plano_Melhoria_Faturacao_AntiGravity.md` §8
+- **Demo search**: `finance-deliveries-data.ts` inv-1 ainda usa linkHref `/invoices/inv-1` (incoerência no CommandPalette/global-search-engine demo)
+- ~~E2E no browser (primeira tarefa da próxima sessão)~~ — FEITO em 04/10 (ver sessão 04/10); regressão futura: `node scripts/e2e-auth-browser.mjs` com dev server ligado. Smoke dos preços flexíveis: `node scripts/e2e-pricing-smoke.mjs` (19/19)
 - Topbar chrome não aparece em <lg (mobile tem header/drawer/bottom-nav próprios) — avaliar ações rápidas no drawer mobile
 - Filtro `pathname.startsWith(item.href)` na nav pode dar falsos positivos futuros (ex.: `/tools` vs `/tooling`) — considerar `route matching` por segmentos
 - Valores de cor/GU do seed de películas são aproximações de datasheets — afinar com leituras reais (L*a*b*/GU)
@@ -134,7 +171,9 @@ _Última atualização: 04/10/2026. Ficheiro de continuação de sessão — diz
 - Auth demo: password `xflow-demo-2026` para os técnicos/patrícia; Luís usa a password pessoal dele.
 - `node scripts/verify-rls.mjs` valida a RLS por linha de comandos (10 checks).
 - `node scripts/e2e-auth-browser.mjs` corre o E2E de auth no browser (35 checks; usa o playwright instalado em CulturaBuilder/.../node_modules, não faz parte do package.json).
-- Git: commitar + push no fim de cada sessão (a pedido de Luís).
+- `node scripts/e2e-pricing-smoke.mjs` corre o smoke-test dos preços flexíveis (19 checks; mesmo padrão playwright + pg).
+- Tesouraria: `node scripts/seed-treasury-defaults.mjs [org_id]` provisiona categorias/contas/rubricas (idempotente); `node scripts/generate-recurring-month.mjs [YYYY-MM] [org_id]` gera movimentos de recorrentes de um mês (idempotente por period_key); `scripts/import-faturacao.mjs` importa as faturas reais do xlsx (DRY_RUN=1 para validar).
+- Git: commitar + push no fim de cada sessão (a pedido de Luís). docs/X-motion/ com 130 ficheiros de negócio fica SEM commit por decisão do Luís.
 
 ## Retomar
 Dizer ao agente: "Lê `progresso.md` e continua pelos pendentes."

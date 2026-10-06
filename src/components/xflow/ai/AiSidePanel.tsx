@@ -44,7 +44,7 @@ export function AiSidePanel({ isOpen, onClose }: AiSidePanelProps) {
     {
       label: "Faturação do Mês",
       query: "Quanto faturámos este mês?",
-      response: "Neste mês de Agosto de 2026, a faturação acumulada totaliza €11 070,00 (€9 000,00 de incidência + €2 070,00 de IVA a 23%). Todas as 3 faturas emitidas foram 100% liquidadas (FT 2026/042, FT 2026/040, FT 2026/039).",
+      response: "Neste mês de Agosto de 2026, a faturação acumulada totaliza €11 070,00 (€9 000,00 de incidência + €2 070,00 de IVA a 23%). Todas as 3 faturas emitidas foram 100% liquidadas (FT2026/70, FT2026/71, FT2026/72).",
       linkHref: "/invoices",
       linkLabel: "Ver Faturação",
     },

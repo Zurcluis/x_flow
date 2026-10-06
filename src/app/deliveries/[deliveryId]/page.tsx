@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeliveryDetailView } from "./DeliveryDetailView";
-import { getDeliveryById } from "@/server/finance";
+import { getDeliveryById, getInvoiceByWorkOrderId } from "@/server/finance";
 import { getPrimaryOrganizationId } from "@/server/org";
 import { requireAuth } from "@/server/auth";
 
@@ -32,5 +32,9 @@ export default async function DeliveryDetailPage({
     );
   }
 
-  return <DeliveryDetailView delivery={delivery} />;
+  const linkedInvoice = delivery.workOrderId
+    ? await getInvoiceByWorkOrderId(organizationId, delivery.workOrderId)
+    : null;
+
+  return <DeliveryDetailView delivery={delivery} linkedInvoice={linkedInvoice} />;
 }

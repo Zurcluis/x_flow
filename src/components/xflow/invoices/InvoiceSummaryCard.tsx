@@ -8,7 +8,29 @@ interface InvoiceSummaryCardProps {
   invoice: Invoice;
 }
 
+const ISSUER_NAME = "Fábio Domingos da Costa Pereira, Unip., Lda";
+const ISSUER_NIF = "PT518035247";
+const ISSUER_ADDRESS = "Rua da Devesa Nº114, 4755-417 Barcelos, Portugal";
+const ISSUER_EMAIL = "geral@x-art.pt";
+const ISSUER_IBAN = "PT50.0036.0096.99100129889.26";
+const ISSUER_BIC = "MPIOPTPL";
+
+const STATUS_LABELS: Record<Invoice["paymentStatus"], { label: string; variant: "success" | "gold" | "danger" }> = {
+  paid: { label: "Fatura Liquidada", variant: "success" },
+  pending: { label: "Pendente de Cobrança", variant: "gold" },
+  overdue: { label: "Em Incumprimento", variant: "danger" },
+  cancelled: { label: "Anulada", variant: "danger" },
+};
+
+function formatDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return `${d}-${m}-${y}`;
+}
+
 export function InvoiceSummaryCard({ invoice }: InvoiceSummaryCardProps) {
+  const status = STATUS_LABELS[invoice.paymentStatus];
+  const isPaid = invoice.paymentStatus === "paid";
+
   return (
     <div className="flex flex-col gap-6 p-8 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-2xl text-xs text-[#f1ede5]">
       {/* Header */}
@@ -16,22 +38,22 @@ export function InvoiceSummaryCard({ invoice }: InvoiceSummaryCardProps) {
         <div className="flex flex-col gap-1">
           <Logo variant="full" />
           <span className="text-[12px] text-[#8a9092] mt-2">
-            X-Motion Performance Detailing, Unipessoal Lda. · NIF: PT514998877
+            {ISSUER_NAME} · NIF: {ISSUER_NIF}
           </span>
           <span className="text-[12px] text-[#8a9092]">
-            Zona Industrial de Barcelos, Lote 14 · Barcelos, Portugal
+            {ISSUER_ADDRESS} · {ISSUER_EMAIL}
           </span>
         </div>
 
         <div className="flex flex-col sm:items-end">
-          <Badge variant="success" className="text-xs self-start sm:self-auto mb-2">
-            Fatura Liquidada
+          <Badge variant={status.variant} className="text-xs self-start sm:self-auto mb-2">
+            {status.label}
           </Badge>
           <span className="font-mono font-black text-xl text-[#f7d46d]">
             {invoice.invoiceNumber}
           </span>
           <span className="text-[12px] text-[#a9adae]">
-            Data de Emissão: {invoice.issuedAt}
+            Data de Emissão: {formatDate(invoice.issuedAt)}
           </span>
         </div>
       </div>
@@ -99,10 +121,27 @@ export function InvoiceSummaryCard({ invoice }: InvoiceSummaryCardProps) {
               ? "Transferência Bancária Imediata"
               : invoice.paymentMethod === "mbway"
               ? "MB WAY"
+              : invoice.paymentMethod === "multibanco"
+              ? "Terminal Multibanco"
+              : invoice.paymentMethod === "cash"
+              ? "Dinheiro"
               : invoice.paymentMethod}
           </span>
-          <span className="text-[11px] text-[#68a46b]">
-            Liquidado a {invoice.paidAt || invoice.issuedAt}
+          {isPaid ? (
+            <span className="text-[11px] text-[#68a46b]">
+              Liquidado a {formatDate(invoice.paidAt || invoice.issuedAt)}
+            </span>
+          ) : invoice.paymentStatus === "overdue" ? (
+            <span className="text-[11px] text-[#c96a6a]">
+              Vencida desde {formatDate(invoice.dueAt)} — juros de mora aplicáveis (DL 32/2003)
+            </span>
+          ) : (
+            <span className="text-[11px] text-[#a9adae]">
+              Data limite de pagamento: {formatDate(invoice.dueAt)}
+            </span>
+          )}
+          <span className="text-[11px] text-[#8a9092] font-mono pt-1">
+            IBAN: {ISSUER_IBAN} · BIC: {ISSUER_BIC}
           </span>
         </div>
 
