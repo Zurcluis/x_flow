@@ -4,6 +4,7 @@
 
 export type CarFinish = "gloss" | "satin" | "matte";
 export type CarFinishOption = CarFinish | "film";
+export type CarCoverage = "full" | "front" | "hood" | "roof" | "rear";
 
 export interface CarFinishMaterial {
   roughness: number;
@@ -12,12 +13,64 @@ export interface CarFinishMaterial {
   envMapIntensity: number;
 }
 
+export interface CarCoverageBounds {
+  min: { x: number; y: number; z: number };
+  max: { x: number; y: number; z: number };
+}
+
+export interface CarCoverageZone {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  minZ: number;
+  maxZ: number;
+  minNormalY: number;
+}
+
 export const CAR_FINISH_OPTIONS: { id: CarFinishOption; label: string }[] = [
   { id: "film", label: "Película" },
   { id: "gloss", label: "Brilho" },
   { id: "satin", label: "Acetinado" },
   { id: "matte", label: "Mate" },
 ];
+
+export const CAR_COVERAGE_OPTIONS: { id: CarCoverage; label: string }[] = [
+  { id: "full", label: "Integral" },
+  { id: "front", label: "Frontal" },
+  { id: "hood", label: "Capô" },
+  { id: "roof", label: "Tejadilho" },
+  { id: "rear", label: "Traseira" },
+];
+
+const COVERAGE_FRACTIONS: Record<
+  Exclude<CarCoverage, "full">,
+  { minZ: number; maxZ: number; minY: number; minNormalY: number }
+> = {
+  front: { minZ: 0.65, maxZ: 1, minY: 0, minNormalY: -1 },
+  hood: { minZ: 0.68, maxZ: 0.97, minY: 0.55, minNormalY: 0.25 },
+  roof: { minZ: 0.38, maxZ: 0.65, minY: 0.65, minNormalY: 0.2 },
+  rear: { minZ: 0, maxZ: 0.35, minY: 0, minNormalY: -1 },
+};
+
+export function resolveCoverageZone(
+  coverage: CarCoverage,
+  bounds: CarCoverageBounds
+): CarCoverageZone | null {
+  if (coverage === "full") return null;
+  const fractions = COVERAGE_FRACTIONS[coverage];
+  const zSpan = bounds.max.z - bounds.min.z;
+  const ySpan = bounds.max.y - bounds.min.y;
+  return {
+    minX: bounds.min.x,
+    maxX: bounds.max.x,
+    minY: bounds.min.y + ySpan * fractions.minY,
+    maxY: bounds.max.y,
+    minZ: bounds.min.z + zSpan * fractions.minZ,
+    maxZ: bounds.min.z + zSpan * fractions.maxZ,
+    minNormalY: fractions.minNormalY,
+  };
+}
 
 const FINISH_MATERIALS: Record<CarFinish, CarFinishMaterial> = {
   gloss: {

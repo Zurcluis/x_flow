@@ -33,6 +33,8 @@ export interface CarModelDef {
   paint: CarModelPaint;
   /** Mantém vidros, pneus, jantes e restantes materiais originais do GLB */
   preserveMaterials?: boolean;
+  /** Aceita aplicação parcial por zona (capô, tejadilho, frente, traseira) */
+  supportsPartialWrap?: boolean;
   /** Meshes a esconder (ex.: sombra AO embebida no ferrari) */
   hide?: string[];
   /** Atribuição obrigatória quando o modelo é CC BY ou equivalente */
@@ -62,6 +64,7 @@ export const CAR_MODELS: CarModelDef[] = [
       ],
     },
     preserveMaterials: true,
+    supportsPartialWrap: true,
     credit: {
       author: "SRT Performance (TheRealSRT)",
       sourceUrl:

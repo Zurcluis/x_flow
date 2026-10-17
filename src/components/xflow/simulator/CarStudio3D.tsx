@@ -30,9 +30,13 @@ import {
   DEFAULT_CAR_MODEL_ID,
 } from "@/lib/car-models";
 import {
+  CarCoverage,
+  CarCoverageZone,
+  CAR_COVERAGE_OPTIONS,
   CarFinish,
   CAR_FINISH_OPTIONS,
   carPaintParams,
+  resolveCoverageZone,
 } from "@/lib/car-finish";
 
 interface OrbitLike {
@@ -147,8 +151,119 @@ function toPhysicalMaterial(m: THREE.Material): THREE.MeshPhysicalMaterial {
   return physical;
 }
 
+const ZONE_VERTEX_DECL = `varying vec3 vXflowWorldPos;
+varying vec3 vXflowWorldNormal;
+`;
+
+const ZONE_FRAGMENT_DECL = `varying vec3 vXflowWorldPos;
+varying vec3 vXflowWorldNormal;
+uniform vec3 uXflowZoneMin;
+uniform vec3 uXflowZoneMax;
+uniform float uXflowMinNormalY;
+uniform float uXflowZoneRoughness;
+uniform float uXflowZoneClearcoat;
+uniform float uXflowZoneClearcoatRoughness;
+uniform float uXflowOriginalClearcoat;
+uniform float uXflowOriginalClearcoatRoughness;
+bool xflowInZone(vec3 p, vec3 n) {
+  return p.x >= uXflowZoneMin.x && p.x <= uXflowZoneMax.x
+    && p.y >= uXflowZoneMin.y && p.y <= uXflowZoneMax.y
+    && p.z >= uXflowZoneMin.z && p.z <= uXflowZoneMax.z
+    && n.y >= uXflowMinNormalY;
+}
+`;
+
+/**
+ * Recorta a película à zona escolhida. Com roughness definido, o material
+ * original mantém cor/textura e só o brilho é alterado dentro da zona; sem
+ * roughness (película opaca), a geometria fora da zona é descartada.
+ */
+interface CoverageClearcoat {
+  target: number;
+  roughness: number;
+  original: number;
+  originalRoughness: number;
+}
+
+function applyCoverageMask(
+  material: THREE.Material,
+  zone: CarCoverageZone,
+  roughness?: number,
+  clearcoat?: CoverageClearcoat
+) {
+  material.customProgramCacheKey = () =>
+    `xflow-zone-${typeof roughness === "number" ? "ppf" : "opaque"}${
+      clearcoat ? "-cc" : ""
+    }`;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uXflowZoneMin = {
+      value: new THREE.Vector3(zone.minX, zone.minY, zone.minZ),
+    };
+    shader.uniforms.uXflowZoneMax = {
+      value: new THREE.Vector3(zone.maxX, zone.maxY, zone.maxZ),
+    };
+    shader.uniforms.uXflowMinNormalY = { value: zone.minNormalY };
+    shader.uniforms.uXflowZoneRoughness = { value: roughness ?? 0.4 };
+    shader.uniforms.uXflowZoneClearcoat = { value: clearcoat?.target ?? 0 };
+    shader.uniforms.uXflowZoneClearcoatRoughness = {
+      value: clearcoat?.roughness ?? 0.0525,
+    };
+    shader.uniforms.uXflowOriginalClearcoat = {
+      value: clearcoat?.original ?? 0,
+    };
+    shader.uniforms.uXflowOriginalClearcoatRoughness = {
+      value: clearcoat?.originalRoughness ?? 0.0525,
+    };
+
+    shader.vertexShader = ZONE_VERTEX_DECL + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      `#include <begin_vertex>
+      vXflowWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+      vXflowWorldNormal = normalize(mat3(modelMatrix) * objectNormal);`
+    );
+
+    shader.fragmentShader = ZONE_FRAGMENT_DECL + shader.fragmentShader;
+    if (typeof roughness === "number") {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <roughnessmap_fragment>",
+        `#include <roughnessmap_fragment>
+        if (xflowInZone(vXflowWorldPos, vXflowWorldNormal)) {
+          roughnessFactor = uXflowZoneRoughness;
+        }`
+      );
+      if (clearcoat) {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <lights_physical_fragment>",
+          `#include <lights_physical_fragment>
+          if (xflowInZone(vXflowWorldPos, vXflowWorldNormal)) {
+            material.clearcoat = saturate(uXflowZoneClearcoat);
+            material.clearcoatRoughness = clamp(uXflowZoneClearcoatRoughness, 0.0525, 1.0);
+          } else {
+            material.clearcoat = saturate(uXflowOriginalClearcoat);
+            material.clearcoatRoughness = clamp(uXflowOriginalClearcoatRoughness, 0.0525, 1.0);
+          }`
+        );
+      }
+    } else {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "void main() {",
+        `void main() {
+        if (!xflowInZone(vXflowWorldPos, vXflowWorldNormal)) discard;`
+      );
+    }
+  };
+  material.needsUpdate = true;
+}
+
 /** Aplica os materiais da película conforme a estratégia do modelo */
-function applyModelMaterials(root: THREE.Object3D, def: CarModelDef, film: CarStudioFilm) {
+function applyModelMaterials(
+  root: THREE.Object3D,
+  def: CarModelDef,
+  film: CarStudioFilm,
+  coverage: CarCoverage,
+  bounds?: THREE.Box3
+) {
   const glassMat = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color("#0e141a"),
     metalness: 0.9,
@@ -161,6 +276,11 @@ function applyModelMaterials(root: THREE.Object3D, def: CarModelDef, film: CarSt
     roughness: 0.32,
     envMapIntensity: 1.1,
   });
+
+  const zone =
+    bounds && coverage !== "full"
+      ? resolveCoverageZone(coverage, bounds)
+      : null;
 
   // Superfícies da carroçaria que recebem a película
   const bodyTargets: THREE.Mesh[] = [];
@@ -198,8 +318,8 @@ function applyModelMaterials(root: THREE.Object3D, def: CarModelDef, film: CarSt
     bodyTargets.push(mesh);
   });
 
-  // PPF transparente: mantém a pintura e as riscas de fábrica do GLB e só
-  // ajusta o brilho, para não perder texturas ao trocar o material.
+  // PPF transparente: mantém a pintura e as riscas de fábrica do GLB.
+  // Integral ajusta o brilho de toda a chapa; parcial altera só a zona.
   if (film.transparent) {
     const params = carPaintParams(film.finishOverride, film.glossGu, film.metallic ?? 0);
     for (const mesh of bodyTargets) {
@@ -213,6 +333,22 @@ function applyModelMaterials(root: THREE.Object3D, def: CarModelDef, film: CarSt
         const mat: THREE.Material =
           "clearcoat" in m ? m.clone() : toPhysicalMaterial(m);
         mat.userData.xflowCreated = true;
+        if (zone) {
+          if ("roughness" in mat) {
+            const physical = mat as THREE.MeshPhysicalMaterial;
+            const originalClearcoat = physical.clearcoat ?? 0;
+            const originalClearcoatRoughness =
+              physical.clearcoatRoughness ?? 0.0525;
+            physical.clearcoat = 1;
+            applyCoverageMask(mat, zone, params.roughness, {
+              target: params.clearcoat,
+              roughness: params.clearcoatRoughness,
+              original: originalClearcoat,
+              originalRoughness: originalClearcoatRoughness,
+            });
+          }
+          return mat;
+        }
         if ("roughness" in mat) (mat as THREE.MeshStandardMaterial).roughness = params.roughness;
         if ("clearcoat" in mat) {
           const physical = mat as THREE.MeshPhysicalMaterial;
@@ -229,18 +365,49 @@ function applyModelMaterials(root: THREE.Object3D, def: CarModelDef, film: CarSt
     return;
   }
 
+  // Película opaca parcial: mantém a pintura de fábrica e acrescenta uma
+  // segunda camada com a cor da película, recortada pela zona escolhida.
+  if (zone) {
+    const overlayMat = filmPaintMaterial(film);
+    overlayMat.polygonOffset = true;
+    overlayMat.polygonOffsetFactor = -2;
+    overlayMat.polygonOffsetUnits = -2;
+    overlayMat.userData.xflowCreated = true;
+    applyCoverageMask(overlayMat, zone);
+
+    for (const mesh of bodyTargets) {
+      const overlay = new THREE.Mesh(mesh.geometry, overlayMat);
+      overlay.name = `${mesh.name}-xflow-film`;
+      overlay.castShadow = false;
+      overlay.receiveShadow = false;
+      overlay.renderOrder = 1;
+      mesh.add(overlay);
+    }
+    return;
+  }
+
   const paintMat = filmPaintMaterial(film);
   paintMat.userData.xflowCreated = true;
   for (const mesh of bodyTargets) mesh.material = paintMat;
 }
 
-function Car({ def, film }: { def: CarModelDef; film: CarStudioFilm }) {
+function Car({
+  def,
+  film,
+  coverage,
+}: {
+  def: CarModelDef;
+  film: CarStudioFilm;
+  coverage: CarCoverage;
+}) {
   const { scene } = useGLTF(def.url);
 
   const car = useMemo(() => {
     const root = scene.clone(true);
 
-    applyModelMaterials(root, def, film);
+    if (coverage === "full") {
+      applyModelMaterials(root, def, film, "full");
+    }
 
     // Normaliza dimensão e assenta no chão
     const box = new THREE.Box3().setFromObject(root);
@@ -253,9 +420,14 @@ function Car({ def, film }: { def: CarModelDef; film: CarStudioFilm }) {
     root.position.z -= center.z;
     root.position.y -= after.min.y;
 
+    if (coverage !== "full") {
+      const finalBox = new THREE.Box3().setFromObject(root);
+      applyModelMaterials(root, def, film, coverage, finalBox);
+    }
+
     return root;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene, def, film.colorHex, film.glossGu, film.metallic, film.transparent, film.textureEffect, film.name, film.finishOverride]);
+  }, [scene, def, coverage, film.colorHex, film.glossGu, film.metallic, film.transparent, film.textureEffect, film.name, film.finishOverride]);
 
   // R3F não destrói <primitive>; liberta apenas os materiais criados aqui,
   // mantendo intactas as geometrias e texturas do GLB em cache.
@@ -321,11 +493,16 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
   const [preset, setPreset] = useState<CameraPreset>("threeQuarter");
   const [zoom, setZoom] = useState(1);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [coverage, setCoverage] = useState<CarCoverage>("full");
   const glRef = useRef<THREE.WebGLRenderer | null>(null);
   const def = useMemo(
     () => CAR_MODELS.find((m) => m.id === modelId) ?? CAR_MODELS[0],
     [modelId]
   );
+  const effectiveCoverage = def.supportsPartialWrap ? coverage : "full";
+  const coverageLabel = CAR_COVERAGE_OPTIONS.find(
+    (option) => option.id === effectiveCoverage
+  )?.label;
   const finishLabel = film.finishOverride
     ? CAR_FINISH_OPTIONS.find((f) => f.id === film.finishOverride)?.label
     : "Película";
@@ -353,7 +530,13 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
     const attribution = def.credit
       ? `${def.brand} · ${def.credit.author} · ${def.credit.license}`
       : `${def.brand} · ${def.label}`;
-    ctx.fillText(`${film.name} · ${attribution}`, pad, out.height - barHeight / 2);
+    const coverageText =
+      coverageLabel && effectiveCoverage !== "full" ? ` · ${coverageLabel}` : "";
+    ctx.fillText(
+      `${film.name}${coverageText} · ${attribution}`,
+      pad,
+      out.height - barHeight / 2
+    );
 
     const a = document.createElement("a");
     a.href = out.toDataURL("image/png");
@@ -385,7 +568,7 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
             </Html>
           }
         >
-          <Car key={def.id} def={def} film={film} />
+          <Car key={def.id} def={def} film={film} coverage={effectiveCoverage} />
 
           <ContactShadows
             position={[0, 0, 0]}
@@ -444,6 +627,34 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
           </button>
         ))}
       </div>
+
+      {/* Zona de aplicação — só nos modelos com wrap parcial */}
+      {def.supportsPartialWrap && (
+        <div
+          className="absolute bottom-[6.1rem] sm:bottom-[4.15rem] xl:bottom-[5.5rem] left-2 sm:left-3 right-2 sm:right-40 xl:right-auto flex items-center gap-1 z-10 overflow-x-auto [mask-image:linear-gradient(to_right,black_82%,transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="group"
+          aria-label="Zona de aplicação"
+        >
+          <span className="hidden sm:inline shrink-0 mr-1 text-[9px] uppercase tracking-wider font-mono text-[#8a9092]">
+            Zona
+          </span>
+          {CAR_COVERAGE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setCoverage(option.id)}
+              aria-pressed={effectiveCoverage === option.id}
+              className={`shrink-0 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide whitespace-nowrap transition-all cursor-pointer border ${
+                effectiveCoverage === option.id
+                  ? "bg-[#d3a548] text-[#050606] border-[#d3a548]"
+                  : "bg-[#050606]/80 text-[#a9adae] border-white/[0.08] hover:border-white/25"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Seletor de modelo */}
       <div className="absolute bottom-16 sm:bottom-7 left-2 sm:left-3 right-2 sm:right-40 xl:right-auto flex flex-nowrap xl:flex-wrap gap-1.5 sm:max-w-none xl:max-w-[62%] z-10 overflow-x-auto xl:overflow-visible [mask-image:linear-gradient(to_right,black_82%,transparent)] xl:[mask-image:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -517,6 +728,7 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
       <div className="absolute bottom-0 inset-x-0 z-10 px-3 pb-1.5 flex items-center justify-between gap-2 text-[9px] text-[#747a7c]">
         <span className="truncate">
           {def.brand} · {finishLabel}
+          {coverageLabel && effectiveCoverage !== "full" && ` · ${coverageLabel}`}
           {def.credit && (
             <>
               {" · "}
