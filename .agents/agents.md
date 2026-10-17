@@ -1,5 +1,7 @@
 # X-Flow Agent Instructions
 
+Antes de código novo ou de uma funcionalidade, faz o briefing rápido de skills e agentes definido no `AGENTS.md` da raiz.
+
 Read `X-FLOW_MASTER_BLUEPRINT.md` completely before work.
 Build one approved phase at a time.
 UI copy is pt-PT; code and database identifiers are English.

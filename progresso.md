@@ -1,14 +1,32 @@
 # Progresso — X-Flow
 
-_Última atualização: 06/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 17/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.3.3, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
-- Health: typecheck OK, lint OK, 181/181 testes (27 ficheiros)
+- Health: typecheck OK, lint OK, 188/188 testes (28 ficheiros)
 - **Git a funcionar**: repo em `main`, tudo commitado e pushed para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo)
 - `README.md` reescrito (03/10): setup, credenciais demo, scripts, arquitectura
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 17/10/2026 (2ª parte) — Estúdio 3D: BMW M4 real + PPF transparente
+- **BMW M4 Competition** integrado como modelo por omissão (GLB web derivado: geometria Meshopt, texturas WebP até 512 px, 3,9 MB — SHA-256 `1a072ff0…b3e1`; CC BY 4.0 de SRT Performance (TheRealSRT) via Sketchfab/lukaizj; atribuição em `public/models/cars/bmw-m4-competition/ATTRIBUTION.md` + crédito no palco e no PNG exportado). A pintura de fábrica está repartida por **4 materiais** (`Meshesbody151Mtl`, `Mesheslivery1Mtl`, `Mesheswhite41Mtl`, `Mesheszx1Mtl`) — o wrap integral substitui todos; `preserveMaterials: true` mantém vidros/jantes/pneus originais
+- **PPF transparente corrigido**: clona os materiais por-mesh e só ajusta gloss (roughness/clearcoat/envMapIntensity) — antes repintava metade do carro; crash `MeshPhysicalMaterial.copy()` eliminado com helper `toPhysicalMaterial` (promove MeshStandardMaterial via `MeshStandardMaterial.prototype.copy.call`)
+- **Acabamentos**: `src/lib/car-finish.ts` com presets brilho/acetinado/mate (GU do catálogo quando "Película"); chrome/carbon respeitam `finishOverride`; dispose de materiais criados (`userData.xflowCreated` + cleanup); zoom centrado no alvo; captura PNG com barra de atribuição
+- **Responsivo + consola**: barra de câmara no topo, seletor de modelos em scroll horizontal no mobile, disclaimer fora do palco em mobile; log benigno do TFLite XNNPACK filtrado (`window.__xflowTfliteFilter`) — consola do `/simulator` com 0 erros
+- **Licenças**: `CREDITS.md` corrigido (Ferrari 458 de vicent091036 — CC BY 4.0 via auditoria three.js #23089, fonte secundária; Furgão Cesium CC BY 4.0; ToyCar CC0) + `credit` no registry (BMW/Ferrari/Furgão)
+- **Catálogo**: as 4 películas clear PPF já existiam na BD (XPEL Ultimate Plus/Stealth, Stek DYNOshield/DYNOmatte) — não foram acrescentadas duplicadas
+- **Validação**: typecheck OK, lint OK, 188/188 testes, build OK; commit `e6f213e` (9 ficheiros, +605/−106)
+- **Pendentes do simulador**: partial wrap por peças (capô/tejadilho), modelos de marcas reais (licença comercial), share por URL, normal maps de flake/carbono
+
+## Sessão 17/10/2026 — Skills externas (skills.sh)
+- **Análise** do diretório `skills.sh` (leaderboard + tópicos Next.js/React/Databases/Testing) e seleção das skills com encaixe real no X-Flow; evitadas as que duplicam as locais (`vercel-react-best-practices`, `supabase-postgres-best-practices`, `seguranca-owasp`, `design-de-interfaces`, `verification-before-completion`) e as irrelevantes (Prisma, Supabase client, Firebase, Convex, Turso, PlanetScale, shadcn, Hyperframes/Lark/Azure)
+- **Tier 1 instalado** (global em `~\.agents\skills`, ligado ao OpenCode; não entra no repo): `neon-postgres` (neondatabase/agent-skills — branching, pooler vs ligação direta, driver serverless), `tdd` e `diagnosing-bugs` (mattpocock/skills), `deploy-to-vercel` (vercel-labs/agent-skills). Comando usado: `npx skills@latest add <repo> --skill <nome> --agent opencode --global --yes`. Auditorias: Gen Safe / Socket 0 alerts / Snyk Low; `deploy-to-vercel` com Snyk **Medium** (rever SKILL.md antes de deploy real)
+- **Tier 2 sugerido (não instalado)**: `code-review`, `domain-modeling`, `handoff` (mattpocock), `web-design-guidelines` e `vercel-composition-patterns` (vercel-labs), `playwright-best-practices` (currents-dev)
+- **Nota Next.js**: `next-best-practices` foi descontinuada (repo `vercel-labs/next-skills`); o conhecimento passou para os docs bundled do Next 16.3+ e para o `AGENTS.md`/`CLAUDE.md` gerado pelo `next dev` — já presente no projeto
+- **Aviso**: `npx skills list -g` ignora `design-de-interfaces` e `seguranca-owasp` por YAML inválido no `description` (dois-pontos não quotado); o OpenCode continua a carregá-los
+- Skills novas só ficam disponíveis na sessão seguinte (o `available_skills` não recarrega a quente)
 
 ## Sessão 06/10/2026 — Faturação real + Tesouraria (Fases 0-3 do plano v2.0)
 - **Plano**: `X-Flow_Plano_Melhoria_Faturacao_AntiGravity.md` (v2.0) — decisão registada: **X-Flow NUNCA emite faturas fiscais** (weoInvoice, Certificado AT nº 1137/AT continua a faturar); X-Flow é sistema de controlo gerencial que espelha/regista
@@ -158,6 +176,7 @@ _Última atualização: 06/10/2026. Ficheiro de continuação de sessão — diz
 6. Verificação no browser (dev server): sidebar com secções e colapso (80px), topbar global nas páginas, h1 30px, CardTitle 20px, radius 18px, shadow token, certificado com classes print. Validação: typecheck, lint e 85/85 testes OK.
 
 ## Pendente
+- **Skills locais**: corrigir o YAML de `description` em `~\.agents\skills\design-de-interfaces\SKILL.md` e `~\.agents\skills\seguranca-owasp\SKILL.md` (dois-pontos não quotado) para o `skills` CLI os reconhecer
 - **Vercel 500 em rotas de BD** (04/10): login POST e /quotes/public/[token] → 500 no deployment `x-flow-roan.vercel.app`; páginas sem BD respondem e a build local de produção funciona → provável `DATABASE_URL` ausente/errada no projeto Vercel. Retomar com `npx vercel login` → `vercel env ls`/`vercel logs`, ou configurar a env no dashboard e redeployar
 - **Fases 4-7 do plano de faturação v2.0**: ligação dinâmica OT/orçamento→fatura (parcial nas entregas), impostos/calendário fiscal, conciliação bancária, exportação; seguir `X-Flow_Plano_Melhoria_Faturacao_AntiGravity.md` §8
 - **Demo search**: `finance-deliveries-data.ts` inv-1 ainda usa linkHref `/invoices/inv-1` (incoerência no CommandPalette/global-search-engine demo)
@@ -172,6 +191,7 @@ _Última atualização: 06/10/2026. Ficheiro de continuação de sessão — diz
 - `node scripts/verify-rls.mjs` valida a RLS por linha de comandos (10 checks).
 - `node scripts/e2e-auth-browser.mjs` corre o E2E de auth no browser (35 checks; usa o playwright instalado em CulturaBuilder/.../node_modules, não faz parte do package.json).
 - `node scripts/e2e-pricing-smoke.mjs` corre o smoke-test dos preços flexíveis (19 checks; mesmo padrão playwright + pg).
+- Skills externas: instaladas globalmente em `~\.agents\skills` (OpenCode); listar com `npx skills list -g`, atualizar com `npx skills update -g`.
 - Tesouraria: `node scripts/seed-treasury-defaults.mjs [org_id]` provisiona categorias/contas/rubricas (idempotente); `node scripts/generate-recurring-month.mjs [YYYY-MM] [org_id]` gera movimentos de recorrentes de um mês (idempotente por period_key); `scripts/import-faturacao.mjs` importa as faturas reais do xlsx (DRY_RUN=1 para validar).
 - Git: commitar + push no fim de cada sessão (a pedido de Luís). docs/X-motion/ com 130 ficheiros de negócio fica SEM commit por decisão do Luís.
 
