@@ -10,6 +10,24 @@ const VEHICLE_CLASSES = new Set([6, 7, 14]);
 
 let segmenterPromise: Promise<ImageSegmenter | null> | null = null;
 
+// O runtime TFLite do MediaPipe escreve esta linha informativa em stderr; o
+// glue do wasm converte-a em console.error e o overlay do Next trata-a como
+// erro. É ruído de arranque do delegate CPU, não uma falha de segmentação.
+// O log pode ser emitido de forma assíncrona, por isso o filtro fica instalado.
+const BENIGN_TFLITE_LOG = "Created TensorFlow Lite XNNPACK delegate for CPU";
+
+if (typeof window !== "undefined") {
+  const state = window as unknown as { __xflowTfliteFilter?: boolean };
+  if (!state.__xflowTfliteFilter) {
+    state.__xflowTfliteFilter = true;
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (typeof args[0] === "string" && args[0].includes(BENIGN_TFLITE_LOG)) return;
+      originalError.apply(console, args);
+    };
+  }
+}
+
 function getSegmenter(): Promise<ImageSegmenter | null> {
   if (!segmenterPromise) {
     segmenterPromise = (async () => {

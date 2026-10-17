@@ -8,7 +8,6 @@ import { simulateFilmOnPhoto } from "@/lib/film-simulation";
 import Link from "next/link";
 import {
   Sparkles,
-  Shield,
   ArrowRight,
   Car,
   Sliders,
@@ -25,6 +24,10 @@ import {
   formatCoverageLabel,
 } from "@/domains/intelligence/vision-analyzer";
 import { FinishPreset } from "@/domains/intelligence/types";
+import {
+  CarFinishOption,
+  CAR_FINISH_OPTIONS,
+} from "@/lib/car-finish";
 
 // Canvas WebGL só no cliente (WebGL não existe em SSR)
 const CarStudio3D = dynamic(
@@ -102,6 +105,7 @@ export function SimulatorView({
   const [applyMode, setApplyMode] = useState<"panels" | "car">("panels");
   const [view, setView] = useState<"3d" | "photo">("3d");
   const [brandKey, setBrandKey] = useState<string | null>(null);
+  const [finishOverride, setFinishOverride] = useState<CarFinishOption>("film");
 
   const brandGroups = useMemo(() => {
     const map = new Map<string, { key: string; short: string; films: FinishPreset[] }>();
@@ -124,6 +128,19 @@ export function SimulatorView({
   const targetColorFamily = presetTargetFamily(selectedPreset);
   const isClearFilm = selectedPreset.type.startsWith("clear_ppf");
   const serviceType = isClearFilm ? "PPF" : "Wrap";
+  const effectiveGlossGu =
+    finishOverride === "film"
+      ? selectedPreset.glossGu
+      : finishOverride === "gloss"
+        ? 95
+        : finishOverride === "satin"
+          ? 55
+          : 15;
+  const finishLabel =
+    CAR_FINISH_OPTIONS.find((option) => option.id === finishOverride)?.label ??
+    "Película";
+  const previewEffect =
+    finishOverride === "film" ? selectedPreset.textureEffect : finishOverride;
 
   // Simulação física (canvas, preservação de luminância) — fallback CSS enquanto processa
   const [simResult, setSimResult] = useState<{ key: string; url: string | null }>({
@@ -131,15 +148,15 @@ export function SimulatorView({
     url: null,
   });
   const canSimulate =
-    selectedPreset.textureEffect !== "carbon" && selectedPreset.glossGu !== undefined;
-  const simKey = `${selectedVehicle.id}|${selectedPreset.id}|${coverPhoto ? "foto" : "sem"}|${applyMode}`;
+    selectedPreset.textureEffect !== "carbon" && effectiveGlossGu !== undefined;
+  const simKey = `${selectedVehicle.id}|${selectedPreset.id}|${finishOverride}|${coverPhoto ? "foto" : "sem"}|${applyMode}`;
 
   useEffect(() => {
-    if (!coverPhoto || !canSimulate || !selectedPreset.glossGu) return;
+    if (!coverPhoto || !canSimulate || effectiveGlossGu === undefined) return;
     let cancelled = false;
     simulateFilmOnPhoto(coverPhoto, {
       colorHex: selectedPreset.colorHex,
-      glossGu: selectedPreset.glossGu,
+      glossGu: effectiveGlossGu,
       metallic: selectedPreset.metallic ?? 0,
       flakeScale: selectedPreset.flakeScale ?? 0,
       transparent: isClearFilm,
@@ -154,7 +171,7 @@ export function SimulatorView({
     return () => {
       cancelled = true;
     };
-  }, [coverPhoto, simKey, canSimulate, isClearFilm, selectedPreset.glossGu, selectedPreset.colorHex, selectedPreset.metallic, selectedPreset.flakeScale, applyMode]);
+  }, [coverPhoto, simKey, canSimulate, isClearFilm, effectiveGlossGu, selectedPreset.colorHex, selectedPreset.metallic, selectedPreset.flakeScale, applyMode]);
 
   const simUrl = simResult.key === simKey ? simResult.url : null;
   const simPending = Boolean(coverPhoto) && canSimulate && simUrl === null;
@@ -258,7 +275,7 @@ export function SimulatorView({
       <div className="flex flex-col gap-4 min-w-0">
       {/* Modo de visualização + área de aplicação (modo foto) */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => setView("3d")}
@@ -283,6 +300,32 @@ export function SimulatorView({
             <ImageIcon className="h-3.5 w-3.5" />
             Foto real
           </button>
+
+          <div className="flex flex-wrap items-center gap-1.5 sm:ml-1 sm:pl-2 sm:border-l sm:border-white/[0.08]" role="group" aria-label="Acabamento">
+            <span className="hidden sm:inline text-[10px] uppercase tracking-wider font-mono text-[#8a9092]">
+              Acabamento
+            </span>
+            {CAR_FINISH_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setFinishOverride(option.id)}
+                aria-pressed={finishOverride === option.id}
+                title={
+                  option.id === "film"
+                    ? "Acabamento definido pela película (GU do catálogo)"
+                    : `Pré-visualizar em ${option.label.toLowerCase()}`
+                }
+                className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer border ${
+                  finishOverride === option.id
+                    ? "bg-[#d3a548] text-[#050606] border-[#d3a548]"
+                    : "bg-[#101314] text-[#a9adae] border-white/[0.08] hover:border-white/25"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {view === "photo" && (
@@ -336,6 +379,8 @@ export function SimulatorView({
                 metallic: selectedPreset.metallic,
                 flakeScale: selectedPreset.flakeScale,
                 transparent: isClearFilm,
+                finishOverride:
+                  finishOverride === "film" ? undefined : finishOverride,
               }}
             />
           </div>
@@ -394,13 +439,13 @@ export function SimulatorView({
                         />
                       </>
                     )}
-                    {selectedPreset.textureEffect === "gloss" && (
+                    {previewEffect === "gloss" && (
                       <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/25" />
                     )}
-                    {selectedPreset.textureEffect === "satin" && (
+                    {previewEffect === "satin" && (
                       <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-black/15" />
                     )}
-                    {selectedPreset.textureEffect === "matte" && (
+                    {previewEffect === "matte" && (
                       <div
                         className="absolute inset-0"
                         style={{ backdropFilter: "saturate(0.65) contrast(0.95)" }}
@@ -478,41 +523,36 @@ export function SimulatorView({
         )}
 
         {/* Floating Finish Badge on Stage */}
-        <div className="absolute top-4 left-4 p-3 rounded-md bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-center gap-3">
+        <div className="absolute top-10 left-2 sm:left-4 p-2 sm:p-3 rounded-md bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-center gap-2 sm:gap-3">
           <div
             style={{ backgroundColor: selectedPreset.colorHex }}
-            className="h-6 w-6 rounded-full border border-white/30"
+            className="h-5 w-5 sm:h-6 sm:w-6 rounded-full border border-white/30"
           />
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-[#f1ede5]">
+            <span className="text-[11px] sm:text-xs font-bold text-[#f1ede5]">
               {selectedPreset.name}
             </span>
-            <span className="text-[11px] text-[#d3a548] uppercase tracking-wider font-mono">
-              Efeito {selectedPreset.textureEffect.toUpperCase()}
-              {selectedPreset.glossGu !== undefined && ` · ${Math.round(selectedPreset.glossGu)} GU`}
+            <span className="text-[10px] sm:text-[11px] text-[#d3a548] uppercase tracking-wider font-mono">
+              {finishOverride === "film"
+                ? `Efeito ${selectedPreset.textureEffect}`
+                : `Acabamento ${finishLabel}`}
+              {effectiveGlossGu !== undefined && ` · ${Math.round(effectiveGlossGu)} GU`}
             </span>
           </div>
         </div>
 
         {/* Representation disclaimer (requisito blueprint: simulação com aviso) */}
-        <div className="absolute top-4 right-4 max-w-[180px] p-2.5 rounded-sm bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-start gap-1.5 text-[10px] text-[#a9adae]">
+        <div className="hidden xl:flex absolute top-10 right-4 max-w-[180px] p-2.5 rounded-sm bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] items-start gap-1.5 text-[10px] text-[#a9adae]">
           <Info className="h-3.5 w-3.5 text-[#d3a548] shrink-0 mt-0.5" />
           <span>Simulação meramente representativa. A cor final pode variar face ao material real.</span>
         </div>
 
-        {/* Floating Quick Specs */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-2 p-2.5 rounded-md bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] text-xs text-[#a9adae]">
-          <Shield className="h-4 w-4 text-[#68a46b]" />
-          <span>Garantia de {selectedPreset.warrantyYears} Anos</span>
-          <span>•</span>
-          <span className="text-[#f1ede5] font-mono">
-            {(selectedPreset.costPerMeterCents / 100).toLocaleString("pt-PT", {
-              style: "currency",
-              currency: "EUR",
-            })}
-            /m
-          </span>
-        </div>
+      </div>
+
+      {/* Aviso legal compacto em mobile, fora do palco para não colidir com os controlos */}
+      <div className="xl:hidden flex items-start gap-1.5 -mt-2 px-1 text-[10px] text-[#a9adae]">
+        <Info className="h-3.5 w-3.5 text-[#d3a548] shrink-0 mt-0.5" />
+        <span>Simulação meramente representativa. A cor final pode variar face ao material real.</span>
       </div>
 
       {/* Contrast & Coverage Analysis Widget */}
