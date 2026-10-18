@@ -40,6 +40,10 @@ export function TeamMemberFormModal({
       setError("A função é obrigatória.");
       return;
     }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("O email do colaborador é inválido.");
+      return;
+    }
     setSaving(true);
     setError(null);
 
@@ -179,7 +183,11 @@ export function TeamMemberFormModal({
             />
           </label>
 
-          {error && <p className="text-xs font-semibold text-[#f05a50]">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs font-semibold text-[#f05a50]">
+              {error}
+            </p>
+          )}
 
           <div className="flex items-center justify-end gap-2 mt-2 pt-4 border-t border-white/[0.06]">
             <Button variant="outline" size="sm" onClick={onClose} type="button" disabled={saving}>

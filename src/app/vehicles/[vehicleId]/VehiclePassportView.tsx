@@ -12,6 +12,8 @@ import {
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { VehiclePassportHero } from "@/components/xflow/vehicles/VehiclePassportHero";
 import { VehicleTimeline } from "@/components/xflow/vehicles/VehicleTimeline";
+import { formatVehicleDateKey } from "@/domains/vehicles/presentation";
+import { formatCheckinDate } from "@/domains/checkins/presentation";
 import { Vehicle } from "@/domains/vehicles/types";
 
 interface VehiclePassportViewProps {
@@ -23,7 +25,6 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Back Button */}
       <div>
         <Link
           href="/vehicles"
@@ -34,13 +35,12 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
         </Link>
       </div>
 
-      {/* Hero Header / Passport Overview */}
       <VehiclePassportHero vehicle={vehicle} />
 
-      {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
         <button
           onClick={() => setActiveTab("timeline")}
+          aria-pressed={activeTab === "timeline"}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === "timeline"
               ? "border-[#d3a548] text-[#f7d46d]"
@@ -48,10 +48,11 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
           }`}
         >
           <History className="h-4 w-4" />
-          <span>Passaporte & Timeline Técnica ({vehicle.timeline?.length || 0})</span>
+          <span>Passaporte & Timeline Técnica ({vehicle.timeline?.length ?? 0})</span>
         </button>
         <button
           onClick={() => setActiveTab("owners")}
+          aria-pressed={activeTab === "owners"}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === "owners"
               ? "border-[#d3a548] text-[#f7d46d]"
@@ -59,10 +60,11 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
           }`}
         >
           <UserCheck className="h-4 w-4" />
-          <span>Histórico de Proprietários ({vehicle.ownerHistory?.length || 1})</span>
+          <span>Histórico de Proprietários ({vehicle.ownerHistory?.length ?? 0})</span>
         </button>
         <button
           onClick={() => setActiveTab("notes")}
+          aria-pressed={activeTab === "notes"}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === "notes"
               ? "border-[#d3a548] text-[#f7d46d]"
@@ -74,7 +76,6 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
         </button>
       </div>
 
-      {/* Tab Content */}
       {activeTab === "timeline" && (
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
@@ -86,7 +87,7 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
             </span>
           </div>
 
-          <VehicleTimeline events={vehicle.timeline} />
+          <VehicleTimeline events={vehicle.timeline} vehicleId={vehicle.id} />
         </div>
       )}
 
@@ -99,7 +100,9 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
               </CardTitle>
             </CardHeader>
             <p className="text-xs text-[#a9adae]">
-              A viatura preserva integralmente o seu histórico técnico de intervenções, materiais e garantias mesmo quando muda de proprietário. Os dados pessoais de proprietários anteriores permanecem protegidos.
+              A viatura preserva o histórico técnico de intervenções, materiais e garantias mesmo
+              quando muda de proprietário. Os dados pessoais de proprietários anteriores permanecem
+              protegidos.
             </p>
 
             <div className="flex flex-col gap-3 mt-2">
@@ -123,14 +126,22 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
                           {link.customerName}
                         </Link>
                         <span className="text-[11px] text-[#8a9092]">
-                          Relação: {link.relationshipType === "owner" ? "Proprietário" : "Gestor de Frota"}
+                          Relação:{" "}
+                          {link.relationshipType === "owner"
+                            ? "Proprietário"
+                            : link.relationshipType === "fleet_manager"
+                            ? "Gestor de Frota"
+                            : "Condutor"}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 text-xs">
                       <span className="tabular-nums">
-                        {link.startedAt} {link.endedAt ? `até ${link.endedAt}` : "(Atual)"}
+                        {formatVehicleDateKey(link.startedAt)}{" "}
+                        {link.endedAt
+                          ? `até ${formatVehicleDateKey(link.endedAt)}`
+                          : "(Atual)"}
                       </span>
                       {link.isCurrent && (
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#d3a548]/20 text-[#f7d46d] border border-[#d3a548]/40">
@@ -142,7 +153,7 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
                 ))
               ) : (
                 <div className="p-3.5 rounded-md bg-[#15191a] text-xs text-[#f1ede5]">
-                  Proprietário atual: {vehicle.currentOwner?.customerName || "Sem registo"}
+                  Sem histórico de proprietários registado.
                 </div>
               )}
             </div>
@@ -163,11 +174,39 @@ export function VehiclePassportView({ vehicle }: VehiclePassportViewProps) {
 
           <Card className="p-5 flex flex-col gap-3 bg-[#15191a]">
             <CardHeader className="p-0">
-              <CardTitle className="text-sm text-[#d3a548]">Pontos Críticos de Desmontagem</CardTitle>
+              <CardTitle className="text-sm text-[#d3a548]">Notas da Viatura</CardTitle>
             </CardHeader>
-            <p className="text-xs text-[#a9adae] leading-relaxed">
-              Verificar sensores de estacionamento e câmaras 360 no para-choques antes da aplicação. Retornos em cantos exigem conformação térmica suave a 90°C.
-            </p>
+            {vehicle.technicalNotes && vehicle.technicalNotes.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {vehicle.technicalNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="flex flex-col gap-1 rounded-md border border-white/[0.06] bg-[#101314] p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-[#d3a548]">
+                        {note.category === "technical"
+                          ? "Técnica"
+                          : note.category === "bodywork"
+                          ? "Carroçaria"
+                          : "Geral"}
+                      </span>
+                      <span className="text-[11px] text-[#8a9092]">
+                        {formatCheckinDate(note.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#f1ede5] leading-relaxed">{note.content}</p>
+                    <span className="text-[11px] text-[#8a9092]">
+                      Registado por: {note.authorName}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[#8a9092] leading-relaxed">
+                Sem notas técnicas registadas para esta viatura.
+              </p>
+            )}
           </Card>
         </div>
       )}

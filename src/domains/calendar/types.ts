@@ -4,6 +4,7 @@ export interface WorkshopBay {
   name: string;
   code: string;
   serviceType: "ppf" | "wrap" | "detailing" | "tint" | "general";
+  defaultTechnicianId?: string;
   defaultTechnicianName: string;
   status: "available" | "occupied" | "maintenance";
 }
@@ -28,6 +29,7 @@ export interface Appointment {
   customerName: string;
   bayId: string;
   bayName: string;
+  technicianId?: string;
   technicianName: string;
   serviceTitle: string;
   startTime: string; // ISO or '09:00'

@@ -1,24 +1,48 @@
 import { CalendarEngine } from "@/components/xflow/calendar/CalendarEngine";
 import { listBays, listAppointmentsBetween, listTechnicians } from "@/server/calendar";
 import { listVehicles } from "@/server/vehicles";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import {
+  civilDateKey,
+  civilToday,
+  workshopIsoFromWallTime,
+} from "@/domains/calendar/datetime";
+import { requireRole } from "@/server/auth";
+import { hasRole, MANAGEMENT_ROLES, SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
-export default async function CalendarPage() {
-  await requireAuth();
-  const organizationId = await getPrimaryOrganizationId();
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ nova?: string; vehicleId?: string }>;
+}) {
+  const auth = await requireRole(SCHEDULING_ROLES);
+  const organizationId = auth.organizationId;
+  const params = await searchParams;
+  const initialCreate =
+    params.nova === "1"
+      ? { vehicleId: typeof params.vehicleId === "string" ? params.vehicleId : undefined }
+      : undefined;
 
-  const now = new Date();
-  const rangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+  const today = civilToday();
+  const rangeStartDate = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 3, 1, 12)
+  );
+  const rangeEndDate = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 13, 1, 12)
+  );
+  const rangeStartIso = workshopIsoFromWallTime(civilDateKey(rangeStartDate), "00:00");
+  const rangeEndIso = workshopIsoFromWallTime(civilDateKey(rangeEndDate), "00:00");
 
   const [bays, technicians, vehicles, appointments] = await Promise.all([
     listBays(organizationId),
     listTechnicians(organizationId),
     listVehicles(organizationId),
-    listAppointmentsBetween(organizationId, rangeStart, rangeEnd),
+    listAppointmentsBetween(
+      organizationId,
+      rangeStartIso ? new Date(rangeStartIso) : rangeStartDate,
+      rangeEndIso ? new Date(rangeEndIso) : rangeEndDate
+    ),
   ]);
 
   return (
@@ -33,12 +57,17 @@ export default async function CalendarPage() {
             Agenda & Capacidade da Oficina
           </h1>
         </div>
+        <p className="text-xs text-[#8a9092] max-w-sm">
+          Horários em hora de Lisboa. Arrasta marcações para reorganizar o dia.
+        </p>
       </div>
 
       <CalendarEngine
         initialAppointments={appointments}
         bays={bays}
         technicians={technicians}
+        initialCreate={initialCreate}
+        canManageBays={hasRole(auth.role, MANAGEMENT_ROLES)}
         vehicles={vehicles.map((v) => ({
           id: v.id,
           label: `${v.make} ${v.model} (${v.plateDisplay})`,

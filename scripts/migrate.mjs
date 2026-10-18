@@ -2,7 +2,7 @@
 // Uso: node scripts/migrate.mjs
 import pg from "pg";
 import fs from "node:fs";
-import { hashPassword, DEMO_PASSWORD } from "./auth-crypto.mjs";
+import { hashPassword, verifyPassword, DEMO_PASSWORD } from "./auth-crypto.mjs";
 
 const url =
   process.env.DATABASE_URL ||
@@ -213,6 +213,86 @@ if (!(await hasTable("transactions"))) {
   console.log("20260828000024 já aplicada.");
 }
 
+// 000025 — rotação obrigatória de password no primeiro acesso
+if (!(await hasColumn("profiles", "must_change_password"))) {
+  const migration25 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000025_password_rotation.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration25);
+  console.log("OK: 20260828000025");
+} else {
+  console.log("20260828000025 já aplicada.");
+}
+
+// 000026 — backfill dos templates de checklist nas fases criadas sem itens
+const phasesWithoutChecklist = (
+  await client.query(
+    `SELECT count(*)::int AS n
+     FROM work_order_phases ph
+     WHERE NOT EXISTS (
+       SELECT 1 FROM work_order_checklist_items ci WHERE ci.phase_id = ph.id
+     )`
+  )
+).rows[0].n;
+if (phasesWithoutChecklist > 0) {
+  const migration26 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000026_production_checklist_backfill.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration26);
+  console.log(`OK: 20260828000026 (${phasesWithoutChecklist} fase(s) preenchida(s))`);
+} else {
+  console.log("20260828000026 já aplicada.");
+}
+
+// 000027 — índices das tabelas filhas de check-in + consistência de assinatura
+const checkinIndexes = await client.query(
+  `SELECT count(*)::int AS n FROM pg_indexes
+   WHERE schemaname = 'public'
+     AND indexname IN ('idx_checkin_photos_checkin_angle', 'idx_checkin_damages_checkin')`
+);
+const signedConstraint = await client.query(
+  `SELECT count(*)::int AS n FROM pg_constraint
+   WHERE conname = 'checkins_signed_requires_signature'
+     AND conrelid = 'public.checkins'::regclass`
+);
+const staleSigned = await client.query(
+  `SELECT count(*)::int AS n FROM checkins
+   WHERE status = 'signed' AND signature_data_url IS NULL`
+);
+if (
+  checkinIndexes.rows[0].n < 2 ||
+  signedConstraint.rows[0].n === 0 ||
+  staleSigned.rows[0].n > 0
+) {
+  const migration27 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000027_checkin_indexes_signature_consistency.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration27);
+  console.log(`OK: 20260828000027 (${staleSigned.rows[0].n} check-in(s) corrigido(s))`);
+} else {
+  console.log("20260828000027 já aplicada.");
+}
+
+// 000028 — índices das tabelas de QC
+const qcIndexes = await client.query(
+  `SELECT count(*)::int AS n FROM pg_indexes
+   WHERE schemaname = 'public'
+     AND indexname IN ('idx_qc_inspections_work_order', 'idx_qc_items_inspection')`
+);
+if (qcIndexes.rows[0].n < 2) {
+  const migration28 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000028_qc_child_indexes.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration28);
+  console.log("OK: 20260828000028");
+} else {
+  console.log("20260828000028 já aplicada.");
+}
+
 // Backfill de passwords demo (idempotente): só preenche password_hash IS NULL
 const teamEmails = [
   "luis@xmotion.pt",
@@ -242,8 +322,29 @@ if (await hasColumn("profiles", "password_hash")) {
     console.log(`OK: password demo definida para ${backfilled} perfil(is).`);
   }
   console.log(
-    `Nota: credenciais demo — password "${DEMO_PASSWORD}" para: ${teamEmails.join(", ")}`
+    "Nota: backfill demo aplicado. Define passwords individuais com scripts/set-password.mjs."
   );
+}
+
+// Rotação opcional: marca como obrigatória a troca de password nos perfis que
+// ainda usam a password demo. Uso: node scripts/migrate.mjs --rotate-demo-passwords
+if (process.argv.includes("--rotate-demo-passwords")) {
+  let rotated = 0;
+  for (const email of teamEmails) {
+    const r = await client.query(
+      "SELECT password_hash FROM profiles WHERE lower(email) = $1 AND password_hash IS NOT NULL LIMIT 1",
+      [email]
+    );
+    const stored = r.rows[0]?.password_hash;
+    if (stored && (await verifyPassword(DEMO_PASSWORD, stored))) {
+      await client.query(
+        "UPDATE profiles SET must_change_password = TRUE WHERE lower(email) = $1",
+        [email]
+      );
+      rotated += 1;
+    }
+  }
+  console.log(`OK: rotação obrigatória marcada para ${rotated} perfil(is) com password demo.`);
 }
 
 await client.end();

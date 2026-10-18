@@ -4,21 +4,25 @@ import React, { useState } from "react";
 import { Clock, TrendingUp, Plus, Check } from "lucide-react";
 import { WorkOrderTimeEntry } from "@/domains/production/types";
 import { calculateLaborEfficiency } from "@/domains/production/efficiency-calculator";
+import { workshopTime } from "@/domains/calendar/datetime";
 import { Button } from "@/components/ui/button";
 
 interface TimesheetTrackerProps {
   timeEntries: WorkOrderTimeEntry[];
   estimatedHours: number;
+  currentUserName: string;
+  disabled?: boolean;
   onAddTimeEntry: (entry: { technicianName: string; hours: number; notes: string }) => void;
 }
 
 export function TimesheetTracker({
   timeEntries,
   estimatedHours,
+  currentUserName,
+  disabled = false,
   onAddTimeEntry,
 }: TimesheetTrackerProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [techName, setTechName] = useState("João Martins");
   const [hoursInput, setHoursInput] = useState("1.0");
   const [notesInput, setNotesInput] = useState("");
 
@@ -28,7 +32,7 @@ export function TimesheetTracker({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAddTimeEntry({
-      technicianName: techName,
+      technicianName: currentUserName,
       hours: parseFloat(hoursInput) || 1.0,
       notes: notesInput || "Horas de produção registadas",
     });
@@ -49,7 +53,13 @@ export function TimesheetTracker({
           </span>
         </div>
 
-        <Button variant="outline" size="sm" onClick={() => setIsModalOpen(true)} className="bg-[#15191a]">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsModalOpen(true)}
+          disabled={disabled}
+          className="bg-[#15191a]"
+        >
           <Plus className="h-3.5 w-3.5" />
           <span>Registar Horas</span>
         </Button>
@@ -98,7 +108,7 @@ export function TimesheetTracker({
                 {entry.hoursSpent}h
               </span>
               <span className="text-[11px] text-[#8a9092]">
-                {entry.createdAt.slice(-5)}
+                {workshopTime(new Date(entry.createdAt))}
               </span>
             </div>
           </div>
@@ -120,16 +130,9 @@ export function TimesheetTracker({
             <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4 text-xs">
               <div className="flex flex-col gap-1.5">
                 <label className="font-semibold text-[#a9adae]">Técnico</label>
-                <select
-                  value={techName}
-                  onChange={(e) => setTechName(e.target.value)}
-                  className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
-                >
-                  <option value="João Martins">João Martins (Lead Detailer)</option>
-                  <option value="Rui Almeida">Rui Almeida (Wrap Master)</option>
-                  <option value="Pedro Santos">Pedro Santos (PPF Specialist)</option>
-                  <option value="Miguel Costa">Miguel Costa (Finishing Specialist)</option>
-                </select>
+                <div className="flex h-10 items-center rounded-sm border border-white/[0.08] bg-[#15191a]/60 px-3.5 text-sm text-[#f1ede5]">
+                  {currentUserName}
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5">

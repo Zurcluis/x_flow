@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
   CheckCircle2,
@@ -12,10 +13,21 @@ import {
   Clock,
   X,
 } from "lucide-react";
+import { buttonStyles } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/formatting";
+import {
+  currentInvoiceMonthKey,
+  formatInvoiceDate,
+  invoiceMonthKey,
+  isInvoiceOverdue,
+} from "@/domains/finance/presentation";
+import {
+  todayWorkshopDateKey,
+  workshopIsoFromWallTime,
+} from "@/domains/calendar/datetime";
 import { markInvoicePaidAction } from "@/app/actions/finance";
 
 import { Invoice, PaymentMethod } from "@/domains/finance/types";
@@ -37,11 +49,11 @@ const METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string }> = [
 type TabId = "all" | "pending" | "overdue" | "paid";
 
 function isOverdue(inv: Invoice): boolean {
-  return inv.paymentStatus === "pending" && inv.dueAt.slice(0, 10) < new Date().toISOString().slice(0, 10);
+  return inv.paymentStatus === "overdue" || isInvoiceOverdue(inv);
 }
 
 function monthOf(isoDate: string): string {
-  return isoDate.slice(0, 7);
+  return invoiceMonthKey(isoDate);
 }
 
 export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }) {
@@ -50,19 +62,22 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
   const [tab, setTab] = useState<TabId>("all");
   const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
   const [payMethod, setPayMethod] = useState<PaymentMethod>("bank_transfer");
-  const [payDate, setPayDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [payDate, setPayDate] = useState(() => todayWorkshopDateKey());
   const [payReference, setPayReference] = useState("");
   const [payError, setPayError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = currentInvoiceMonthKey();
 
   const stats = useMemo(() => {
     const active = invoices.filter((i) => i.paymentStatus !== "cancelled");
     const monthBilled = active
       .filter((i) => monthOf(i.issuedAt) === currentMonth)
       .reduce((acc, inv) => acc + inv.totalAmount, 0);
-    const pending = active.filter((i) => i.paymentStatus === "pending");
+    const pending = active.filter(
+      (i) => i.paymentStatus === "pending" || i.paymentStatus === "overdue"
+    );
     const overdue = pending.filter(isOverdue);
     const paidTotal = active
       .filter((i) => i.paymentStatus === "paid")
@@ -74,8 +89,9 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
       overdue,
       pendingTotal: pending.reduce((acc, inv) => acc + inv.totalAmount, 0),
       overdueTotal: overdue.reduce((acc, inv) => acc + inv.totalAmount, 0),
+      emittedTotal,
       collectionRate:
-        emittedTotal > 0 ? Math.round((paidTotal / emittedTotal) * 100) : 100,
+        emittedTotal > 0 ? Math.round((paidTotal / emittedTotal) * 100) : 0,
     };
   }, [invoices, currentMonth]);
 
@@ -83,7 +99,9 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
     const term = searchTerm.toLowerCase();
     return invoices
       .filter((inv) => {
-        if (tab === "pending") return inv.paymentStatus === "pending";
+        if (tab === "pending") {
+          return inv.paymentStatus === "pending" || inv.paymentStatus === "overdue";
+        }
         if (tab === "overdue") return isOverdue(inv);
         if (tab === "paid") return inv.paymentStatus === "paid";
         return true;
@@ -108,7 +126,7 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
   const openPaymentModal = (inv: Invoice) => {
     setPayingInvoice(inv);
     setPayMethod((inv.paymentMethod as PaymentMethod) ?? "bank_transfer");
-    setPayDate(new Date().toISOString().slice(0, 10));
+    setPayDate(todayWorkshopDateKey());
     setPayReference("");
     setPayError(null);
   };
@@ -116,11 +134,16 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
   const submitPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payingInvoice) return;
+    const occurredAt = workshopIsoFromWallTime(payDate, "12:00");
+    if (!occurredAt) {
+      setPayError("A data efetiva do pagamento é inválida.");
+      return;
+    }
     setSubmitting(true);
     setPayError(null);
     const res = await markInvoicePaidAction(payingInvoice.id, {
       method: payMethod,
-      occurredAt: `${payDate}T12:00:00`,
+      occurredAt,
       reference: payReference.trim() || undefined,
     });
     setSubmitting(false);
@@ -128,11 +151,12 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
       setInvoices((prev) =>
         prev.map((i) =>
           i.id === payingInvoice.id
-            ? { ...i, paymentStatus: "paid" as const, paidAt: `${payDate}T12:00:00` }
+            ? { ...i, paymentStatus: "paid" as const, paidAt: occurredAt }
             : i
         )
       );
       setPayingInvoice(null);
+      router.refresh();
     } else {
       setPayError(res.error ?? "Erro ao registar o pagamento.");
     }
@@ -147,14 +171,15 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
             Faturação
           </h1>
           <p className="text-xs text-[#a9adae]">
-            Documentos registados (espelho do weoInvoice), cobranças e controlo de liquidações. IVA 23%.
+            Documentos registados (espelho do weoInvoice), cobranças e controlo de liquidações. IVA por documento.
           </p>
         </div>
-        <Link href="/finance">
-          <Button variant="outline" size="sm" className="bg-[#15191a]">
-            <TrendingUp className="h-4 w-4 mr-1.5" />
-            <span>Ir para Finanças</span>
-          </Button>
+        <Link
+          href="/finance"
+          className={buttonStyles({ variant: "outline", size: "sm", className: "bg-[#15191a]" })}
+        >
+          <TrendingUp className="h-4 w-4 mr-1.5" />
+          <span>Ir para Finanças</span>
         </Link>
       </div>
 
@@ -212,10 +237,12 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
           </div>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-[#68a46b]">
-              {stats.collectionRate}%
+              {stats.emittedTotal > 0 ? `${stats.collectionRate}%` : "—"}
             </span>
             <span className="block text-[12px] text-[#a9adae] mt-0.5">
-              ponderada por valor cobrado
+              {stats.emittedTotal > 0
+                ? "ponderada por valor cobrado"
+                : "sem faturação emitida"}
             </span>
           </div>
         </Card>
@@ -239,6 +266,7 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
+              aria-pressed={tab === t.id}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 tab === t.id
                   ? "bg-[#1f1b14] text-[#f7d46d]"
@@ -311,15 +339,15 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-[#8a9092]">
-                    <span>Emissão: {inv.issuedAt.slice(0, 10)}</span>
+                    <span>Emissão: {formatInvoiceDate(inv.issuedAt)}</span>
                     <span>·</span>
                     <span className={invOverdue ? "text-[#c96a6a] font-semibold" : ""}>
-                      Vencimento: {inv.dueAt.slice(0, 10)}
+                      Vencimento: {formatInvoiceDate(inv.dueAt)}
                     </span>
                     {inv.paidAt && (
                       <>
                         <span>·</span>
-                        <span className="text-[#68a46b]">Liquidado: {inv.paidAt.slice(0, 10)}</span>
+                        <span className="text-[#68a46b]">Liquidado: {formatInvoiceDate(inv.paidAt)}</span>
                       </>
                     )}
                   </div>
@@ -336,7 +364,7 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
                   </span>
                 </div>
 
-                {inv.paymentStatus === "pending" && (
+                {(inv.paymentStatus === "pending" || inv.paymentStatus === "overdue") && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -348,10 +376,11 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
                   </Button>
                 )}
 
-                <Link href={`/invoices/${inv.id}`}>
-                  <Button variant="outline" size="sm" className="bg-[#15191a]">
-                    <span>Ver Fatura</span>
-                  </Button>
+                <Link
+                  href={`/invoices/${inv.id}`}
+                  className={buttonStyles({ variant: "outline", size: "sm", className: "bg-[#15191a]" })}
+                >
+                  <span>Ver Fatura</span>
                 </Link>
               </div>
             </Card>
@@ -362,7 +391,12 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
       {/* Payment Modal */}
       {payingInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[16px] bg-[#101314] border border-white/[0.1] shadow-2xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Registar pagamento"
+            className="w-full max-w-md rounded-[16px] bg-[#101314] border border-white/[0.1] shadow-2xl"
+          >
             <div className="flex items-center justify-between p-5 border-b border-white/[0.08]">
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-[#f1ede5]">Registar Pagamento</span>
@@ -433,7 +467,10 @@ export function InvoicesView({ initialInvoices }: { initialInvoices: Invoice[] }
               </div>
 
               {payError && (
-                <div className="rounded-md bg-[#2b1616] border border-[#c96a6a]/40 px-3 py-2 text-xs text-[#c96a6a]">
+                <div
+                  role="alert"
+                  className="rounded-md bg-[#2b1616] border border-[#c96a6a]/40 px-3 py-2 text-xs text-[#c96a6a]"
+                >
                   {payError}
                 </div>
               )}

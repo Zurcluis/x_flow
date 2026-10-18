@@ -1,4 +1,6 @@
 import { getDb } from "@/lib/db";
+import { postgresDateKey, todayWorkshopDateKey } from "@/domains/calendar/datetime";
+import { isIsoDate, isMoneyAmount, isPositiveMoneyAmount, isUuid } from "@/domains/finance/validation";
 import { FORMULA_LABELS, round2 } from "@/domains/pricing/engine";
 import type {
   ConsumableKit,
@@ -19,7 +21,7 @@ import type {
 type Row = Record<string, unknown>;
 
 export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayWorkshopDateKey();
 }
 
 function iso(value: unknown): string {
@@ -28,7 +30,7 @@ function iso(value: unknown): string {
 
 function dateStr(value: unknown): string | null {
   if (value === null || value === undefined) return null;
-  return String(value).slice(0, 10);
+  return postgresDateKey(value) || null;
 }
 
 function num(value: unknown): number {
@@ -54,7 +56,7 @@ function mapPolicy(row: Row): PricingPolicy {
     wasteRatePercent: num(row.waste_rate_percent),
     vatRate: num(row.vat_rate),
     status: row.status as PricingPolicy["status"],
-    effectiveFrom: String(row.effective_from).slice(0, 10),
+    effectiveFrom: postgresDateKey(row.effective_from),
     publishedAt: row.published_at ? iso(row.published_at) : null,
     createdAt: iso(row.created_at),
   };
@@ -76,7 +78,7 @@ function mapExpenseItem(row: Row): PricingExpenseItem {
     includesPersonnel: Boolean(row.includes_personnel),
     source: (row.source as string) ?? null,
     validationState: row.validation_state as ExpenseValidationState,
-    effectiveFrom: String(row.effective_from).slice(0, 10),
+    effectiveFrom: postgresDateKey(row.effective_from),
     effectiveTo: dateStr(row.effective_to),
     notes: (row.notes as string) ?? null,
     createdAt: iso(row.created_at),
@@ -122,7 +124,7 @@ function mapFormulaVersion(row: Row): PricingFormulaVersion {
     version: num(row.version),
     components: parseComponents(row.components),
     status: row.status as PricingFormulaVersion["status"],
-    effectiveFrom: String(row.effective_from).slice(0, 10),
+    effectiveFrom: postgresDateKey(row.effective_from),
     publishedAt: row.published_at ? iso(row.published_at) : null,
     createdAt: iso(row.created_at),
   };
@@ -231,7 +233,11 @@ export async function getExpenseItems(
   const params: unknown[] = [organizationId];
   let where = "organization_id = $1";
   if (!opts?.includeArchived) {
-    params.push(opts?.asOf ?? todayIso());
+    const asOf = opts?.asOf ?? todayIso();
+    if (!isIsoDate(asOf)) {
+      throw new Error("A data de referência das rubricas é inválida.");
+    }
+    params.push(asOf);
     where += ` AND effective_from <= $${params.length}::date
        AND (effective_to IS NULL OR effective_to >= $${params.length}::date)`;
   }
@@ -262,6 +268,27 @@ export async function createExpenseItemVersion(
   organizationId: string,
   input: ExpenseItemVersionInput
 ): Promise<{ id: string; version: number }> {
+  if (!input.name?.trim()) {
+    throw new Error("O nome da rubrica é obrigatório.");
+  }
+  if (!["operational", "acquisition"].includes(input.category)) {
+    throw new Error("Categoria da rubrica inválida.");
+  }
+  if (!["expense", "provision", "reserve", "cash_recovery"].includes(input.kind)) {
+    throw new Error("Natureza da rubrica inválida.");
+  }
+  if (!["monthly", "yearly"].includes(input.periodicity)) {
+    throw new Error("Periodicidade da rubrica inválida.");
+  }
+  if (!["estimated", "validated", "needs_breakdown"].includes(input.validationState)) {
+    throw new Error("Estado de validação da rubrica inválido.");
+  }
+  if (!isMoneyAmount(input.amount)) {
+    throw new Error("O montante tem de ser um número igual ou superior a zero.");
+  }
+  if (!isIsoDate(input.effectiveFrom)) {
+    throw new Error("A data de vigência é inválida.");
+  }
   const db = getDb();
   const client = await db.connect();
   try {
@@ -335,6 +362,12 @@ export async function archiveExpenseItem(
   itemId: string,
   effectiveTo: string
 ): Promise<void> {
+  if (!isUuid(itemId)) {
+    throw new Error("Rubrica não encontrada.");
+  }
+  if (!isIsoDate(effectiveTo)) {
+    throw new Error("A data de fim de vigência é inválida.");
+  }
   const { rowCount } = await getDb().query(
     `UPDATE pricing_expense_items
      SET effective_to = $3::date, updated_at = NOW()
@@ -367,6 +400,15 @@ export async function saveKit(
   organizationId: string,
   input: KitInput
 ): Promise<string> {
+  if (input.id && !isUuid(input.id)) {
+    throw new Error("Kit não encontrado.");
+  }
+  if (!["spot", "ppf_front", "wrap_full", "custom"].includes(input.kind)) {
+    throw new Error("Tipo de kit inválido.");
+  }
+  if (!isMoneyAmount(input.price)) {
+    throw new Error("O preço do kit tem de ser um número igual ou superior a zero.");
+  }
   const db = getDb();
   if (input.id) {
     const { rowCount } = await db.query(
@@ -414,6 +456,9 @@ export async function saveSupplier(
   organizationId: string,
   input: SupplierInput
 ): Promise<string> {
+  if (input.id && !isUuid(input.id)) {
+    throw new Error("Fornecedor não encontrado.");
+  }
   const db = getDb();
   if (input.id) {
     const { rowCount } = await db.query(
@@ -449,7 +494,30 @@ export async function saveSupplierService(
   organizationId: string,
   input: SupplierServiceInput
 ): Promise<string> {
+  if (input.id && !isUuid(input.id)) {
+    throw new Error("Serviço do fornecedor não encontrado.");
+  }
+  if (!isUuid(input.supplierId)) {
+    throw new Error("Fornecedor inválido.");
+  }
+  if (!isMoneyAmount(input.basePrice)) {
+    throw new Error("O preço base tem de ser um número igual ou superior a zero.");
+  }
+  if (
+    input.phaseHours !== null &&
+    input.phaseHours !== undefined &&
+    (!Number.isFinite(input.phaseHours) || input.phaseHours < 0)
+  ) {
+    throw new Error("As horas da fase têm de ser um número igual ou superior a zero.");
+  }
   const db = getDb();
+  const { rows: supplierRows } = await db.query<Row>(
+    `SELECT 1 FROM suppliers WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+    [input.supplierId, organizationId]
+  );
+  if (supplierRows.length === 0) {
+    throw new Error("Fornecedor não encontrado.");
+  }
   if (input.id) {
     const { rowCount } = await db.query(
       `UPDATE supplier_services
@@ -576,6 +644,15 @@ export async function publishFormulaVersion(
   organizationId: string,
   input: FormulaPublishInput
 ): Promise<{ versionId: string; version: number }> {
+  if (!isUuid(input.formulaId)) {
+    throw new Error("Fórmula não encontrada.");
+  }
+  if (!input.name?.trim()) {
+    throw new Error("O nome da fórmula é obrigatório.");
+  }
+  if (!isIsoDate(input.effectiveFrom)) {
+    throw new Error("A data de vigência é inválida.");
+  }
   const componentError = validateFormulaComponents(input.components);
   if (componentError) {
     throw new Error(componentError);
@@ -658,6 +735,33 @@ export async function createPolicyVersion(
   input: PolicyVersionInput,
   opts: { intent: "draft" | "publish"; profileId?: string }
 ): Promise<{ policyId: string; version: number }> {
+  if (input.method !== "manual" && input.method !== "monthly") {
+    throw new Error("Método de preços inválido.");
+  }
+  if (!isPositiveMoneyAmount(input.dailyCapacityHours)) {
+    throw new Error("A capacidade faturável diária tem de ser superior a zero.");
+  }
+  if (!isMoneyAmount(input.manualDailyExpenses) || !isMoneyAmount(input.profitDailyTarget)) {
+    throw new Error("Os valores da base financeira têm de ser iguais ou superiores a zero.");
+  }
+  if (!isIsoDate(input.effectiveFrom)) {
+    throw new Error("A data de vigência é inválida.");
+  }
+  if (
+    input.productiveDaysPerMonth !== null &&
+    (!Number.isFinite(input.productiveDaysPerMonth) || input.productiveDaysPerMonth <= 0)
+  ) {
+    throw new Error("Os dias produtivos mensais têm de ser superiores a zero.");
+  }
+  if (!isMoneyAmount(input.subletFeePercent) || input.subletFeePercent > 100) {
+    throw new Error("A comissão de subcontratação tem de estar entre 0 e 100.");
+  }
+  if (!isMoneyAmount(input.wasteRatePercent) || input.wasteRatePercent > 100) {
+    throw new Error("A taxa de desperdício tem de estar entre 0 e 100.");
+  }
+  if (!isMoneyAmount(input.vatRate) || input.vatRate > 100) {
+    throw new Error("A taxa de IVA tem de estar entre 0 e 100.");
+  }
   const db = getDb();
   const client = await db.connect();
   try {

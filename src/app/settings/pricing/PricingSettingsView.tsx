@@ -302,11 +302,9 @@ export function PricingSettingsView({ context }: { context: PricingContextData }
     <div className="flex flex-col gap-6 pb-12">
       {/* Header */}
       <div className="flex flex-col gap-4 pb-4 border-b border-white/[0.04]">
-        <Link href="/settings" className="self-start">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#a9adae] hover:text-[#f1ede5] transition-colors cursor-pointer">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Configurações
-          </span>
+        <Link href="/settings" className="self-start inline-flex items-center gap-1.5 text-xs font-medium text-[#a9adae] hover:text-[#f1ede5] transition-colors">
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Configurações
         </Link>
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
@@ -346,6 +344,7 @@ export function PricingSettingsView({ context }: { context: PricingContextData }
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
+              aria-pressed={active}
               className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-sm text-xs font-bold transition-all cursor-pointer ${
                 active
                   ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"

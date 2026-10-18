@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Repeat, Power, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/formatting";
+import { monthlyAmountFor } from "@/domains/finance/presentation";
 import {
   createRecurringRuleAction,
   toggleRecurringRuleAction,
@@ -40,14 +42,15 @@ export function RecurringView({
   const [dayOfMonth, setDayOfMonth] = useState("1");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
 
   const totals = useMemo(() => {
     const monthlyExpense = items
       .filter((r) => r.active && r.type === "expense")
       .reduce((acc, r) => {
-        const factor = r.frequency === "yearly" ? 1 / 12 : r.frequency === "quarterly" ? 1 / 3 : 1;
-        return acc + r.amount * factor;
+        return acc + monthlyAmountFor(r.amount, r.frequency);
       }, 0);
     const activeCount = items.filter((r) => r.active).length;
     return { monthlyExpense, activeCount };
@@ -64,15 +67,21 @@ export function RecurringView({
       setError("Introduz um valor superior a zero.");
       return;
     }
+    const day = Number(dayOfMonth);
+    if (!Number.isInteger(day) || day < 1 || day > 31) {
+      setError("O dia do mês tem de estar entre 1 e 31.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
+    setNotice(null);
     const res = await createRecurringRuleAction({
       name: name.trim(),
       type,
       amount: value,
       categoryId: categoryId || undefined,
       frequency,
-      dayOfMonth: Number(dayOfMonth) || 1,
+      dayOfMonth: day,
       notes: notes.trim() || undefined,
     });
     setSubmitting(false);
@@ -81,17 +90,24 @@ export function RecurringView({
       setName("");
       setAmount("");
       setNotes("");
+      setNotice("Rubrica criada. A lista é atualizada a partir dos dados guardados.");
+      router.refresh();
     } else {
       setError(res.error ?? "Erro ao criar a rubrica.");
     }
   };
 
   const toggle = async (rule: RecurringRule) => {
+    setNotice(null);
+    setError(null);
     const res = await toggleRecurringRuleAction(rule.id, !rule.active);
     if (res.ok) {
       setItems((prev) =>
         prev.map((r) => (r.id === rule.id ? { ...r, active: !rule.active } : r))
       );
+      setNotice(rule.active ? "Rubrica desativada." : "Rubrica ativada.");
+    } else {
+      setError(res.error ?? "Erro ao atualizar a rubrica.");
     }
   };
 
@@ -111,6 +127,25 @@ export function RecurringView({
             <span>Nova Rubrica</span>
           </Button>
         </div>
+      </div>
+
+      <div aria-live="polite">
+        {notice && (
+          <div
+            role="status"
+            className="rounded-md bg-[#142618] border border-[#68a46b]/30 px-4 py-2.5 text-xs text-[#68a46b]"
+          >
+            {notice}
+          </div>
+        )}
+        {error && !formOpen && (
+          <div
+            role="alert"
+            className="rounded-md bg-[#2b1616] border border-[#c96a6a]/40 px-4 py-2.5 text-xs text-[#c96a6a]"
+          >
+            {error}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4 max-w-md">
@@ -197,7 +232,12 @@ export function RecurringView({
       {/* Modal */}
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[16px] bg-[#101314] border border-white/[0.1] shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Nova rubrica recorrente"
+            className="w-full max-w-md rounded-[16px] bg-[#101314] border border-white/[0.1] shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between p-5 border-b border-white/[0.08]">
               <span className="text-sm font-bold text-[#f1ede5]">Nova Rubrica Recorrente</span>
               <button
@@ -215,6 +255,7 @@ export function RecurringView({
                     key={t}
                     type="button"
                     onClick={() => setType(t)}
+                    aria-pressed={type === t}
                     className={`rounded-md border px-3 py-2.5 text-xs font-semibold transition-all ${
                       type === t
                         ? "border-[#d3a548]/50 bg-[#1f1b14] text-[#f7d46d]"
@@ -323,7 +364,10 @@ export function RecurringView({
               </div>
 
               {error && (
-                <div className="rounded-md bg-[#2b1616] border border-[#c96a6a]/40 px-3 py-2 text-xs text-[#c96a6a]">
+                <div
+                  role="alert"
+                  className="rounded-md bg-[#2b1616] border border-[#c96a6a]/40 px-3 py-2 text-xs text-[#c96a6a]"
+                >
                   {error}
                 </div>
               )}

@@ -1,21 +1,39 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import Link from "next/link";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  X,
-  Trash2,
   AlertTriangle,
   CalendarDays,
+  Car,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
   List,
+  Plus,
+  Trash2,
+  Users,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Appointment, AppointmentStatus, WorkshopBay } from "@/domains/calendar/types";
+import {
+  addCivilDays,
+  civilDateFromKey,
+  civilDateKey,
+  civilToday,
+  isoFromCivil,
+  parseDateKey,
+  parseTime,
+  startOfCivilWeek,
+  todayWorkshopDateKey,
+  workshopDateKey,
+  workshopIsoFromWallTime,
+  workshopMinutes,
+  workshopTime,
+} from "@/domains/calendar/datetime";
 import { WorkshopMap } from "@/components/xflow/calendar/WorkshopMap";
 import {
   cancelAppointmentAction,
@@ -31,49 +49,8 @@ interface EngineProps {
   bays: WorkshopBay[];
   technicians: { id: string; name: string }[];
   vehicles: { id: string; label: string; customerId: string | null }[];
-}
-
-const DAY_START_H = 7;
-const DAY_END_H = 20;
-const PX_PER_HOUR = 48;
-
-const WEEKDAYS_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-const MONTHS = [
-  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
-];
-
-function startOfWeek(d: Date): Date {
-  const r = new Date(d);
-  const day = (r.getDay() + 6) % 7; // segunda = 0
-  r.setDate(r.getDate() - day);
-  r.setHours(0, 0, 0, 0);
-  return r;
-}
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-
-function fmtDay(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function statusColor(status: AppointmentStatus): { bg: string; border: string; text: string } {
-  switch (status) {
-    case "in_progress":
-      return { bg: "bg-[#d3a548]/25", border: "border-[#d3a548]", text: "text-[#f7d46d]" };
-    case "confirmed":
-      return { bg: "bg-[#6e93b5]/20", border: "border-[#6e93b5]", text: "text-[#9fc0dd]" };
-    case "completed":
-      return { bg: "bg-[#68a46b]/20", border: "border-[#68a46b]", text: "text-[#8cc78f]" };
-    case "cancelled":
-      return { bg: "bg-white/[0.03]", border: "border-white/[0.08]", text: "text-[#8a9092]" };
-    default:
-      return { bg: "bg-white/[0.05]", border: "border-white/20", text: "text-[#f1ede5]" };
-  }
+  initialCreate?: { vehicleId?: string };
+  canManageBays: boolean;
 }
 
 interface SlotInfo {
@@ -87,6 +64,285 @@ interface ModalState {
   mode: "create" | "edit";
   appointment?: Appointment;
   slot?: SlotInfo;
+  vehicleId?: string;
+}
+
+interface Feedback {
+  tone: "success" | "error";
+  message: string;
+}
+
+const DAY_START_H = 7;
+const DAY_END_H = 20;
+const PX_PER_HOUR = 48;
+const SNAP_MINUTES = 30;
+
+const WEEKDAYS_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const MONTHS = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+const SERVICE_LABEL: Record<WorkshopBay["serviceType"], string> = {
+  ppf: "PPF",
+  wrap: "Wrap",
+  detailing: "Detailing",
+  tint: "Tint",
+  general: "Geral",
+};
+
+const STATUS_OPTIONS: Array<{ value: AppointmentStatus; label: string }> = [
+  { value: "scheduled", label: "Agendada" },
+  { value: "confirmed", label: "Confirmada" },
+  { value: "in_progress", label: "Em curso" },
+  { value: "completed", label: "Concluída" },
+  { value: "no_show", label: "Não compareceu" },
+];
+
+const dateHeadingFormatter = new Intl.DateTimeFormat("pt-PT", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+
+const fullDateFormatter = new Intl.DateTimeFormat("pt-PT", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatHours(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}h`;
+}
+
+function formatShortDate(dateKey: string): string {
+  const [year, month, day] = dateKey.split("-");
+  return `${day}/${month}/${year}`;
+}
+
+function statusColor(status: AppointmentStatus): {
+  bg: string;
+  border: string;
+  text: string;
+  dot: string;
+} {
+  switch (status) {
+    case "in_progress":
+      return {
+        bg: "bg-[#d3a548]/20",
+        border: "border-[#d3a548]/70",
+        text: "text-[#f7d46d]",
+        dot: "bg-[#d3a548]",
+      };
+    case "confirmed":
+      return {
+        bg: "bg-[#6e93b5]/15",
+        border: "border-[#6e93b5]/60",
+        text: "text-[#9fc0dd]",
+        dot: "bg-[#6e93b5]",
+      };
+    case "completed":
+      return {
+        bg: "bg-[#68a46b]/15",
+        border: "border-[#68a46b]/60",
+        text: "text-[#8cc78f]",
+        dot: "bg-[#68a46b]",
+      };
+    case "no_show":
+      return {
+        bg: "bg-[#f05a50]/10",
+        border: "border-[#f05a50]/40",
+        text: "text-[#f78e85]",
+        dot: "bg-[#f05a50]",
+      };
+    case "cancelled":
+      return {
+        bg: "bg-white/[0.03]",
+        border: "border-white/[0.08]",
+        text: "text-[#8a9092]",
+        dot: "bg-[#5a6062]",
+      };
+    default:
+      return {
+        bg: "bg-white/[0.05]",
+        border: "border-white/20",
+        text: "text-[#f1ede5]",
+        dot: "bg-[#a9adae]",
+      };
+  }
+}
+
+function statusLabel(status: AppointmentStatus): string {
+  return STATUS_OPTIONS.find((option) => option.value === status)?.label ?? "Cancelada";
+}
+
+function badgeVariant(
+  status: AppointmentStatus
+): "default" | "in_progress" | "success" | "danger" | "outline" {
+  if (status === "in_progress") return "in_progress";
+  if (status === "completed") return "success";
+  if (status === "no_show") return "danger";
+  if (status === "confirmed") return "outline";
+  return "default";
+}
+
+function appointmentStart(appointment: Appointment): Date {
+  return appointment.startIso
+    ? new Date(appointment.startIso)
+    : new Date(`${appointment.date}T${appointment.startTime}:00`);
+}
+
+function appointmentDurationMs(appointment: Appointment): number {
+  if (appointment.startIso && appointment.endIso) {
+    const duration =
+      new Date(appointment.endIso).getTime() - new Date(appointment.startIso).getTime();
+    if (Number.isFinite(duration) && duration > 0) return duration;
+  }
+  return Math.max(1, appointment.estimatedHours || 1) * 3600000;
+}
+
+interface PositionedAppointment {
+  appointment: Appointment;
+  startMin: number;
+  endMin: number;
+  top: number;
+  height: number;
+  column: number;
+  columns: number;
+}
+
+function layoutDayAppointments(appointments: Appointment[]): PositionedAppointment[] {
+  const dayStart = DAY_START_H * 60;
+  const dayEnd = DAY_END_H * 60;
+
+  const intervals = appointments
+    .map((appointment) => {
+      const start = appointmentStart(appointment);
+      if (Number.isNaN(start.getTime())) return null;
+      const startMin = workshopMinutes(start);
+      const durationMinutes = Math.max(30, Math.round(appointmentDurationMs(appointment) / 60000));
+      const endMin = startMin + durationMinutes;
+      if (startMin >= dayEnd || endMin <= dayStart) return null;
+      return {
+        appointment,
+        startMin: Math.max(dayStart, startMin),
+        endMin: Math.min(dayEnd, endMin),
+      };
+    })
+    .filter((item): item is { appointment: Appointment; startMin: number; endMin: number } =>
+      item !== null
+    )
+    .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+  const positioned: PositionedAppointment[] = [];
+  let cluster: typeof intervals = [];
+  let clusterEnd = -1;
+
+  const flush = () => {
+    if (cluster.length === 0) return;
+    const columnEnds: number[] = [];
+    const placed = cluster.map((item) => {
+      let column = columnEnds.findIndex((end) => end <= item.startMin);
+      if (column === -1) {
+        column = columnEnds.length;
+        columnEnds.push(item.endMin);
+      } else {
+        columnEnds[column] = item.endMin;
+      }
+      return { ...item, column };
+    });
+    const columns = Math.max(1, columnEnds.length);
+    for (const item of placed) {
+      positioned.push({
+        ...item,
+        top: ((item.startMin - dayStart) / 60) * PX_PER_HOUR,
+        height: Math.max(30, ((item.endMin - item.startMin) / 60) * PX_PER_HOUR),
+        columns,
+      });
+    }
+    cluster = [];
+    clusterEnd = -1;
+  };
+
+  for (const interval of intervals) {
+    if (cluster.length > 0 && interval.startMin >= clusterEnd) flush();
+    cluster.push(interval);
+    clusterEnd = Math.max(clusterEnd, interval.endMin);
+  }
+  flush();
+
+  return positioned;
+}
+
+function SummaryCard({
+  label,
+  value,
+  detail,
+  icon,
+  children,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-white/[0.08] bg-[#101314] p-4">
+      <div className="flex items-center justify-between text-xs text-[#a9adae]">
+        <span>{label}</span>
+        {icon}
+      </div>
+      <span className="text-2xl font-black tracking-tight text-[#f1ede5] tabular-nums">
+        {value}
+      </span>
+      <span className="text-[11px] text-[#8a9092]">{detail}</span>
+      {children}
+    </div>
+  );
+}
+
+function MonthEventChip({
+  appointment,
+  onOpen,
+  onDragStart,
+  onDragEnd,
+}: {
+  appointment: Appointment;
+  onOpen: (appointment: Appointment) => void;
+  onDragStart: (appointment: Appointment, event: React.DragEvent<HTMLButtonElement>) => void;
+  onDragEnd: () => void;
+}) {
+  const color = statusColor(appointment.status);
+  return (
+    <button
+      type="button"
+      draggable
+      onDragStart={(event) => onDragStart(appointment, event)}
+      onDragEnd={onDragEnd}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen(appointment);
+      }}
+      className={`w-full cursor-pointer truncate rounded-[6px] border px-1.5 py-0.5 text-left text-[11px] leading-tight ${color.bg} ${color.border} ${color.text} transition-all hover:brightness-125`}
+      title={`${appointment.startTime} · ${appointment.vehicleModel} (${appointment.vehiclePlate}) · ${appointment.customerName} · ${appointment.bayName}`}
+    >
+      <span className="mr-1 font-mono font-bold">{appointment.startTime}</span>
+      {appointment.vehiclePlate} · {appointment.customerName}
+    </button>
+  );
 }
 
 export function CalendarEngine({
@@ -94,54 +350,103 @@ export function CalendarEngine({
   bays,
   technicians,
   vehicles,
+  initialCreate,
+  canManageBays,
 }: EngineProps) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>("week");
-  const [cursor, setCursor] = useState<Date>(new Date());
+  const [cursor, setCursor] = useState<Date>(() => civilToday());
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
-  const [modal, setModal] = useState<ModalState | null>(null);
+  const [modal, setModal] = useState<ModalState | null>(
+    initialCreate
+      ? {
+          mode: "create",
+          slot: { date: civilToday(), hour: 9, minutes: 0 },
+          vehicleId: initialCreate.vehicleId,
+        }
+      : null
+  );
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragType, setDragType] = useState<WorkshopBay["serviceType"] | null>(null);
   const [bayModal, setBayModal] = useState<"new" | WorkshopBay | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [movePending, setMovePending] = useState(false);
 
-  // re-sincroniza quando o servidor envia dados novos (router.refresh)
   const [lastSynced, setLastSynced] = useState(initialAppointments);
   if (lastSynced !== initialAppointments) {
     setLastSynced(initialAppointments);
     setAppointments(initialAppointments);
   }
 
+  useEffect(() => {
+    if (feedback?.tone !== "success") return;
+    const timeout = window.setTimeout(() => setFeedback(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
+
   const visible = useMemo(
-    () => appointments.filter((a) => a.status !== "cancelled"),
+    () => appointments.filter((appointment) => appointment.status !== "cancelled"),
     [appointments]
   );
 
-  // ── navegação ──────────────────────────────────────────────────────────────
-  const move = (dir: number) => {
+  const todayKey = todayWorkshopDateKey();
+
+  const todayAppointments = useMemo(
+    () => visible.filter((appointment) => appointment.date === todayKey),
+    [visible, todayKey]
+  );
+  const todayHours = todayAppointments.reduce(
+    (total, appointment) => total + (appointment.estimatedHours || 0),
+    0
+  );
+
+  const currentWeekStart = startOfCivilWeek(civilToday());
+  const currentWeekStartKey = civilDateKey(currentWeekStart);
+  const currentWeekEndKey = civilDateKey(addCivilDays(currentWeekStart, 6));
+  const weekAppointments = visible.filter(
+    (appointment) =>
+      appointment.date >= currentWeekStartKey && appointment.date <= currentWeekEndKey
+  );
+  const weekHours = weekAppointments.reduce(
+    (total, appointment) => total + (appointment.estimatedHours || 0),
+    0
+  );
+  const weeklyCapacityHours = bays.length * 5 * 8;
+  const occupancyPercentage =
+    weeklyCapacityHours > 0
+      ? Math.min(100, Math.round((weekHours / weeklyCapacityHours) * 100))
+      : 0;
+
+  const moveCursor = (direction: number) => {
     if (view === "month") {
-      setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1));
+      setCursor(
+        new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + direction, 1, 12))
+      );
     } else if (view === "week") {
-      setCursor(addDays(cursor, dir * 7));
+      setCursor(addCivilDays(cursor, direction * 7));
     } else if (view === "day" || view === "mapa") {
-      setCursor(addDays(cursor, dir));
+      setCursor(addCivilDays(cursor, direction));
     } else {
-      setCursor(addDays(cursor, dir * 30));
+      setCursor(addCivilDays(cursor, direction * 30));
     }
   };
 
   const periodLabel = useMemo(() => {
-    if (view === "month") {
-      return `${MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
-    }
+    const year = cursor.getUTCFullYear();
+    const month = cursor.getUTCMonth();
+    if (view === "month") return `${MONTHS[month]} ${year}`;
     if (view === "week") {
-      const s = startOfWeek(cursor);
-      const e = addDays(s, 6);
-      return `${s.getDate()} ${MONTHS[s.getMonth()].slice(0, 3)} — ${e.getDate()} ${MONTHS[e.getMonth()].slice(0, 3)} ${e.getFullYear()}`;
+      const start = startOfCivilWeek(cursor);
+      const end = addCivilDays(start, 6);
+      if (start.getUTCMonth() === end.getUTCMonth()) {
+        return `${start.getUTCDate()}–${end.getUTCDate()} ${MONTHS[month].slice(0, 3)} ${year}`;
+      }
+      return `${start.getUTCDate()} ${MONTHS[start.getUTCMonth()].slice(0, 3)} – ${end.getUTCDate()} ${MONTHS[end.getUTCMonth()].slice(0, 3)} ${year}`;
     }
     if (view === "day" || view === "mapa") {
-      return `${WEEKDAYS_SHORT[(cursor.getDay() + 6) % 7]}, ${cursor.getDate()} de ${MONTHS[cursor.getMonth()]}`;
+      return capitalize(fullDateFormatter.format(cursor));
     }
-    return "Próximos 30 dias";
+    return "Próximas marcações";
   }, [view, cursor]);
 
   const openCreate = (slot?: SlotInfo) => {
@@ -152,352 +457,576 @@ export function CalendarEngine({
     setModal({ mode: "edit", appointment });
   };
 
-  const handleMove = async (
-    appointmentId: string,
-    newStart: Date,
-    bayId?: string
-  ) => {
-    const appt = appointments.find((a) => a.id === appointmentId);
-    if (!appt) return;
-    const duration = appt.startIso
-      ? new Date(appt.endIso!).getTime() - new Date(appt.startIso!).getTime()
-      : (appt.estimatedHours || 1) * 3600000;
-    const newEnd = new Date(newStart.getTime() + duration);
+  const handleMove = async (appointmentId: string, newStart: Date, bayId?: string) => {
+    if (movePending) return;
+    const appointment = appointments.find((item) => item.id === appointmentId);
+    if (!appointment) return;
 
-    // otimista
-    setAppointments((prev) =>
-      prev.map((a) =>
-        a.id === appointmentId
-          ? {
-              ...a,
-              date: newStart.toISOString().slice(0, 10),
-              startTime: newStart.toTimeString().slice(0, 5),
-              endTime: newEnd.toTimeString().slice(0, 5),
-              startIso: newStart.toISOString(),
-              endIso: newEnd.toISOString(),
-              bayId: bayId ?? a.bayId,
-            }
-          : a
-      )
+    const durationMs = appointmentDurationMs(appointment);
+    const newEnd = new Date(newStart.getTime() + durationMs);
+    const optimistic: Appointment = {
+      ...appointment,
+      date: workshopDateKey(newStart),
+      startTime: workshopTime(newStart),
+      endTime: workshopTime(newEnd),
+      startIso: newStart.toISOString(),
+      endIso: newEnd.toISOString(),
+      bayId: bayId ?? appointment.bayId,
+      bayName: bayId
+        ? bays.find((bay) => bay.id === bayId)?.name ?? appointment.bayName
+        : appointment.bayName,
+    };
+
+    setMovePending(true);
+    setFeedback(null);
+    setAppointments((current) =>
+      current.map((item) => (item.id === appointmentId ? optimistic : item))
     );
 
-    const result = await moveAppointmentAction(
-      appointmentId,
-      newStart.toISOString(),
-      newEnd.toISOString(),
-      bayId
-    );
-    if (result.ok) router.refresh();
+    const rollback = () =>
+      setAppointments((current) =>
+        current.map((item) => (item.id === appointmentId ? appointment : item))
+      );
+
+    let result: Awaited<ReturnType<typeof moveAppointmentAction>>;
+    try {
+      result = await moveAppointmentAction(
+        appointmentId,
+        newStart.toISOString(),
+        newEnd.toISOString(),
+        bayId
+      );
+    } catch (moveError) {
+      rollback();
+      setFeedback({
+        tone: "error",
+        message:
+          moveError instanceof Error
+            ? moveError.message
+            : "Não foi possível mover a marcação.",
+      });
+      return;
+    } finally {
+      setMovePending(false);
+    }
+
+    if (!result.ok) {
+      rollback();
+      if (result.error === "CONFLICT" && result.conflicts?.length) {
+        const detail = result.conflicts
+          .slice(0, 3)
+          .map((conflict) => `${conflict.label} (${conflict.resource})`)
+          .join(" · ");
+        setFeedback({
+          tone: "error",
+          message: `Movimento cancelado: conflito com ${detail}.`,
+        });
+      } else {
+        setFeedback({
+          tone: "error",
+          message: result.error || "Não foi possível mover a marcação.",
+        });
+      }
+      return;
+    }
+
+    setFeedback({ tone: "success", message: "Marcação movida." });
+    router.refresh();
   };
 
-  // ── intervalo de dias do currently view ────────────────────────────────────
+  const moveByDays = (appointment: Appointment, targetDay: Date) => {
+    const keepTime = appointment.startIso
+      ? workshopTime(new Date(appointment.startIso))
+      : appointment.startTime;
+    const iso = isoFromCivil(targetDay, keepTime);
+    if (!iso) {
+      setFeedback({ tone: "error", message: "Hora inválida." });
+      return;
+    }
+    void handleMove(appointment.id, new Date(iso));
+  };
+
+  const handleGridDrop = (
+    event: React.DragEvent<HTMLDivElement>,
+    day: Date,
+    bayId?: string
+  ) => {
+    event.preventDefault();
+    const appointmentId = draggedId;
+    setDraggedId(null);
+    if (!appointmentId) return;
+    const appointment = appointments.find((item) => item.id === appointmentId);
+    if (!appointment) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const offsetY = Math.max(0, event.clientY - rect.top);
+    const rawMinutes = DAY_START_H * 60 + (offsetY / PX_PER_HOUR) * 60;
+    const snappedMinutes = Math.round(rawMinutes / SNAP_MINUTES) * SNAP_MINUTES;
+    const clampedMinutes = Math.min(
+      DAY_END_H * 60 - SNAP_MINUTES,
+      Math.max(DAY_START_H * 60, snappedMinutes)
+    );
+    const hour = Math.floor(clampedMinutes / 60);
+    const minutes = clampedMinutes % 60;
+    const iso = isoFromCivil(day, `${pad(hour)}:${pad(minutes)}`);
+    if (!iso) {
+      setFeedback({ tone: "error", message: "Hora inválida." });
+      return;
+    }
+    void handleMove(appointment.id, new Date(iso), bayId);
+  };
+
   const weekDays = useMemo(() => {
-    const s = startOfWeek(cursor);
-    return Array.from({ length: 7 }, (_, i) => addDays(s, i));
+    const start = startOfCivilWeek(cursor);
+    return Array.from({ length: 7 }, (_, index) => addCivilDays(start, index));
   }, [cursor]);
 
   const monthDays = useMemo(() => {
-    const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-    const lead = (first.getDay() + 6) % 7;
-    const s = addDays(first, -lead);
-    return Array.from({ length: 42 }, (_, i) => addDays(s, i));
+    const first = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), 1, 12));
+    const lead = (first.getUTCDay() + 6) % 7;
+    const start = addCivilDays(first, -lead);
+    return Array.from({ length: 42 }, (_, index) => addCivilDays(start, index));
   }, [cursor]);
 
   const hours = useMemo(() => {
     const list: number[] = [];
-    for (let h = DAY_START_H; h < DAY_END_H; h++) list.push(h);
+    for (let hour = DAY_START_H; hour < DAY_END_H; hour++) list.push(hour);
     return list;
   }, []);
 
-  const appointmentsForDay = (day: Date) =>
-    visible.filter((a) => a.date === fmtDay(day));
-
-  const moveByDays = (appt: Appointment, targetDay: Date) => {
-    const keep = appt.startIso ? new Date(appt.startIso) : new Date(`${appt.date}T09:00:00`);
-    const newStart = new Date(targetDay);
-    newStart.setHours(keep.getHours(), keep.getMinutes(), 0, 0);
-    void handleMove(appt.id, newStart);
-  };
-
-  // ═ padded slot component helpers ═══════════════════════════════════════════
   const timeSlots: Array<{ hour: number; minutes: number }> = [];
-  for (let hh = DAY_START_H; hh < DAY_END_H; hh++) {
-    timeSlots.push({ hour: hh, minutes: 0 });
-    timeSlots.push({ hour: hh, minutes: 30 });
+  for (let hour = DAY_START_H; hour < DAY_END_H; hour++) {
+    timeSlots.push({ hour, minutes: 0 });
+    timeSlots.push({ hour, minutes: 30 });
   }
 
-  const EventChip = ({ a, compact }: { a: Appointment; compact?: boolean }) => {
-    const color = statusColor(a.status);
-    return (
-      <div
-        draggable
-        onDragStart={(e) => {
-          setDraggedId(a.id);
-          e.dataTransfer.setData("text/plain", a.id);
-          e.dataTransfer.effectAllowed = "move";
-        }}
-        onDragEnd={() => setDraggedId(null)}
-        onClick={(e) => {
-          e.stopPropagation();
-          openEdit(a);
-        }}
-        className={`cursor-pointer px-1.5 py-0.5 rounded-[6px] border ${color.bg} ${color.border} ${color.text} hover:brightness-125 transition-all text-[11px] leading-tight truncate ${a.status === "cancelled" ? "line-through" : ""}`}
-        title={`${a.startTime} · ${a.vehicleModel} (${a.vehiclePlate}) · ${a.customerName} · ${a.bayName}`}
-      >
-        {!compact && <span className="font-mono font-bold mr-1">{a.startTime}</span>}
-        {a.vehiclePlate} · {a.customerName}
-      </div>
-    );
-  };
+  const cursorKey = civilDateKey(cursor);
 
-  // ══════════════════════════════════════════════════════════════════════════
+  const appointmentsForDay = (day: Date) =>
+    visible.filter((appointment) => appointment.date === civilDateKey(day));
+
+  const upcoming = useMemo(
+    () =>
+      visible
+        .filter((appointment) => appointment.date >= todayKey)
+        .sort((a, b) => (a.startIso ?? a.date).localeCompare(b.startIso ?? b.date)),
+    [visible, todayKey]
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="bg-[#15191a]" onClick={() => setCursor(new Date())}>
-            <span>Hoje</span>
-          </Button>
-          <button
-            onClick={() => move(-1)}
-            className="p-2 rounded-sm bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
-            aria-label="Anterior"
+      <section
+        aria-label="Resumo da agenda"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+      >
+        <SummaryCard
+          label="Hoje"
+          value={`${todayAppointments.length}`}
+          detail={`${formatHours(todayHours)} planeadas`}
+          icon={<CalendarDays className="h-4 w-4 text-[#d3a548]" />}
+        />
+        <SummaryCard
+          label="Esta semana"
+          value={`${weekAppointments.length}`}
+          detail={`${formatHours(weekHours)} planeadas`}
+          icon={<Clock className="h-4 w-4 text-[#6e93b5]" />}
+        />
+        <SummaryCard
+          label="Equipa"
+          value={`${technicians.length}`}
+          detail={technicians.length === 1 ? "técnico ativo" : "técnicos ativos"}
+          icon={<Users className="h-4 w-4 text-[#68a46b]" />}
+        />
+        <SummaryCard
+          label="Ocupação semanal"
+          value={`${occupancyPercentage}%`}
+          detail={`${formatHours(weekHours)} de ${formatHours(weeklyCapacityHours)}`}
+          icon={<Car className="h-4 w-4 text-[#d3a548]" />}
+        >
+          <div
+            className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]"
+            role="progressbar"
+            aria-label="Ocupação semanal das baias"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={occupancyPercentage}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => move(1)}
-            className="p-2 rounded-sm bg-[#15191a] text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/10 transition-colors cursor-pointer"
-            aria-label="Seguinte"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          <span className="font-bold text-sm text-[#f1ede5] ml-1">{periodLabel}</span>
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-[#d3a548] to-[#f7d46d] transition-all duration-500"
+              style={{ width: `${occupancyPercentage}%` }}
+            />
+          </div>
+        </SummaryCard>
+      </section>
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          {view !== "agenda" && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="bg-[#15191a]"
+                onClick={() => setCursor(civilToday())}
+              >
+                <span>Hoje</span>
+              </Button>
+              <button
+                type="button"
+                onClick={() => moveCursor(-1)}
+                className="cursor-pointer rounded-sm bg-[#15191a] p-2 text-[#a9adae] transition-colors hover:bg-white/10 hover:text-[#f1ede5]"
+                aria-label="Período anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveCursor(1)}
+                className="cursor-pointer rounded-sm bg-[#15191a] p-2 text-[#a9adae] transition-colors hover:bg-white/10 hover:text-[#f1ede5]"
+                aria-label="Período seguinte"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          <span className="ml-1 text-sm font-bold text-[#f1ede5]" aria-live="polite">
+            {periodLabel}
+          </span>
+          {movePending && (
+            <span className="text-[11px] text-[#8a9092]">a atualizar…</span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 rounded-md bg-[#101314] border border-white/[0.06] select-none">
-          {(
-            [
-              ["month", "Mês"],
-              ["week", "Semana"],
-              ["day", "Dia"],
-              ["mapa", "Mapa 3D"],
-              ["agenda", "Agenda"],
-            ] as Array<[ViewMode, string]>
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setView(id)}
-              className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
-                view === id
-                  ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40"
-                  : "text-[#a9adae] hover:text-[#f1ede5]"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-          <button
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="flex items-center gap-1 overflow-x-auto rounded-md border border-white/[0.06] bg-[#101314] p-1 select-none"
+            role="group"
+            aria-label="Vista da agenda"
+          >
+            {(
+              [
+                ["month", "Mês"],
+                ["week", "Semana"],
+                ["day", "Dia"],
+                ["mapa", "Mapa"],
+                ["agenda", "Agenda"],
+              ] as Array<[ViewMode, string]>
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setView(id)}
+                aria-pressed={view === id}
+                className={`cursor-pointer rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
+                  view === id
+                    ? "border border-[#d3a548]/40 bg-[#1f1b14] text-[#f7d46d]"
+                    : "text-[#a9adae] hover:text-[#f1ede5]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
             onClick={() => openCreate({ date: cursor, hour: 9, minutes: 0 })}
-            className="flex items-center gap-1.5 px-3 py-1.5 ml-1 rounded-sm text-xs font-bold bg-[#d3a548] text-[#050606] hover:bg-[#e7c77c] transition-all cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>Criar</span>
-          </button>
+            <span>Nova marcação</span>
+          </Button>
         </div>
       </div>
 
-      {/* ═══ VISTA MENSAL ═══ */}
+      {feedback && (
+        <div
+          role={feedback.tone === "error" ? "alert" : "status"}
+          aria-live="polite"
+          className={`flex items-start gap-2 rounded-md border px-3.5 py-2.5 text-xs font-medium ${
+            feedback.tone === "error"
+              ? "border-[#f05a50]/40 bg-[#f05a50]/10 text-[#f78e85]"
+              : "border-[#68a46b]/40 bg-[#68a46b]/10 text-[#8cc78f]"
+          }`}
+        >
+          {feedback.tone === "error" ? (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
+          <span className="flex-1">{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="cursor-pointer rounded p-0.5 opacity-70 hover:opacity-100"
+            aria-label="Fechar aviso"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {bays.length === 0 && (
+        <div className="flex flex-col gap-3 rounded-md border border-[#d3a548]/30 bg-[#1f1b14]/60 p-4 text-xs text-[#a9adae] sm:flex-row sm:items-center">
+          <div className="flex flex-1 items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#d3a548]" />
+            <span>
+              Ainda não há baias configuradas. Cria a primeira baia no mapa para
+              poderes agendar marcações.
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setView("mapa")}
+          >
+            Configurar baias
+          </Button>
+        </div>
+      )}
+
       {view === "month" && (
-        <div className="rounded-lg border border-white/[0.06] overflow-hidden">
-          <div className="grid grid-cols-7 bg-[#101314] border-b border-white/[0.06]">
-            {WEEKDAYS_SHORT.map((d) => (
-              <div key={d} className="p-2 text-center text-[11px] font-bold uppercase tracking-wider text-[#8a9092]">
-                {d}
+        <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+          <div className="min-w-[680px]">
+            <div className="grid grid-cols-7 border-b border-white/[0.06] bg-[#101314]">
+            {WEEKDAYS_SHORT.map((day) => (
+              <div
+                key={day}
+                className="p-2 text-center text-[11px] font-bold uppercase tracking-wider text-[#8a9092]"
+              >
+                {day}
               </div>
             ))}
           </div>
           <div className="grid grid-cols-7">
-            {monthDays.map((day, i) => {
-              const inMonth = day.getMonth() === cursor.getMonth();
-              const isToday = fmtDay(day) === fmtDay(new Date());
+            {monthDays.map((day) => {
+              const dayKey = civilDateKey(day);
+              const inMonth = day.getUTCMonth() === cursor.getUTCMonth();
+              const isToday = dayKey === todayKey;
               const dayAppointments = appointmentsForDay(day);
               return (
                 <div
-                  key={i}
+                  key={dayKey}
                   onClick={() => openCreate({ date: day, hour: 9, minutes: 0 })}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => {
-                    if (draggedId) {
-                      const appt = appointments.find((a) => a.id === draggedId);
-                      if (appt) moveByDays(appt, day);
-                      setDraggedId(null);
-                    }
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (!draggedId) return;
+                    const appointment = appointments.find(
+                      (item) => item.id === draggedId
+                    );
+                    if (appointment) moveByDays(appointment, day);
+                    setDraggedId(null);
                   }}
-                  className={`min-h-[110px] p-1 border-b border-r border-white/[0.04] cursor-pointer hover:bg-white/[0.02] transition-colors ${
-                    !inMonth ? "opacity-40" : ""
+                  aria-label={`${formatShortDate(dayKey)}, ${dayAppointments.length} marcações`}
+                  className={`min-h-[100px] cursor-pointer border-b border-r border-white/[0.04] p-1 transition-colors hover:bg-white/[0.02] sm:min-h-[110px] ${
+                    inMonth ? "" : "opacity-40"
                   } ${isToday ? "bg-[#1f1b14]/40" : ""}`}
                 >
                   <span
-                    className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                      isToday ? "bg-[#d3a548] text-[#050606]" : "text-[#a9adae]"
+                    className={`inline-block rounded-full px-1.5 py-0.5 font-mono text-[11px] font-bold ${
+                      isToday
+                        ? "bg-[#d3a548] text-[#050606]"
+                        : "text-[#a9adae]"
                     }`}
                   >
-                    {day.getDate()}
+                    {day.getUTCDate()}
                   </span>
-                  <div className="flex flex-col gap-0.5 mt-1">
-                    {dayAppointments.slice(0, 3).map((a) => (
-                      <EventChip key={a.id} a={a} compact />
+                  <div className="mt-1 flex flex-col gap-0.5">
+                    {dayAppointments.slice(0, 3).map((appointment) => (
+                      <MonthEventChip
+                        key={appointment.id}
+                        appointment={appointment}
+                        onOpen={openEdit}
+                        onDragStart={(item, event) => {
+                          setDraggedId(item.id);
+                          event.dataTransfer.setData("text/plain", item.id);
+                          event.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragEnd={() => setDraggedId(null)}
+                      />
                     ))}
                     {dayAppointments.length > 3 && (
-                      <span className="text-[10px] text-[#8a9092] px-1">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setCursor(day);
+                          setView("day");
+                        }}
+                        className="cursor-pointer px-1 text-left text-[10px] text-[#8a9092] hover:text-[#f1ede5]"
+                      >
                         +{dayAppointments.length - 3} mais
-                      </span>
+                      </button>
                     )}
                   </div>
                 </div>
               );
             })}
           </div>
+          </div>
         </div>
       )}
 
-      {/* ═══ VISTAS SEMANA / DIA (grelha temporal) ═══ */}
-      {(view === "week" || view === "day") && (
-        <div className="rounded-lg border border-white/[0.06] overflow-x-auto">
-          <div className="min-w-[900px]">
-            {/* Cabeçalho dos dias */}
+      {(view === "week" || (view === "day" && bays.length > 0)) && (
+        <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+          <div className={view === "week" ? "min-w-[900px]" : "min-w-[640px]"}>
             <div
-              className="grid bg-[#101314] border-b border-white/[0.06]"
-              style={{ gridTemplateColumns: `60px repeat(${view === "week" ? 7 : bays.length}, 1fr)` }}
-            >
-              <div />
-              {(view === "week"
-                ? weekDays
-                : bays.map(() => new Date(cursor))
-              ).map((day, i) => (
-                <div key={i} className="p-2 text-center border-l border-white/[0.04]">
-                  {view === "week" ? (
-                    <>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-[#8a9092]">
-                        {WEEKDAYS_SHORT[i]}
-                      </div>
-                      <div
-                        className={`text-sm font-mono font-bold ${
-                          fmtDay(day) === fmtDay(new Date()) ? "text-[#f7d46d]" : "text-[#f1ede5]"
-                        }`}
-                      >
-                        {day.getDate()}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-xs font-bold text-[#f1ede5]">{bays[i]?.name ?? "—"}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Grelha temporal */}
-            <div
-              className="grid relative"
+              className="grid border-b border-white/[0.06] bg-[#101314]"
               style={{
-                gridTemplateColumns: `60px repeat(${view === "week" ? 7 : bays.length}, 1fr)`,
+                gridTemplateColumns: `60px repeat(${
+                  view === "week" ? 7 : Math.max(1, bays.length)
+                }, 1fr)`,
               }}
             >
-              {/* Coluna de horas */}
+              <div />
+              {(view === "week" ? weekDays : bays).map((column, index) => {
+                const day = view === "week" ? (column as Date) : cursor;
+                const bay = view === "day" ? (column as WorkshopBay) : undefined;
+                const isToday = civilDateKey(day) === todayKey;
+                return (
+                  <div
+                    key={bay?.id ?? index}
+                    className={`border-l border-white/[0.04] p-2 text-center ${
+                      isToday ? "bg-[#1f1b14]/40" : ""
+                    }`}
+                  >
+                    {view === "week" ? (
+                      <>
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-[#8a9092]">
+                          {WEEKDAYS_SHORT[(day.getUTCDay() + 6) % 7]}
+                        </div>
+                        <div
+                          className={`font-mono text-sm font-bold ${
+                            isToday ? "text-[#f7d46d]" : "text-[#f1ede5]"
+                          }`}
+                        >
+                          {day.getUTCDate()}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="truncate text-xs font-bold text-[#f1ede5]">
+                          {bay?.name ?? "—"}
+                        </div>
+                        <div className="text-[10px] uppercase tracking-wider text-[#8a9092]">
+                          {bay ? SERVICE_LABEL[bay.serviceType] : ""}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div
+              className="relative grid"
+              style={{
+                gridTemplateColumns: `60px repeat(${
+                  view === "week" ? 7 : Math.max(1, bays.length)
+                }, 1fr)`,
+              }}
+            >
               <div className="border-r border-white/[0.04]">
-                {hours.map((h) => (
-                  <div key={h} className="relative" style={{ height: PX_PER_HOUR }}>
-                    <span className="absolute -top-1.5 right-1 text-[10px] font-mono text-[#8a9092]">
-                      {String(h).padStart(2, "0")}:00
+                {hours.map((hour) => (
+                  <div key={hour} className="relative" style={{ height: PX_PER_HOUR }}>
+                    <span className="absolute -top-1.5 right-1 font-mono text-[10px] text-[#8a9092]">
+                      {pad(hour)}:00
                     </span>
                   </div>
                 ))}
               </div>
 
-              {(view === "week" ? weekDays : bays).map((col, colIdx) => {
-                const day = view === "week" ? (col as Date) : cursor;
-                const bay = view === "day" ? (col as WorkshopBay) : undefined;
-                const dayAppointments = view === "week" ? appointmentsForDay(day) : visible.filter((a) => a.date === fmtDay(cursor) && a.bayId === bay?.id);
+              {(view === "week" ? weekDays : bays).map((column, columnIndex) => {
+                const day = view === "week" ? (column as Date) : cursor;
+                const bay = view === "day" ? (column as WorkshopBay) : undefined;
+                const dayAppointments =
+                  view === "week"
+                    ? appointmentsForDay(day)
+                    : visible.filter(
+                        (appointment) =>
+                          appointment.date === cursorKey && appointment.bayId === bay?.id
+                      );
+                const positioned = layoutDayAppointments(dayAppointments);
+                const isToday = civilDateKey(day) === todayKey;
 
                 return (
                   <div
-                    key={colIdx}
-                    className="relative border-r border-white/[0.04]"
-                  onDragEnter={(e) => e.preventDefault()}
-                  onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => {
-                      if (draggedId) {
-                        const appt = appointments.find((a) => a.id === draggedId);
-                        if (appt) {
-                          const keep = appt.startIso
-                            ? new Date(appt.startIso)
-                            : new Date(`${appt.date}T09:00:00`);
-                          const newStart = new Date(day);
-                          newStart.setHours(keep.getHours(), keep.getMinutes(), 0, 0);
-                          void handleMove(appt.id, newStart, view === "day" ? bay?.id : undefined);
-                        }
-                        setDraggedId(null);
-                      }
-                    }}
+                    key={bay?.id ?? columnIndex}
+                    className={`relative border-r border-white/[0.04] ${
+                      isToday ? "bg-[#d3a548]/[0.02]" : ""
+                    }`}
+                    onDragEnter={(event) => event.preventDefault()}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => handleGridDrop(event, day, bay?.id)}
                   >
-                    {/* slots clicáveis */}
                     {timeSlots.map(({ hour, minutes }) => (
-                      <div
+                      <button
+                        type="button"
                         key={`${hour}-${minutes}`}
                         onClick={() =>
                           openCreate({
                             date: day,
                             hour,
                             minutes,
-                            bayId: view === "day" ? bay?.id : undefined,
+                            bayId: bay?.id,
                           })
                         }
-                        className="border-b border-white/[0.03] hover:bg-white/[0.03] cursor-pointer"
+                        aria-label={`Criar marcação em ${formatShortDate(
+                          civilDateKey(day)
+                        )} às ${pad(hour)}:${pad(minutes)}`}
+                        className="block w-full cursor-pointer border-b border-white/[0.03] hover:bg-white/[0.03]"
                         style={{ height: PX_PER_HOUR / 2 }}
                       />
                     ))}
 
-                    {/* eventos posicionados */}
-                    {dayAppointments.map((a) => {
-                      const start = a.startIso
-                        ? new Date(a.startIso)
-                        : new Date(`${a.date}T${a.startTime}:00`);
-                      const end = a.endIso ? new Date(a.endIso) : new Date(`${a.date}T${a.endTime}:00`);
-                      const startMin = start.getHours() * 60 + start.getMinutes();
-                      const endMin = end.getHours() * 60 + end.getMinutes();
-                      const offset = startMin - DAY_START_H * 60;
-                      const height = Math.max(endMin - startMin, 30);
-                      const color = statusColor(a.status);
+                    {positioned.map(({ appointment, top, height, column, columns }) => {
+                      const color = statusColor(appointment.status);
+                      const width = 100 / columns;
                       return (
-                        <div
-                          key={a.id}
+                        <button
+                          type="button"
+                          key={appointment.id}
                           draggable
-                          onDragStart={(e) => {
-                            setDraggedId(a.id);
-                            e.dataTransfer.setData("text/plain", a.id);
-                            e.dataTransfer.effectAllowed = "move";
+                          onDragStart={(event) => {
+                            setDraggedId(appointment.id);
+                            event.dataTransfer.setData("text/plain", appointment.id);
+                            event.dataTransfer.effectAllowed = "move";
                           }}
                           onDragEnd={() => setDraggedId(null)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(a);
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEdit(appointment);
                           }}
-                          className={`absolute left-0.5 right-0.5 rounded-sm border px-1.5 py-1 overflow-hidden cursor-pointer hover:brightness-125 transition-all ${color.bg} ${color.border} ${color.text}`}
-                          style={{ top: (offset / 60) * PX_PER_HOUR, height, minHeight: 24 }}
-                          title={`${a.startTime}–${a.endTime} · ${a.vehicleModel} (${a.vehiclePlate}) · ${a.customerName}`}
+                          className={`absolute overflow-hidden rounded-sm border px-1.5 py-1 text-left transition-all hover:brightness-125 ${color.bg} ${color.border} ${color.text}`}
+                          style={{
+                            top,
+                            height,
+                            minHeight: 24,
+                            left: `calc(${column * width}% + 2px)`,
+                            width: `calc(${width}% - 4px)`,
+                          }}
+                          title={`${appointment.startTime}–${appointment.endTime} · ${appointment.vehicleModel} (${appointment.vehiclePlate}) · ${appointment.customerName} · ${appointment.bayName}`}
                         >
-                          <span className="text-[10px] font-mono font-bold block leading-tight">
-                            {a.startTime}–{a.endTime}
+                          <span className="block font-mono text-[10px] font-bold leading-tight">
+                            {appointment.startTime}–{appointment.endTime}
                           </span>
-                          <span className="text-[11px] font-semibold block truncate leading-tight">
-                            {a.vehicleModel}
+                          <span className="block truncate text-[11px] font-semibold leading-tight">
+                            {appointment.vehicleModel}
                           </span>
-                          <span className="text-[10px] block truncate leading-tight opacity-80">
-                            {a.customerName}
-                          </span>
-                        </div>
+                          {height > 48 && (
+                            <span className="block truncate text-[10px] leading-tight opacity-80">
+                              {appointment.customerName}
+                            </span>
+                          )}
+                          {height > 64 && (
+                            <span className="block truncate text-[10px] leading-tight opacity-70">
+                              {appointment.bayName}
+                            </span>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
@@ -508,11 +1037,10 @@ export function CalendarEngine({
         </div>
       )}
 
-      {/* ═══ VISTA MAPA 3D DA OFICINA ═══ */}
       {view === "mapa" && (
         <WorkshopMap
           date={cursor}
-          appointments={appointments.filter((a) => a.status !== "cancelled")}
+          appointments={visible}
           bays={bays}
           technicians={technicians}
           vehicles={vehicles}
@@ -522,104 +1050,161 @@ export function CalendarEngine({
           setDragType={setDragType}
           bayModal={bayModal}
           setBayModal={setBayModal}
+          canManageBays={canManageBays}
           onOpenEditAppointment={openEdit}
           onRefresh={() => router.refresh()}
         />
       )}
 
-      {/* ═══ VISTA AGENDA ═══ */}
       {view === "agenda" && (
         <div className="flex flex-col gap-3">
-          {(() => {
-            const upcoming = visible
-              .filter((a) => a.date >= fmtDay(new Date()))
-              .sort((a, b) => (a.startIso ?? a.date).localeCompare(b.startIso ?? b.date));
-            if (upcoming.length === 0) {
-              return (
-                <div className="p-10 rounded-lg bg-[#101314] border border-white/[0.06] text-center text-xs text-[#8a9092]">
-                  Sem marcações futuras. Usa o botão Criar para agendar.
-                </div>
-              );
-            }
-            let lastDate = "";
-            return upcoming.map((a) => {
-              const showDate = a.date !== lastDate;
-              lastDate = a.date;
-              return (
-                <React.Fragment key={a.id}>
-                  {showDate && (
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548] mt-2">
-                      {WEEKDAYS_SHORT[(new Date(a.date).getDay() + 6) % 7]}, {a.date}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => openEdit(a)}
-                    className="flex items-center gap-3 p-3.5 rounded-md bg-[#101314] border border-white/[0.06] hover:border-[#d3a548]/40 transition-all cursor-pointer text-left"
-                  >
-                    <span className="font-mono text-xs font-bold text-[#f7d46d]">{a.startTime}</span>
-                    <span className="text-sm font-semibold text-[#f1ede5]">{a.vehicleModel}</span>
-                    <span className="text-xs text-[#a9adae] truncate">{a.customerName}</span>
-                    <Badge variant="outline" className="ml-auto text-[11px] shrink-0">
-                      {a.bayName}
-                    </Badge>
-                  </button>
-                </React.Fragment>
-              );
-            });
-          })()}
+          {upcoming.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-white/[0.06] bg-[#101314] p-10 text-center">
+              <CalendarDays className="h-8 w-8 text-[#5a6062]" />
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-semibold text-[#f1ede5]">
+                  Sem marcações futuras
+                </span>
+                <span className="text-xs text-[#8a9092]">
+                  Cria a próxima marcação para começar a preencher a agenda.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => openCreate({ date: civilToday(), hour: 9, minutes: 0 })}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Nova marcação</span>
+              </Button>
+            </div>
+          ) : (
+            (() => {
+              let lastDate = "";
+              return upcoming.map((appointment) => {
+                const showDate = appointment.date !== lastDate;
+                lastDate = appointment.date;
+                return (
+                  <React.Fragment key={appointment.id}>
+                    {showDate && (
+                      <span className="mt-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#d3a548]">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        {capitalize(dateHeadingFormatter.format(civilDateFromKey(appointment.date)))}
+                        <span className="font-mono text-[10px] font-medium text-[#8a9092]">
+                          {formatShortDate(appointment.date)}
+                        </span>
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => openEdit(appointment)}
+                      className="flex w-full cursor-pointer flex-col gap-3 rounded-md border border-white/[0.06] bg-[#101314] p-3.5 text-left transition-all hover:border-[#d3a548]/40 sm:flex-row sm:items-center"
+                    >
+                      <span className="flex shrink-0 items-center gap-2 sm:w-32">
+                        <span className="font-mono text-xs font-bold text-[#f7d46d]">
+                          {appointment.startTime}
+                        </span>
+                        <span className="text-[11px] text-[#8a9092]">
+                          → {appointment.endTime}
+                        </span>
+                        <span
+                          className={`h-2 w-2 rounded-full ${statusColor(appointment.status).dot}`}
+                          aria-hidden="true"
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-[#f1ede5]">
+                            {appointment.vehicleModel}
+                          </span>
+                          <span className="rounded border border-white/20 bg-[#080a0b] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#f1ede5]">
+                            {appointment.vehiclePlate}
+                          </span>
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-[#a9adae]">
+                          {appointment.customerName} · {appointment.bayName} ·{" "}
+                          {appointment.technicianName}
+                        </span>
+                      </span>
+                      <Badge
+                        variant={badgeVariant(appointment.status)}
+                        className="shrink-0 self-start text-[11px] sm:self-center"
+                      >
+                        {statusLabel(appointment.status)}
+                      </Badge>
+                    </button>
+                  </React.Fragment>
+                );
+              });
+            })()
+          )}
         </div>
       )}
 
-      {/* Modal de criação/edição */}
       {modal && (
         <AppointmentModal
           mode={modal.mode}
           appointment={modal.appointment}
           slot={modal.slot}
+          initialVehicleId={modal.vehicleId}
           bays={bays}
           technicians={technicians}
           vehicles={vehicles}
           onClose={() => setModal(null)}
           onSaved={(deleted) => {
+            const wasEdit = modal.mode === "edit";
             setModal(null);
             if (deleted) {
-              setAppointments((prev) => prev.filter((a) => a.id !== deleted));
+              setAppointments((current) =>
+                current.filter((appointment) => appointment.id !== deleted)
+              );
+              setFeedback({ tone: "success", message: "Marcação cancelada." });
+            } else {
+              setFeedback({
+                tone: "success",
+                message: wasEdit ? "Marcação atualizada." : "Marcação criada.",
+              });
             }
             router.refresh();
           }}
         />
       )}
 
-      {/* Legenda */}
-      <div className="flex items-center gap-4 text-[11px] text-[#8a9092] flex-wrap">
+      <div className="flex flex-wrap items-center gap-4 text-[11px] text-[#8a9092]">
+        {STATUS_OPTIONS.map((status) => {
+          const color = statusColor(status.value);
+          return (
+            <span key={status.value} className="flex items-center gap-1.5">
+              <span
+                className={`h-2.5 w-2.5 rounded-full border ${color.bg} ${color.border}`}
+              />
+              {status.label}
+            </span>
+          );
+        })}
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#d3a548]/40 border border-[#d3a548]" /> Em curso
+          <CalendarDays className="h-3 w-3" />
+          Clica num espaço vazio para criar · arrasta para mover
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-white/10 border border-white/20" /> Agendada
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#6e93b5]/30 border border-[#6e93b5]" /> Confirmada
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#68a46b]/30 border border-[#68a46b]" /> Concluída
-        </span>
-        <span className="flex items-center gap-1.5">
-          <CalendarDays className="h-3 w-3" /> Clica num espaço vazio para criar · arrasta para mover
-        </span>
-        <Link href="/time-book" className="flex items-center gap-1.5 hover:text-[#f1ede5] ml-auto">
-          <List className="h-3 w-3" /> Ver agenda em lista
-        </Link>
+        <button
+          type="button"
+          onClick={() => setView("agenda")}
+          className="ml-auto flex cursor-pointer items-center gap-1.5 hover:text-[#f1ede5]"
+        >
+          <List className="h-3 w-3" />
+          Ver em lista
+        </button>
       </div>
     </div>
   );
 }
 
-// ═══ Modal de marcação ═══════════════════════════════════════════════════════
 interface ModalProps {
   mode: "create" | "edit";
   appointment?: Appointment;
   slot?: SlotInfo;
+  initialVehicleId?: string;
   bays: WorkshopBay[];
   technicians: { id: string; name: string }[];
   vehicles: { id: string; label: string; customerId: string | null }[];
@@ -631,161 +1216,313 @@ function AppointmentModal({
   mode,
   appointment,
   slot,
+  initialVehicleId,
   bays,
   technicians,
   vehicles,
   onClose,
   onSaved,
 }: ModalProps) {
-  const initVehicle = appointment?.vehicleId ?? slot?.bayId ?? vehicles[0]?.id ?? "";
-  const initDate = appointment?.date ?? (slot ? fmtDay(slot.date) : fmtDay(new Date()));
-  const initHour = appointment?.startTime ?? (slot ? `${String(slot.hour).padStart(2, "0")}:${String(slot.minutes ?? 0).padStart(2, "0")}` : "09:00");
+  const todayKey = todayWorkshopDateKey();
+  const initVehicle =
+    appointment?.vehicleId ?? initialVehicleId ?? vehicles[0]?.id ?? "";
+  const initDate = appointment?.date ?? (slot ? civilDateKey(slot.date) : todayKey);
+  const initHour = appointment?.startTime
+    ? appointment.startTime
+    : slot
+      ? `${pad(slot.hour)}:${pad(slot.minutes ?? 0)}`
+      : "09:00";
   const initBay = appointment?.bayId ?? slot?.bayId ?? bays[0]?.id ?? "";
+  const initialVehicle = vehicles.find((vehicle) => vehicle.id === initVehicle);
 
   const [vehicleId, setVehicleId] = useState(initVehicle);
   const [customerId, setCustomerId] = useState(
-    appointment?.customerId ?? vehicles.find((v) => v.id === initVehicle)?.customerId ?? ""
+    appointment?.customerId ?? initialVehicle?.customerId ?? ""
   );
   const [bayId, setBayId] = useState(initBay);
-  const [technicianId, setTechnicianId] = useState(appointment ? "" : technicians[0]?.id ?? "");
+  const [technicianId, setTechnicianId] = useState(
+    appointment ? appointment.technicianId ?? "" : technicians[0]?.id ?? ""
+  );
   const [date, setDate] = useState(initDate);
   const [startTime, setStartTime] = useState(initHour);
-  const [estimatedHours, setEstimatedHours] = useState(appointment?.estimatedHours?.toString() ?? "2");
-  const [status, setStatus] = useState<AppointmentStatus>(appointment?.status ?? "scheduled");
-  const [notes, setNotes] = useState(appointment?.serviceTitle ?? appointment?.notes ?? "");
+  const [estimatedHours, setEstimatedHours] = useState(
+    appointment?.estimatedHours?.toString() ?? "2"
+  );
+  const [status, setStatus] = useState<AppointmentStatus>(
+    appointment?.status ?? "scheduled"
+  );
+  const [notes, setNotes] = useState(appointment?.notes ?? appointment?.serviceTitle ?? "");
   const [error, setError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const node = dialogRef.current;
+    if (!node) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const focusableSelector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () =>
+      Array.from(node.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) => element.offsetParent !== null
+      );
+
+    const firstFocusable =
+      node.querySelector<HTMLElement>("select, input, textarea") ?? getFocusable()[0];
+    window.setTimeout(() => firstFocusable?.focus(), 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    node.addEventListener("keydown", handleKeyDown);
+    return () => {
+      node.removeEventListener("keydown", handleKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, []);
+
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === vehicleId);
+  const selectedVehicleHasOwner = Boolean(selectedVehicle?.customerId);
+  const statusOptions =
+    appointment?.status === "cancelled"
+      ? [{ value: "cancelled" as AppointmentStatus, label: "Cancelada" }, ...STATUS_OPTIONS]
+      : STATUS_OPTIONS;
+
+  const validate = (): string | null => {
+    if (vehicles.length === 0) return "Não há viaturas disponíveis para agendar.";
+    if (!vehicleId) return "Seleciona uma viatura.";
+    if (!selectedVehicleHasOwner) {
+      return "A viatura selecionada não tem proprietário associado.";
+    }
+    if (bays.length === 0) return "Cria uma baia antes de agendar uma marcação.";
+    if (!bayId) return "Seleciona uma baia.";
+    if (!date || !parseDateKey(date)) return "Data inválida.";
+    if (!parseTime(startTime)) return "Hora de início inválida.";
+    const hours = Number(estimatedHours);
+    if (!Number.isFinite(hours) || hours < 0.5) {
+      return "A duração mínima é de 30 minutos.";
+    }
+    if (hours > 24 * 7) {
+      return "A duração não pode exceder 7 dias.";
+    }
+    return null;
+  };
 
   const buildInput = () => {
-    const start = new Date(`${date}T${startTime}:00`);
-    const end = new Date(start.getTime() + (parseFloat(estimatedHours) || 1) * 3600000);
+    const startIso = workshopIsoFromWallTime(date, startTime);
+    if (!startIso) throw new Error("Data ou hora inválida.");
+    const hours = Number(estimatedHours);
+    const endIso = new Date(new Date(startIso).getTime() + hours * 3600000).toISOString();
     return {
       vehicleId,
       customerId,
       bayId,
-      technicianId: technicianId || undefined,
-      startTime: start.toISOString(),
-      endTime: end.toISOString(),
-      estimatedHours: parseFloat(estimatedHours) || 1,
+      technicianId: technicianId || null,
+      quoteId: appointment?.quoteId ?? null,
+      startTime: startIso,
+      endTime: endIso,
+      estimatedHours: hours,
       status,
-      notes: notes || undefined,
+      notes: notes.trim() || undefined,
     };
   };
 
-  const selectedVehicleHasOwner = vehicles.some(
-    (v) => v.id === vehicleId && v.customerId
-  );
-
   const handleSave = async (force = false) => {
+    if (saving) return;
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      setConflicts(null);
+      return;
+    }
+    let input: ReturnType<typeof buildInput>;
+    try {
+      input = buildInput();
+    } catch (buildError) {
+      setError(buildError instanceof Error ? buildError.message : "Dados inválidos.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
-    if (!selectedVehicleHasOwner) {
-      setError("A viatura selecionada não tem proprietário associado.");
-      setSaving(false);
-      return;
-    }
-    if (force) {
-      const r = await forceSaveAppointmentAction(buildInput(), appointment?.id);
-      if (!r.ok) {
-        setError(r.error);
-        setSaving(false);
+    setConflicts(null);
+    try {
+      if (force) {
+        const result = await forceSaveAppointmentAction(input, appointment?.id);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        onSaved();
         return;
       }
-      onSaved(appointment?.id);
+
+      const result = await saveAppointmentAction(input, appointment?.id);
+      if (result.ok) {
+        onSaved();
+        return;
+      }
+      if (result.error === "CONFLICT" && result.conflicts?.length) {
+        setConflicts(
+          result.conflicts.map(
+            (conflict) => `${conflict.label} (${conflict.resource})`
+          )
+        );
+        return;
+      }
+      setError(result.error || "Erro ao guardar a marcação.");
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error ? saveError.message : "Erro ao guardar a marcação."
+      );
+    } finally {
       setSaving(false);
-      return;
     }
-    const r = await saveAppointmentAction(buildInput(), appointment?.id);
-    if (r.ok) {
-      onSaved(appointment?.id);
-    } else if (r.error === "CONFLICT" && r.conflicts) {
-      setConflicts(r.conflicts.map((c) => `${c.label} (${c.resource})`));
-    } else {
-      setError(r.error ?? "Erro desconhecido.");
-    }
-    setSaving(false);
   };
 
   const handleCancel = async () => {
-    if (!appointment) return;
+    if (!appointment || saving) return;
     setSaving(true);
-    await cancelAppointmentAction(appointment.id);
-    setSaving(false);
-    onSaved(appointment.id);
+    setError(null);
+    try {
+      const result = await cancelAppointmentAction(appointment.id);
+      if (!result.ok) {
+        setError(result.error || "Erro ao cancelar a marcação.");
+        return;
+      }
+      onSaved(appointment.id);
+    } catch (cancelError) {
+      setError(
+        cancelError instanceof Error ? cancelError.message : "Erro ao cancelar a marcação."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
+  const inputClass =
+    "h-10 w-full rounded-sm border border-white/[0.08] bg-[#15191a] px-3 text-sm text-[#f1ede5] transition-colors focus:border-[#d3a548]";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#050606]/85 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#050606]/85 p-4 backdrop-blur-sm">
       <div
-        className="relative w-full max-w-lg rounded-[18px] bg-[#101314] border border-white/[0.12] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.6)] text-[#f1ede5] my-8"
+        ref={dialogRef}
+        className="relative my-8 w-full max-w-xl rounded-[18px] border border-white/[0.12] bg-[#101314] p-6 text-[#f1ede5] shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="appointment-modal-title"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-          <h2 className="text-lg font-bold">
-            {mode === "edit" ? "Editar Marcação" : "Nova Marcação"}
-          </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/[0.06] cursor-pointer" aria-label="Fechar">
+        <div className="flex items-start justify-between gap-4 border-b border-white/[0.08] pb-4">
+          <div className="flex flex-col gap-1">
+            <h2 id="appointment-modal-title" className="text-lg font-bold">
+              {mode === "edit" ? "Editar marcação" : "Nova marcação"}
+            </h2>
+            <span className="text-[11px] text-[#8a9092]">
+              {formatShortDate(date)} · hora de Lisboa
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="cursor-pointer rounded-lg p-1.5 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Fechar"
+          >
             <X className="h-5 w-5 text-[#a9adae]" />
           </button>
         </div>
 
         {conflicts && (
-          <div className="mt-4 p-3.5 rounded-md bg-[#f05a50]/10 border border-[#f05a50]/40 flex flex-col gap-2">
+          <div
+            role="alert"
+            className="mt-4 flex flex-col gap-2 rounded-md border border-[#f05a50]/40 bg-[#f05a50]/10 p-3.5"
+          >
             <div className="flex items-center gap-2 text-xs font-bold text-[#f05a50]">
               <AlertTriangle className="h-4 w-4" />
               Conflito de recursos detetado
             </div>
-            <ul className="text-[11px] text-[#a9adae] list-disc pl-4">
-              {conflicts.map((c) => (
-                <li key={c}>{c}</li>
+            <ul className="list-disc pl-4 text-[11px] text-[#a9adae]">
+              {conflicts.map((conflict) => (
+                <li key={conflict}>{conflict}</li>
               ))}
             </ul>
             <p className="text-[11px] text-[#8a9092]">
-              Podes guardar mesmo assim se tiveres justificação (a ação fica registada).
+              Se guardares mesmo assim, vais criar uma sobreposição de baia,
+              técnico ou viatura. Ajusta os campos e volta a guardar para validar
+              de novo.
             </p>
           </div>
         )}
 
-        <div className="flex flex-col gap-3.5 mt-4">
+        <div className="mt-4 flex flex-col gap-3.5">
           <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
             Viatura
             <select
               value={vehicleId}
-              onChange={(e) => {
-                setVehicleId(e.target.value);
-                const v = vehicles.find((x) => x.id === e.target.value);
-                if (v?.customerId) setCustomerId(v.customerId);
+              onChange={(event) => {
+                const nextVehicleId = event.target.value;
+                setVehicleId(nextVehicleId);
+                setCustomerId(
+                  vehicles.find((vehicle) => vehicle.id === nextVehicleId)?.customerId ?? ""
+                );
               }}
-              className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
+              className={`${inputClass} cursor-pointer`}
+              disabled={vehicles.length === 0}
             >
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.label}
+              {vehicles.length === 0 && <option value="">Sem viaturas</option>}
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.label}
                 </option>
               ))}
             </select>
           </label>
 
-          {!selectedVehicleHasOwner && (
-            <p className="p-3 rounded-sm bg-[#2a1210] border border-[#f05a50]/40 text-[11px] font-semibold text-[#f78e85]">
+          {vehicles.length > 0 && !selectedVehicleHasOwner && (
+            <p className="rounded-sm border border-[#f05a50]/40 bg-[#2a1210] p-3 text-[11px] font-semibold text-[#f78e85]">
               Esta viatura não tem proprietário associado. Associa um cliente no
               CRM (Viaturas) antes de agendar.
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
               Baia
               <select
                 value={bayId}
-                onChange={(e) => setBayId(e.target.value)}
-                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
+                onChange={(event) => setBayId(event.target.value)}
+                className={`${inputClass} cursor-pointer`}
+                disabled={bays.length === 0}
               >
-                {bays.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
+                {bays.length === 0 && <option value="">Sem baias</option>}
+                {bays.map((bay) => (
+                  <option key={bay.id} value={bay.id}>
+                    {bay.name}
                   </option>
                 ))}
               </select>
@@ -794,27 +1531,27 @@ function AppointmentModal({
               Técnico
               <select
                 value={technicianId}
-                onChange={(e) => setTechnicianId(e.target.value)}
-                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
+                onChange={(event) => setTechnicianId(event.target.value)}
+                className={`${inputClass} cursor-pointer`}
               >
                 <option value="">Sem técnico</option>
-                {technicians.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
+                {technicians.map((technician) => (
+                  <option key={technician.id} value={technician.id}>
+                    {technician.name}
                   </option>
                 ))}
               </select>
             </label>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
               Data
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                onChange={(event) => setDate(event.target.value)}
+                className={inputClass}
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
@@ -822,87 +1559,134 @@ function AppointmentModal({
               <input
                 type="time"
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                onChange={(event) => setStartTime(event.target.value)}
+                className={inputClass}
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
+            <label className="col-span-2 flex flex-col gap-1 text-xs font-semibold text-[#a9adae] sm:col-span-1">
               Duração (h)
               <input
                 type="number"
                 min={0.5}
                 step={0.5}
                 value={estimatedHours}
-                onChange={(e) => setEstimatedHours(e.target.value)}
-                className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
+                onChange={(event) => setEstimatedHours(event.target.value)}
+                className={inputClass}
               />
             </label>
           </div>
 
-          <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
-            Estado
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as AppointmentStatus)}
-              className="h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] cursor-pointer"
-            >
-              <option value="scheduled">Agendada</option>
-              <option value="confirmed">Confirmada</option>
-              <option value="in_progress">Em Curso</option>
-              <option value="completed">Concluída</option>
-              <option value="cancelled">Cancelada</option>
-            </select>
-          </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
+              Estado
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value as AppointmentStatus)}
+                className={`${inputClass} cursor-pointer`}
+              >
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {appointment?.quoteNumber && (
+              <div className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
+                Orçamento
+                <span className="flex h-10 items-center rounded-sm border border-white/[0.08] bg-[#0d0f10] px-3 font-mono text-sm text-[#f1ede5]">
+                  {appointment.quoteNumber}
+                </span>
+              </div>
+            )}
+          </div>
 
           <label className="flex flex-col gap-1 text-xs font-semibold text-[#a9adae]">
             Serviço / Notas
             <textarea
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(event) => setNotes(event.target.value)}
               rows={2}
-              className="px-3 py-2 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] resize-none"
-              placeholder="Ex: Full PPF — prioridade entrega sexta..."
+              className="w-full resize-none rounded-sm border border-white/[0.08] bg-[#15191a] px-3 py-2 text-sm text-[#f1ede5] transition-colors focus:border-[#d3a548]"
+              placeholder="Ex: Full PPF — prioridade entrega sexta"
             />
           </label>
 
-          {error && error !== "CONFLICT" && (
-            <p className="text-xs font-semibold text-[#f05a50]">{error}</p>
+          {error && (
+            <p role="alert" className="text-xs font-semibold text-[#f05a50]">
+              {error}
+            </p>
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 mt-5 pt-4 border-t border-white/[0.06]">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-4">
           {mode === "edit" ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-              disabled={saving}
-              className="border-[#f05a50]/40 text-[#f05a50] hover:bg-[#f05a50]/10"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Cancelar Marcação</span>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {confirmCancel ? (
+                <>
+                  <span className="text-[11px] font-semibold text-[#f78e85]">
+                    Cancelar esta marcação?
+                  </span>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={saving}
+                  >
+                    <span>Confirmar</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmCancel(false)}
+                    disabled={saving}
+                  >
+                    <span>Voltar</span>
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmCancel(true)}
+                  disabled={saving}
+                  className="border-[#f05a50]/40 text-[#f05a50] hover:bg-[#f05a50]/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Cancelar marcação</span>
+                </Button>
+              )}
+            </div>
           ) : (
             <span />
           )}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={saving}>
               <span>Fechar</span>
             </Button>
-            {conflicts ? (
+            {conflicts && (
               <Button
-                variant="primary"
+                type="button"
+                variant="danger"
                 size="sm"
                 onClick={() => handleSave(true)}
                 disabled={saving}
               >
-                <span>Guardar mesmo assim</span>
-              </Button>
-            ) : (
-              <Button variant="primary" size="sm" onClick={() => handleSave(false)} disabled={saving}>
-                <span>{mode === "edit" ? "Guardar Alterações" : "Criar Marcação"}</span>
+                <span>Guardar com sobreposição</span>
               </Button>
             )}
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => handleSave(false)}
+              disabled={saving || vehicles.length === 0 || bays.length === 0}
+            >
+              <span>{saving ? "A guardar…" : mode === "edit" ? "Guardar alterações" : "Criar marcação"}</span>
+            </Button>
           </div>
         </div>
       </div>

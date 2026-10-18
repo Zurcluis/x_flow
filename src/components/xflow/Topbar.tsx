@@ -123,7 +123,7 @@ export function Topbar({
               </Button>
             </Link>
 
-            <Link href="/calendar">
+            <Link href="/calendar?nova=1">
               <Button
                 variant="outline"
                 size="sm"

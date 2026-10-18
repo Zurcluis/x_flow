@@ -16,9 +16,10 @@ import { formatCurrency } from "@/lib/formatting";
 
 interface CustomerCardProps {
   customer: Customer;
+  showFinancials?: boolean;
 }
 
-export function CustomerCard({ customer }: CustomerCardProps) {
+export function CustomerCard({ customer, showFinancials = false }: CustomerCardProps) {
   const isBusiness = customer.type === "business";
 
   return (
@@ -89,7 +90,7 @@ export function CustomerCard({ customer }: CustomerCardProps) {
         </div>
 
         {/* B2B perks if applicable */}
-        {customer.b2bDetails && (
+        {customer.b2bDetails && showFinancials && (
           <div className="flex items-center gap-2 mt-3 p-2 rounded-sm bg-[#15191a] border border-white/[0.04] text-xs text-[#f7d46d]">
             <Percent className="h-3.5 w-3.5 text-[#d3a548]" />
             <span className="text-[12px] font-medium">
@@ -113,7 +114,7 @@ export function CustomerCard({ customer }: CustomerCardProps) {
             <Car className="h-4 w-4 text-[#d3a548]" />
             <span>{customer.vehicleCount ?? 0} {customer.vehicleCount === 1 ? "Viatura" : "Viaturas"}</span>
           </div>
-          {customer.totalSpent !== undefined && customer.totalSpent > 0 && (
+          {showFinancials && customer.totalSpent !== undefined && customer.totalSpent > 0 && (
             <span className="text-[#8a9092] tabular-nums">
               · {formatCurrency(customer.totalSpent)}
             </span>

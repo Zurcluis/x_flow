@@ -42,6 +42,10 @@ export default async function DesignSystemCatalogPage() {
         <p className="text-sm text-[#a9adae] mt-2">
           Coleção canónica de tokens, componentes estruturais e estados visuais para o X-Flow by X-Motion.
         </p>
+        <p className="text-xs text-[#8a9092] mt-2">
+          Pré-visualização de UI: os números, gráficos e estados abaixo são exemplos
+          estáticos de componentes, não dados da organização.
+        </p>
       </div>
 
       {/* 1. Identidade e Logótipo */}

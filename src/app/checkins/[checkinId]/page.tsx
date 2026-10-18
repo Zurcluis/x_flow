@@ -3,8 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CheckinDetailView } from "./CheckinDetailView";
 import { getCheckinById } from "@/server/checkins";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +13,9 @@ export default async function CheckinDetailPage({
 }: {
   params: Promise<{ checkinId: string }>;
 }) {
-  await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   const { checkinId } = await params;
-  const organizationId = await getPrimaryOrganizationId();
-  const checkin = await getCheckinById(organizationId, checkinId);
+  const checkin = await getCheckinById(auth.organizationId, checkinId);
 
   if (!checkin) {
     return (

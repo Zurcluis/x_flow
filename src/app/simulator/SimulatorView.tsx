@@ -3,7 +3,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Vehicle } from "@/domains/vehicles/types";
-import { initialFinishPresets } from "@/lib/demo-data/vision-simulation-data";
 import { simulateFilmOnPhoto } from "@/lib/film-simulation";
 import Link from "next/link";
 import {
@@ -14,10 +13,11 @@ import {
   Info,
   Box,
   Image as ImageIcon,
+  Layers,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonStyles } from "@/components/ui/button";
 import {
   calculateColorContrast,
   recommendCoverageLevel,
@@ -85,20 +85,109 @@ function shortBrand(brand: string): string {
   return brand;
 }
 
+function SimulatorEmpty({
+  hasVehicles,
+  hasFilms,
+}: {
+  hasVehicles: boolean;
+  hasFilms: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-6 pb-12">
+      <div className="flex flex-col pb-4 border-b border-white/[0.04]">
+        <div className="flex items-center gap-2 mb-1">
+          <Badge variant="gold" className="text-[11px] uppercase font-mono tracking-wider">
+            Pré-visualização indisponível
+          </Badge>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
+          Simulador de Acabamentos e Cores
+        </h1>
+        <p className="text-sm text-[#a9adae]">
+          O simulador só mostra dados reais da organização atual.
+        </p>
+      </div>
+
+      <Card className="p-6 bg-[#101314] border-white/[0.06] flex flex-col gap-4">
+        {!hasVehicles && (
+          <div className="flex items-start gap-3">
+            <Car className="h-5 w-5 text-[#d3a548] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-[#f1ede5]">
+                Sem viaturas registadas nesta organização.
+              </p>
+              <p className="text-xs text-[#a9adae] mt-1">
+                Regista uma viatura para usar o simulador com fotografias e dados reais.
+              </p>
+            </div>
+          </div>
+        )}
+        {!hasFilms && (
+          <div className="flex items-start gap-3">
+            <Layers className="h-5 w-5 text-[#d3a548] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-[#f1ede5]">
+                Sem películas no catálogo desta organização.
+              </p>
+              <p className="text-xs text-[#a9adae] mt-1">
+                O simulador não carrega catálogos globais nem de outras organizações.
+              </p>
+            </div>
+          </div>
+        )}
+        {hasVehicles && (
+          <div>
+            <Link
+              href="/vehicles"
+              className={buttonStyles({ variant: "outline", size: "sm" })}
+            >
+              Ver viaturas
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 export function SimulatorView({
+  vehicles,
+  coverPhotos,
+  films,
+}: {
+  vehicles: Vehicle[];
+  coverPhotos: Record<string, string>;
+  films: FinishPreset[];
+}) {
+  const hasVehicles = vehicles.length > 0;
+  const hasFilms = films.length > 0;
+
+  if (!hasVehicles || !hasFilms) {
+    return <SimulatorEmpty hasVehicles={hasVehicles} hasFilms={hasFilms} />;
+  }
+
+  return (
+    <SimulatorStudio
+      vehicles={vehicles}
+      coverPhotos={coverPhotos}
+      films={films}
+    />
+  );
+}
+
+function SimulatorStudio({
   vehicles: vehiclesProp,
   coverPhotos,
   films,
 }: {
   vehicles: Vehicle[];
   coverPhotos: Record<string, string>;
-  films?: FinishPreset[];
+  films: FinishPreset[];
 }) {
   const [vehicles] = useState(vehiclesProp);
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0].id);
-  const [presets] = useState<FinishPreset[]>(
-    films && films.length > 0 ? films : initialFinishPresets
-  );
+  const [presets] = useState<FinishPreset[]>(films);
   const [selectedPreset, setSelectedPreset] = useState<FinishPreset>(presets[0]);
   const [selectedCoverage, setSelectedCoverage] = useState<"exterior" | "extended" | "integral">("extended");
   const [sliderPos, setSliderPos] = useState(50);
@@ -235,11 +324,16 @@ export function SimulatorView({
           </p>
         </div>
 
-        <Link href={quoteHref}>
-          <Button className="bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d] font-bold">
-            <span>Criar Orçamento com este Acabamento</span>
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
+        <Link
+          href={quoteHref}
+          className={buttonStyles({
+            variant: "primary",
+            size: "md",
+            className: "font-bold",
+          })}
+        >
+          <span>Criar Orçamento com este Acabamento</span>
+          <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
 
@@ -720,11 +814,16 @@ export function SimulatorView({
               {(selectedPreset.costPerMeterCents / 100).toFixed(2)} €/m · {selectedPreset.warrantyYears} anos
             </span>
           </div>
-          <Link href={quoteHref}>
-            <Button className="bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d] font-bold h-9 px-3 text-xs">
-              Orçamento
-              <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
+          <Link
+            href={quoteHref}
+            className={buttonStyles({
+              variant: "primary",
+              size: "sm",
+              className: "font-bold",
+            })}
+          >
+            Orçamento
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </aside>

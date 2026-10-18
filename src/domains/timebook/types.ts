@@ -18,6 +18,7 @@ export interface VehicleTimeBookModel {
   generationYear: number;
   bodyType: string;
   serviceType: "PPF" | "Wrap";
+  serviceCategory: string;
   totalEstimatedHours: number;
   totalMedianHours: number;
   totalSamples: number;

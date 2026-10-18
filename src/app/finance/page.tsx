@@ -1,6 +1,6 @@
 import { FinanceView } from "./FinanceView";
-import { requireAuth } from "@/server/auth";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { requireRole } from "@/server/auth";
+import { FINANCIAL_ROLES } from "@/lib/roles";
 import { listInvoices } from "@/server/finance";
 import {
   ensureDefaultCategories,
@@ -13,8 +13,8 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function FinancePage() {
-  await requireAuth();
-  const organizationId = await getPrimaryOrganizationId();
+  const auth = await requireRole(FINANCIAL_ROLES);
+  const organizationId = auth.organizationId;
   await ensureDefaultCategories(organizationId);
   const generated = await generateDueRecurring(organizationId);
   const summary = await getTreasurySummary(organizationId);

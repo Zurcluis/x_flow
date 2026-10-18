@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -32,6 +33,7 @@ interface WorkOrderDetailViewProps {
   initialPhases: WorkOrderPhase[];
   initialTimeEntries: WorkOrderTimeEntry[];
   materialUsage: MaterialUsage[];
+  currentUserName: string;
 }
 
 export function WorkOrderDetailView({
@@ -39,95 +41,175 @@ export function WorkOrderDetailView({
   initialPhases,
   initialTimeEntries,
   materialUsage,
+  currentUserName,
 }: WorkOrderDetailViewProps) {
+  const router = useRouter();
   const [phases, setPhases] = useState<WorkOrderPhase[]>(initialPhases);
   const firstActive = initialPhases.find((p) => p.status === "in_progress") ?? initialPhases.find((p) => p.status !== "completed");
   const [activePhaseKey, setActivePhaseKey] = useState<PhaseKey>(
     firstActive?.phaseKey ?? initialPhases[0]?.phaseKey ?? "application"
   );
   const [timeEntries, setTimeEntries] = useState<WorkOrderTimeEntry[]>(initialTimeEntries);
+  const [lastSynced, setLastSynced] = useState({ phases: initialPhases, timeEntries: initialTimeEntries });
+  if (
+    lastSynced.phases !== initialPhases ||
+    lastSynced.timeEntries !== initialTimeEntries
+  ) {
+    setLastSynced({ phases: initialPhases, timeEntries: initialTimeEntries });
+    setPhases(initialPhases);
+    setTimeEntries(initialTimeEntries);
+  }
+  const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
+    null
+  );
 
   const activePhase =
     phases.find((p) => p.phaseKey === activePhaseKey) || phases[0];
 
-  const handleToggleChecklistItem = (itemId: string) => {
+  const handleToggleChecklistItem = async (itemId: string) => {
     const item = phases.flatMap((p) => p.checklist).find((c) => c.id === itemId);
-    if (!item) return;
+    if (!item || pending) return;
     const nextState = !item.isCompleted;
-    void toggleChecklistItemAction(workOrder.id, itemId, nextState);
+    const previousPhases = phases;
+    setPending(true);
+    setFeedback(null);
 
-    const updatedPhases = phases.map((phase) => {
-      if (phase.phaseKey === activePhaseKey) {
+    setPhases((prev) =>
+      prev.map((phase) => {
+        if (phase.phaseKey !== activePhaseKey) return phase;
         return {
           ...phase,
-          checklist: phase.checklist.map((item) => {
-            if (item.id === itemId) {
-              return {
-                ...item,
-                isCompleted: nextState,
-                completedByName: nextState ? "João Martins" : undefined,
-                completedAt: nextState ? new Date().toISOString().slice(0, 16) : undefined,
-              };
-            }
-            return item;
-          }),
+          checklist: phase.checklist.map((entry) =>
+            entry.id === itemId
+              ? {
+                  ...entry,
+                  isCompleted: nextState,
+                  completedByName: nextState ? currentUserName : undefined,
+                  completedAt: nextState ? new Date().toISOString().slice(0, 16) : undefined,
+                }
+              : entry
+          ),
         };
+      })
+    );
+
+    try {
+      const result = await toggleChecklistItemAction(workOrder.id, itemId, nextState);
+      if (!result.ok) {
+        setPhases(previousPhases);
+        setFeedback({
+          tone: "error",
+          message: result.error || "Não foi possível atualizar o item de checklist.",
+        });
+        return;
       }
-      return phase;
-    });
-
-    setPhases(updatedPhases);
-  };
-
-  const handleCompletePhase = (phaseKey: string) => {
-    const phase = phases.find((p) => p.phaseKey === phaseKey);
-    if (!phase) return;
-    void completePhaseAction(workOrder.id, phase.id);
-
-    const updatedPhases = phases.map((p) => {
-      if (p.phaseKey === phaseKey) {
-        return {
-          ...p,
-          status: "completed" as const,
-          completedAt: new Date().toISOString().slice(0, 16),
-        };
-      }
-      return p;
-    });
-
-    setPhases(updatedPhases);
-
-    // Auto advance to next phase
-    const currentIndex = phases.findIndex((p) => p.phaseKey === phaseKey);
-    if (currentIndex >= 0 && currentIndex < phases.length - 1) {
-      const next = phases[currentIndex + 1];
-      setActivePhaseKey(next.phaseKey);
-      void startPhaseAction(workOrder.id, next.id);
+      router.refresh();
+    } catch (error) {
+      setPhases(previousPhases);
+      setFeedback({
+        tone: "error",
+        message:
+          error instanceof Error ? error.message : "Não foi possível atualizar o item de checklist.",
+      });
+    } finally {
+      setPending(false);
     }
   };
 
-  const handleAddTimeEntry = (entry: {
+  const handleCompletePhase = async (phaseKey: string) => {
+    const phase = phases.find((p) => p.phaseKey === phaseKey);
+    if (!phase || pending) return;
+
+    const previousPhases = phases;
+    setPending(true);
+    setFeedback(null);
+
+    setPhases((prev) =>
+      prev.map((p) =>
+        p.phaseKey === phaseKey
+          ? { ...p, status: "completed" as const, completedAt: new Date().toISOString().slice(0, 16) }
+          : p
+      )
+    );
+
+    try {
+      const result = await completePhaseAction(workOrder.id, phase.id);
+      if (!result.ok) {
+        setPhases(previousPhases);
+        setFeedback({
+          tone: "error",
+          message: result.error || "Não foi possível concluir a fase.",
+        });
+        return;
+      }
+
+      const currentIndex = previousPhases.findIndex((p) => p.phaseKey === phaseKey);
+      if (currentIndex >= 0 && currentIndex < previousPhases.length - 1) {
+        const next = previousPhases[currentIndex + 1];
+        setActivePhaseKey(next.phaseKey);
+        const startResult = await startPhaseAction(workOrder.id, next.id);
+        if (!startResult.ok) {
+          setFeedback({
+            tone: "error",
+            message: startResult.error || "Fase concluída, mas não foi possível iniciar a seguinte.",
+          });
+        }
+      }
+      router.refresh();
+    } catch (error) {
+      setPhases(previousPhases);
+      setFeedback({
+        tone: "error",
+        message: error instanceof Error ? error.message : "Não foi possível concluir a fase.",
+      });
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const handleAddTimeEntry = async (entry: {
     technicianName: string;
     hours: number;
     notes: string;
   }) => {
-    void addTimeEntryAction(
-      workOrder.id,
-      activePhaseKey,
-      entry.technicianName,
-      entry.hours,
-      entry.notes
-    );
-    const newEntry = {
-      id: `te-${Date.now()}`,
-      workOrderId: workOrder.id,
-      phaseKey: activePhaseKey,
-      technicianName: entry.technicianName,
-      hoursSpent: entry.hours,
-      notes: entry.notes,
-      createdAt: new Date().toISOString().slice(0, 16),
-    };
-    setTimeEntries([...timeEntries, newEntry]);
+    if (pending) return;
+    setPending(true);
+    setFeedback(null);
+    try {
+      const result = await addTimeEntryAction(
+        workOrder.id,
+        activePhaseKey,
+        entry.hours,
+        entry.notes || undefined
+      );
+      if (!result.ok) {
+        setFeedback({
+          tone: "error",
+          message: result.error || "Não foi possível registar as horas.",
+        });
+        return;
+      }
+      const newEntry: WorkOrderTimeEntry = {
+        id: `te-${Date.now()}`,
+        workOrderId: workOrder.id,
+        phaseKey: activePhaseKey,
+        technicianName: currentUserName,
+        hoursSpent: entry.hours,
+        notes: entry.notes,
+        createdAt: new Date().toISOString().slice(0, 16),
+      };
+      setTimeEntries((prev) => [...prev, newEntry]);
+      setFeedback({ tone: "success", message: "Registo de horas adicionado." });
+      router.refresh();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message: error instanceof Error ? error.message : "Não foi possível registar as horas.",
+      });
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -142,6 +224,26 @@ export function WorkOrderDetailView({
           <span>Voltar ao Quadro de Produção</span>
         </Link>
       </div>
+
+      {feedback && (
+        <div
+          role={feedback.tone === "error" ? "alert" : "status"}
+          className={`flex items-center justify-between gap-3 rounded-md border px-4 py-3 text-xs ${
+            feedback.tone === "error"
+              ? "border-[#f05a50]/30 bg-[#f05a50]/10 text-[#f8a19b]"
+              : "border-[#68a46b]/30 bg-[#68a46b]/10 text-[#9ed3a0]"
+          }`}
+        >
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="cursor-pointer font-bold uppercase tracking-wide opacity-70 hover:opacity-100"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
 
       {/* Hero Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
@@ -202,6 +304,7 @@ export function WorkOrderDetailView({
         <div className="lg:col-span-7 flex flex-col gap-6">
           <PhaseChecklistCard
             phase={activePhase}
+            disabled={pending}
             onToggleItem={handleToggleChecklistItem}
             onCompletePhase={handleCompletePhase}
           />
@@ -212,6 +315,8 @@ export function WorkOrderDetailView({
           <TimesheetTracker
             timeEntries={timeEntries}
             estimatedHours={workOrder.estimatedHours}
+            currentUserName={currentUserName}
+            disabled={pending}
             onAddTimeEntry={handleAddTimeEntry}
           />
 

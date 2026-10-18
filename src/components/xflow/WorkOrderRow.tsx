@@ -29,6 +29,11 @@ export function ActiveWorksCard({ works }: ActiveWorksCardProps) {
         </CardHeader>
 
         <CardContent className="p-0 flex flex-col gap-3.5">
+          {works.length === 0 && (
+            <p className="text-xs text-[#8a9092] py-4">
+              Sem trabalhos em curso nesta organização.
+            </p>
+          )}
           {works.map((work) => (
             <div
               key={work.id}

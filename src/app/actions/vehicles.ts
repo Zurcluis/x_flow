@@ -2,8 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { Vehicle } from "@/domains/vehicles/types";
-import { createVehicle, VehicleCreateInput } from "@/server/vehicles";
-import { requireAuth } from "@/server/auth";
+import {
+  createVehicle,
+  VehicleCreateInput,
+  VehicleValidationError,
+} from "@/server/vehicles";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 
 export type VehicleActionResult =
   | { ok: true; vehicle: Vehicle }
@@ -12,39 +17,40 @@ export type VehicleActionResult =
 export async function createVehicleAction(
   input: Partial<Vehicle> & { customerId?: string }
 ): Promise<VehicleActionResult> {
-  const auth = await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
+  const customerId = input.customerId ?? input.currentOwner?.customerId;
   try {
-    if (!input.plateDisplay?.trim()) {
-      return { ok: false, error: "A matrícula é obrigatória." };
-    }
-    if (!input.make?.trim() || !input.model?.trim()) {
-      return { ok: false, error: "Marca e modelo são obrigatórios." };
-    }
-
-    const organizationId = auth.organizationId;
     const createInput: VehicleCreateInput = {
-      plateDisplay: input.plateDisplay.trim().toUpperCase(),
-      plateNormalized: (input.plateNormalized ?? input.plateDisplay).replace(/[\s-]/g, "").toUpperCase(),
-      make: input.make.trim(),
-      model: input.model.trim(),
-      generationYear: input.generationYear ?? new Date().getFullYear(),
+      plateDisplay: input.plateDisplay ?? "",
+      plateNormalized: input.plateNormalized ?? input.plateDisplay ?? "",
+      make: input.make ?? "",
+      model: input.model ?? "",
+      generationYear: input.generationYear ?? NaN,
       bodyType: input.bodyType ?? "sedan",
-      originalColorName: input.originalColorName?.trim() ?? "Por identificar",
+      originalColorName: input.originalColorName ?? "",
       originalColorFamily: input.originalColorFamily ?? "other",
       vin: input.vin,
       currentMileage: input.currentMileage,
+      fuelType: input.fuelType,
       notes: input.notes,
-      customerId: input.customerId ?? input.currentOwner?.customerId,
+      customerId,
     };
 
-    const vehicle = await createVehicle(organizationId, createInput);
+    const vehicle = await createVehicle(auth.organizationId, createInput);
     revalidatePath("/vehicles");
+    if (vehicle.currentOwner?.customerId) {
+      revalidatePath(`/customers/${vehicle.currentOwner.customerId}`);
+    }
     return { ok: true, vehicle };
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Erro inesperado ao criar a viatura.";
+    if (e instanceof VehicleValidationError) {
+      return { ok: false, error: e.message };
+    }
+    const message = e instanceof Error ? e.message : "";
     if (message.includes("vehicles_org_plate_unique") || message.includes("duplicate key")) {
       return { ok: false, error: "Já existe uma viatura com essa matrícula." };
     }
-    return { ok: false, error: message };
+    console.error("Falha ao criar viatura", e);
+    return { ok: false, error: "Não foi possível guardar a viatura. Tenta novamente." };
   }
 }

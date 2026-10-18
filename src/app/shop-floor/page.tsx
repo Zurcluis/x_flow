@@ -1,14 +1,13 @@
 import { ShopFloorView } from "./ShopFloorView";
 import { getShopFloorData } from "@/server/shopfloor";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShopFloorPage() {
-  await requireAuth();
-  const organizationId = await getPrimaryOrganizationId();
-  const data = await getShopFloorData(organizationId);
+  const auth = await requireRole(SCHEDULING_ROLES);
+  const data = await getShopFloorData(auth.organizationId);
 
   return <ShopFloorView data={data} />;
 }

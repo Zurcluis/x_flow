@@ -32,7 +32,21 @@ const org = await client.query(
 );
 console.log("5. GUC org fixado:", org.rows[0].org_id);
 const customers = await client.query("SELECT count(*)::int AS n FROM customers");
-console.log("6. SELECT customers como xflow_app:", customers.rows[0].n, "(devia ser 5)");
+console.log("6. SELECT customers como xflow_app:", customers.rows[0].n, "(visíveis para a org ativa)");
+
+await client.query(
+  "SELECT set_config('app.current_organization_id', '00000000-0000-0000-0000-000000000000', false)"
+);
+const foreignCustomers = await client.query("SELECT count(*)::int AS n FROM customers");
+console.log(
+  "6b. SELECT customers com GUC de outra org:",
+  foreignCustomers.rows[0].n,
+  "(devia ser 0 — RLS isolou)"
+);
+await client.query(
+  "SELECT set_config('app.current_organization_id', $1, false)",
+  [org.rows[0].org_id]
+);
 
 const tokens = await client.query(
   "SELECT public_token FROM quotes WHERE public_token IS NOT NULL LIMIT 1"

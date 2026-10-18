@@ -1,10 +1,8 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { notFound } from "next/navigation";
 import { VehiclePassportView } from "./VehiclePassportView";
 import { getVehiclePassport } from "@/server/vehicles";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { canSeeFinancials, SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -13,24 +11,13 @@ export default async function VehiclePassportPage({
 }: {
   params: Promise<{ vehicleId: string }>;
 }) {
-  await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   const { vehicleId } = await params;
-  const organizationId = await getPrimaryOrganizationId();
-  const vehicle = await getVehiclePassport(organizationId, vehicleId);
+  const vehicle = await getVehiclePassport(auth.organizationId, vehicleId, {
+    includeFinancials: canSeeFinancials(auth.role),
+  });
 
-  if (!vehicle) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-        <h2 className="text-2xl font-bold text-[#f1ede5]">Viatura não encontrada</h2>
-        <Link href="/vehicles">
-          <Button variant="outline">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Voltar à lista de viaturas</span>
-          </Button>
-        </Link>
-      </div>
-    );
-  }
+  if (!vehicle) notFound();
 
   return <VehiclePassportView vehicle={vehicle} />;
 }

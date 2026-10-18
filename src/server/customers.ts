@@ -1,5 +1,15 @@
 import { getDb } from "@/lib/db";
-import { getPrimaryOrganizationId } from "@/server/org";
+import { workshopDateKey } from "@/domains/calendar/datetime";
+import {
+  CustomerValidationError,
+  isValidCustomerEmail,
+  normalizePhoneDigits,
+  parseCustomerPriority,
+  parseDiscountRate,
+  parseOptionalText,
+  parsePaymentTermsDays,
+  parseRequiredText,
+} from "@/domains/crm/validation";
 import {
   B2BAccountDetails,
   Customer,
@@ -8,7 +18,7 @@ import {
   PreferredChannel,
 } from "@/domains/crm/types";
 
-export { getPrimaryOrganizationId };
+export { CustomerValidationError };
 
 type CustomerRow = Record<string, unknown>;
 type Row = Record<string, unknown>;
@@ -22,6 +32,18 @@ type CommunicationDirection = Customer["communications"] extends Array<{
   ? D
   : never;
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CUSTOMER_TYPES = new Set<CustomerType>(["individual", "business"]);
+const CUSTOMER_STATUSES = new Set<CustomerStatus>(["active", "lead", "archived"]);
+const PREFERRED_CHANNELS = new Set<PreferredChannel>(["whatsapp", "phone", "email"]);
+
+function assertUuid(value: string, label: string): void {
+  if (!UUID_RE.test(value)) {
+    throw new CustomerValidationError(`${label} inválido.`);
+  }
+}
+
 function iso(value: unknown): string {
   return value instanceof Date ? value.toISOString() : String(value);
 }
@@ -32,7 +54,13 @@ function num(value: unknown): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
-function mapCustomer(row: CustomerRow): Customer {
+function dateKey(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? undefined : workshopDateKey(date);
+}
+
+function mapCustomer(row: CustomerRow, includeFinancials: boolean): Customer {
   return {
     id: String(row.id),
     organizationId: String(row.organization_id),
@@ -47,10 +75,8 @@ function mapCustomer(row: CustomerRow): Customer {
     notes: (row.notes as string) ?? undefined,
     status: (row.status as CustomerStatus) ?? "active",
     vehicleCount: num(row.vehicle_count) ?? 0,
-    totalSpent: num(row.total_spent) ?? 0,
-    lastInteractionDate: row.last_interaction
-      ? iso(row.last_interaction).slice(0, 10)
-      : undefined,
+    totalSpent: includeFinancials ? (num(row.total_spent) ?? 0) : undefined,
+    lastInteractionDate: dateKey(row.last_interaction),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
@@ -67,30 +93,46 @@ function mapB2b(row: CustomerRow): B2BAccountDetails {
   };
 }
 
-const LIST_SQL = `
-  SELECT c.*,
-    (SELECT count(*)::int FROM vehicle_customer_links vcl
-      WHERE vcl.customer_id = c.id AND vcl.is_current) AS vehicle_count,
-    (SELECT SUM(i.total_amount) FROM invoices i
-      WHERE i.customer_id = c.id AND i.payment_status <> 'cancelled') AS total_spent,
-    (SELECT MAX(com.created_at) FROM customer_communications com
-      WHERE com.customer_id = c.id) AS last_interaction
-  FROM customers c
-  WHERE c.organization_id = $1
-  ORDER BY c.created_at DESC`;
+const CUSTOMER_METRICS = `
+  (SELECT count(*)::int FROM vehicle_customer_links vcl
+    JOIN vehicles v ON v.id = vcl.vehicle_id AND v.organization_id = c.organization_id
+    WHERE vcl.customer_id = c.id AND vcl.organization_id = c.organization_id AND vcl.is_current)
+    AS vehicle_count,
+  CASE WHEN $2::boolean THEN
+    (SELECT COALESCE(SUM(i.total_amount), 0) FROM invoices i
+      WHERE i.customer_id = c.id AND i.organization_id = c.organization_id
+        AND i.payment_status <> 'cancelled')
+  ELSE NULL END AS total_spent,
+  (SELECT MAX(com.created_at) FROM customer_communications com
+    WHERE com.customer_id = c.id) AS last_interaction`;
 
-export async function listCustomers(organizationId: string): Promise<Customer[]> {
-  const db = getDb();
-  const { rows } = await db.query<CustomerRow>(LIST_SQL, [organizationId]);
+export interface CustomerListOptions {
+  includeFinancials?: boolean;
+}
 
-  const { rows: b2bRows } = await db.query<CustomerRow>(
+export async function listCustomers(
+  organizationId: string,
+  options: CustomerListOptions = {}
+): Promise<Customer[]> {
+  assertUuid(organizationId, "Organização");
+  const includeFinancials = options.includeFinancials === true;
+  const { rows } = await getDb().query<CustomerRow>(
+    `SELECT c.*, ${CUSTOMER_METRICS}
+     FROM customers c
+     WHERE c.organization_id = $1
+     ORDER BY c.created_at DESC`,
+    [organizationId, includeFinancials]
+  );
+  if (rows.length === 0) return [];
+
+  const { rows: b2bRows } = await getDb().query<CustomerRow>(
     "SELECT * FROM b2b_accounts WHERE customer_id = ANY($1::uuid[])",
     [rows.map((r) => r.id)]
   );
   const b2bByCustomer = new Map(b2bRows.map((r) => [r.customer_id, mapB2b(r)]));
 
   return rows.map((row) => {
-    const customer = mapCustomer(row);
+    const customer = mapCustomer(row, includeFinancials);
     const b2b = b2bByCustomer.get(customer.id);
     if (b2b) customer.b2bDetails = b2b;
     return customer;
@@ -118,15 +160,21 @@ export interface CustomerCreateInput {
 
 export async function getCustomerById(
   organizationId: string,
-  customerId: string
+  customerId: string,
+  options: CustomerListOptions = {}
 ): Promise<Customer | null> {
+  assertUuid(organizationId, "Organização");
+  if (!UUID_RE.test(customerId)) return null;
+  const includeFinancials = options.includeFinancials === true;
   const db = getDb();
   const { rows } = await db.query<Row>(
-    `SELECT * FROM customers WHERE organization_id = $1 AND id = $2`,
-    [organizationId, customerId]
+    `SELECT c.*, ${CUSTOMER_METRICS}
+     FROM customers c
+     WHERE c.organization_id = $1 AND c.id = $3`,
+    [organizationId, includeFinancials, customerId]
   );
   if (rows.length === 0) return null;
-  const customer = mapCustomer(rows[0]);
+  const customer = mapCustomer(rows[0], includeFinancials);
 
   const { rows: b2bRows } = await db.query<Row>(
     `SELECT * FROM b2b_accounts WHERE customer_id = $1`,
@@ -172,6 +220,52 @@ export async function createCustomer(
   organizationId: string,
   input: CustomerCreateInput
 ): Promise<Customer> {
+  assertUuid(organizationId, "Organização");
+  if (!CUSTOMER_TYPES.has(input.type)) {
+    throw new CustomerValidationError("Tipo de cliente inválido.");
+  }
+
+  const name = parseRequiredText(input.name, "O nome do cliente", 255);
+  const legalName = parseOptionalText(input.legalName, "A razão social", 255);
+  const nif = parseOptionalText(input.nif, "O NIF", 50);
+  const email = parseOptionalText(input.email, "O email", 255) ?? "";
+  const phone = parseOptionalText(input.phone, "O telefone", 50) ?? "";
+  if (!email && !phone) {
+    throw new CustomerValidationError("Introduz pelo menos um contacto (telefone ou email).");
+  }
+  if (email && !isValidCustomerEmail(email)) {
+    throw new CustomerValidationError("O email indicado não é válido.");
+  }
+  const phoneNormalized = normalizePhoneDigits(input.phoneNormalized || phone);
+  const preferredChannel = input.preferredChannel ?? "whatsapp";
+  if (!PREFERRED_CHANNELS.has(preferredChannel)) {
+    throw new CustomerValidationError("Canal de contacto inválido.");
+  }
+  const status = input.status ?? "active";
+  if (!CUSTOMER_STATUSES.has(status)) {
+    throw new CustomerValidationError("Estado do cliente inválido.");
+  }
+  const notes = parseOptionalText(input.notes, "As notas", 5000);
+
+  let b2bDetails: {
+    discountRate: number;
+    paymentTermsDays: number;
+    priorityLevel: "standard" | "high" | "vip";
+    commercialNotes?: string;
+  } | null = null;
+  if (input.type === "business" && input.b2bDetails) {
+    b2bDetails = {
+      discountRate: parseDiscountRate(input.b2bDetails.discountRate),
+      paymentTermsDays: parsePaymentTermsDays(input.b2bDetails.paymentTermsDays),
+      priorityLevel: parseCustomerPriority(input.b2bDetails.priorityLevel),
+      commercialNotes: parseOptionalText(
+        input.b2bDetails.commercialNotes,
+        "As notas comerciais",
+        5000
+      ),
+    };
+  }
+
   const db = getDb();
   const client = await db.connect();
   try {
@@ -185,20 +279,20 @@ export async function createCustomer(
       [
         organizationId,
         input.type,
-        input.name,
-        input.legalName ?? null,
-        input.nif ?? null,
-        input.email,
-        input.phone,
-        input.phoneNormalized,
-        input.preferredChannel ?? "whatsapp",
-        input.notes ?? null,
-        input.status ?? "active",
+        name,
+        legalName ?? null,
+        nif ?? null,
+        email,
+        phone,
+        phoneNormalized,
+        preferredChannel,
+        notes ?? null,
+        status,
       ]
     );
-    const customer = mapCustomer(rows[0]);
+    const customer = mapCustomer(rows[0], true);
 
-    if (input.type === "business" && input.b2bDetails) {
+    if (b2bDetails) {
       const { rows: b2bRows } = await client.query<CustomerRow>(
         `INSERT INTO b2b_accounts
           (customer_id, discount_rate, payment_terms_days, priority_level, commercial_notes)
@@ -206,10 +300,10 @@ export async function createCustomer(
          RETURNING *`,
         [
           customer.id,
-          input.b2bDetails.discountRate,
-          input.b2bDetails.paymentTermsDays,
-          input.b2bDetails.priorityLevel,
-          input.b2bDetails.commercialNotes ?? null,
+          b2bDetails.discountRate,
+          b2bDetails.paymentTermsDays,
+          b2bDetails.priorityLevel,
+          b2bDetails.commercialNotes ?? null,
         ]
       );
       customer.b2bDetails = mapB2b(b2bRows[0]);

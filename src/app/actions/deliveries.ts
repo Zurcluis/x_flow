@@ -1,27 +1,28 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 import {
   createDelivery,
-  DeliveryCreateInput,
+  deliveryErrorMessage,
   listDeliveryCandidates,
 } from "@/server/deliveries";
+import type { DeliveryCreateInput } from "@/server/deliveries";
 
 export type DeliveryActionResult =
   | { ok: true; deliveryId: string }
   | { ok: false; error: string };
 
 export async function listDeliveryCandidatesAction() {
-  const auth = await requireAuth();
-  const organizationId = auth.organizationId;
-  return listDeliveryCandidates(organizationId);
+  const auth = await requireRole(SCHEDULING_ROLES);
+  return listDeliveryCandidates(auth.organizationId);
 }
 
 export async function createDeliveryAction(
-  input: Omit<DeliveryCreateInput, "deliveredByName"> & { deliveredByName?: string }
+  input: Omit<DeliveryCreateInput, "deliveredByName">
 ): Promise<DeliveryActionResult> {
-  const auth = await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   try {
     if (!input.workOrderId) {
       return { ok: false, error: "Selecione a ordem de trabalho a entregar." };
@@ -29,13 +30,15 @@ export async function createDeliveryAction(
     if (!input.receiverName?.trim()) {
       return { ok: false, error: "O nome de quem levanta a viatura é obrigatório." };
     }
-    const organizationId = auth.organizationId;
-    const { id } = await createDelivery(organizationId, {
+    if (!input.signatureDataUrl?.trim()) {
+      return { ok: false, error: "Recolhe a assinatura de quem levanta a viatura." };
+    }
+    const { id } = await createDelivery(auth.organizationId, {
       workOrderId: input.workOrderId,
-      deliveredByName: input.deliveredByName?.trim() || "Equipa X-Motion",
+      deliveredByName: auth.name,
       receiverName: input.receiverName.trim(),
       receiverIdDocument: input.receiverIdDocument?.trim() || undefined,
-      signatureDataUrl: input.signatureDataUrl || undefined,
+      signatureDataUrl: input.signatureDataUrl,
       belongings: input.belongings ?? [],
       notes: input.notes?.trim() || undefined,
     });
@@ -45,7 +48,7 @@ export async function createDeliveryAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao registar a entrega.",
+      error: deliveryErrorMessage(e, "Erro ao registar a entrega."),
     };
   }
 }

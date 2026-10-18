@@ -7,14 +7,12 @@ import {
   Printer,
   ExternalLink,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonStyles } from "@/components/ui/button";
 import { InvoiceSummaryCard } from "@/components/xflow/invoices/InvoiceSummaryCard";
 
 import { Invoice } from "@/domains/finance/types";
 
 export function InvoiceDetailView({ invoice }: { invoice: Invoice }) {
-
-
   const handlePrint = () => {
     window.print();
   };
@@ -37,11 +35,14 @@ export function InvoiceDetailView({ invoice }: { invoice: Invoice }) {
             <span>Imprimir / PDF</span>
           </Button>
 
-          <Link href={`/passport/${invoice.vehiclePlate}`} target="_blank">
-            <Button variant="primary" size="sm">
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span>Passaporte do Veículo</span>
-            </Button>
+          <Link
+            href={`/passport/${encodeURIComponent(invoice.vehiclePlate)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonStyles({ variant: "primary", size: "sm" })}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            <span>Passaporte do Veículo</span>
           </Link>
         </div>
       </div>

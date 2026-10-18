@@ -1,26 +1,24 @@
 import { SimulatorView } from "./SimulatorView";
 import { listVehicles, listVehicleFrontCovers } from "@/server/vehicles";
 import { listFilms } from "@/server/films";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { initialFinishPresets } from "@/lib/demo-data/vision-simulation-data";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function SimulatorPage() {
-  await requireAuth();
-  const organizationId = await getPrimaryOrganizationId();
+  const auth = await requireRole(SCHEDULING_ROLES);
   const [vehicles, coverPhotos, films] = await Promise.all([
-    listVehicles(organizationId),
-    listVehicleFrontCovers(organizationId),
-    listFilms(organizationId),
+    listVehicles(auth.organizationId),
+    listVehicleFrontCovers(auth.organizationId),
+    listFilms(auth.organizationId),
   ]);
 
   return (
     <SimulatorView
       vehicles={vehicles}
       coverPhotos={coverPhotos}
-      films={films.length > 0 ? films : initialFinishPresets}
+      films={films}
     />
   );
 }

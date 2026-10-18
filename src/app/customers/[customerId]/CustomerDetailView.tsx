@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -17,8 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { VehicleCard } from "@/components/xflow/vehicles/VehicleCard";
-import { VehicleFormModal } from "@/components/xflow/vehicles/VehicleFormModal";
+import {
+  VehicleFormModal,
+  VehicleSaveResult,
+} from "@/components/xflow/vehicles/VehicleFormModal";
 import { formatCurrency } from "@/lib/formatting";
+import { formatCheckinDate } from "@/domains/checkins/presentation";
 import { Vehicle } from "@/domains/vehicles/types";
 import { Customer } from "@/domains/crm/types";
 import { createVehicleAction } from "@/app/actions/vehicles";
@@ -27,31 +32,54 @@ interface CustomerDetailViewProps {
   customer: Customer;
   vehicles: Vehicle[];
   customers: Customer[];
+  showFinancials: boolean;
 }
 
-export function CustomerDetailView({ customer, vehicles: initialVehicles, customers }: CustomerDetailViewProps) {
+export function CustomerDetailView({
+  customer,
+  vehicles: initialVehicles,
+  customers,
+  showFinancials,
+}: CustomerDetailViewProps) {
+  const router = useRouter();
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
+  const [lastSynced, setLastSynced] = useState(initialVehicles);
   const [activeTab, setActiveTab] = useState<"overview" | "vehicles" | "communications">("vehicles");
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
+    null
+  );
+
+  if (lastSynced !== initialVehicles) {
+    setLastSynced(initialVehicles);
+    setVehicles(initialVehicles);
+  }
 
   const customerVehicles = vehicles.filter(
     (v) => v.currentOwner?.customerId === customer.id
   );
 
-  const handleSaveVehicle = async (newVehicle: Partial<Vehicle>) => {
+  const handleSaveVehicle = async (
+    newVehicle: Partial<Vehicle> & { customerId?: string }
+  ): Promise<VehicleSaveResult> => {
+    setFeedback(null);
     const result = await createVehicleAction({ ...newVehicle, customerId: customer.id });
-    if (result.ok) {
-      setVehicles([result.vehicle, ...vehicles]);
-    } else {
-      console.error("Falha ao criar viatura:", result.error);
+    if (!result.ok) {
+      return { ok: false, error: result.error };
     }
+    setVehicles((prev) => [result.vehicle, ...prev]);
+    setFeedback({
+      tone: "success",
+      message: `Viatura ${result.vehicle.plateDisplay} associada a ${customer.name}.`,
+    });
+    router.refresh();
+    return { ok: true };
   };
 
   const isBusiness = customer.type === "business";
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Back Button */}
       <div>
         <Link
           href="/customers"
@@ -62,7 +90,6 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
         </Link>
       </div>
 
-      {/* Hero Card */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-[#15191a] border border-white/[0.1] text-[#d3a548]">
@@ -81,7 +108,7 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
                 {isBusiness ? "Empresa B2B" : "Particular"}
               </Badge>
               <Badge variant={customer.status === "active" ? "success" : "in_progress"} className="text-xs">
-                {customer.status === "active" ? "Cliente Ativo" : "Lead"}
+                {customer.status === "active" ? "Cliente Ativo" : customer.status === "lead" ? "Lead" : "Arquivado"}
               </Badge>
             </div>
             {customer.legalName && (
@@ -92,24 +119,25 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
             <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-[#a9adae]">
               <a href={`tel:${customer.phoneNormalized}`} className="flex items-center gap-1.5 hover:text-[#f1ede5]">
                 <Phone className="h-3.5 w-3.5 text-[#d3a548]" />
-                <span>{customer.phone}</span>
+                <span>{customer.phone || "Telefone não registado"}</span>
               </a>
               <a href={`mailto:${customer.email}`} className="flex items-center gap-1.5 hover:text-[#f1ede5]">
                 <Mail className="h-3.5 w-3.5 text-[#d3a548]" />
-                <span>{customer.email}</span>
+                <span>{customer.email || "Email não registado"}</span>
               </a>
             </div>
           </div>
         </div>
 
-        {/* Financial Summary & Actions */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex flex-col items-end pr-4 border-r border-white/[0.08]">
-            <span className="text-[11px] uppercase text-[#8a9092] font-semibold">Total Faturado</span>
-            <span className="text-xl font-bold text-[#f7d46d] tabular-nums">
-              {formatCurrency(customer.totalSpent || 0)}
-            </span>
-          </div>
+          {showFinancials && (
+            <div className="flex flex-col items-end pr-4 border-r border-white/[0.08]">
+              <span className="text-[11px] uppercase text-[#8a9092] font-semibold">Total Faturado</span>
+              <span className="text-xl font-bold text-[#f7d46d] tabular-nums">
+                {formatCurrency(customer.totalSpent ?? 0)}
+              </span>
+            </div>
+          )}
           <Button variant="primary" onClick={() => setIsVehicleModalOpen(true)} size="sm">
             <Plus className="h-4 w-4" />
             <span>Associar Viatura</span>
@@ -117,10 +145,30 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
         </div>
       </div>
 
-      {/* Tabs */}
+      {feedback && (
+        <div
+          role={feedback.tone === "error" ? "alert" : "status"}
+          className={`flex items-center justify-between gap-3 rounded-md border px-4 py-3 text-xs ${
+            feedback.tone === "error"
+              ? "border-[#f05a50]/30 bg-[#f05a50]/10 text-[#f8a19b]"
+              : "border-[#68a46b]/30 bg-[#68a46b]/10 text-[#9ed3a0]"
+          }`}
+        >
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="cursor-pointer font-bold uppercase tracking-wide opacity-70 hover:opacity-100"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
         <button
           onClick={() => setActiveTab("vehicles")}
+          aria-pressed={activeTab === "vehicles"}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === "vehicles"
               ? "border-[#d3a548] text-[#f7d46d]"
@@ -132,6 +180,7 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
         </button>
         <button
           onClick={() => setActiveTab("overview")}
+          aria-pressed={activeTab === "overview"}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === "overview"
               ? "border-[#d3a548] text-[#f7d46d]"
@@ -143,6 +192,7 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
         </button>
         <button
           onClick={() => setActiveTab("communications")}
+          aria-pressed={activeTab === "communications"}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === "communications"
               ? "border-[#d3a548] text-[#f7d46d]"
@@ -154,7 +204,6 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
         </button>
       </div>
 
-      {/* Tab Content */}
       {activeTab === "vehicles" && (
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
@@ -202,7 +251,6 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
 
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Notes Card */}
           <Card className="p-5 flex flex-col gap-3">
             <CardHeader className="p-0">
               <CardTitle className="text-sm">Notas Internas da Oficina</CardTitle>
@@ -212,8 +260,7 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
             </p>
           </Card>
 
-          {/* B2B Terms Card if applicable */}
-          {customer.b2bDetails && (
+          {customer.b2bDetails && showFinancials && (
             <Card className="p-5 flex flex-col gap-3 bg-[#15191a]">
               <CardHeader className="p-0">
                 <CardTitle className="text-sm text-[#f7d46d]">Condições Comerciais B2B</CardTitle>
@@ -228,7 +275,7 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
                 <div className="flex flex-col">
                   <span className="text-[#8a9092]">Prazo de Pagamento</span>
                   <span className="text-base font-bold text-[#f1ede5]">
-                    {customer.b2bDetails.paymentTermsDays} Dias
+                    {customer.b2bDetails.paymentTermsDays} dias
                   </span>
                 </div>
               </div>
@@ -255,8 +302,12 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
                 </div>
                 <div className="flex flex-col flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-[#f1ede5] capitalize">{com.type} ({com.direction})</span>
-                    <span className="text-[12px] text-[#8a9092]">{com.createdAt.slice(0, 10)}</span>
+                    <span className="font-semibold text-[#f1ede5] capitalize">
+                      {com.type} ({com.direction === "inbound" ? "recebida" : "enviada"})
+                    </span>
+                    <span className="text-[12px] text-[#8a9092]">
+                      {formatCheckinDate(com.createdAt)}
+                    </span>
                   </div>
                   <p className="text-xs text-[#a9adae] mt-1">{com.summary}</p>
                   <span className="text-[11px] text-[#8a9092] mt-1">Por: {com.authorName}</span>
@@ -271,8 +322,8 @@ export function CustomerDetailView({ customer, vehicles: initialVehicles, custom
         </div>
       )}
 
-      {/* Vehicle Form Modal */}
       <VehicleFormModal
+        key={`${customer.id}-${isVehicleModalOpen ? "open" : "closed"}`}
         isOpen={isVehicleModalOpen}
         onClose={() => setIsVehicleModalOpen(false)}
         onSave={handleSaveVehicle}

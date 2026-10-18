@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { TeamMember, WorkshopTool } from "@/lib/demo-data/tools-team-data";
-import { requireAuth } from "@/server/auth";
+import { assertManagementAccess, requireAuth } from "@/server/auth";
 import {
   createTeamMember,
   listTeam,
@@ -10,39 +10,44 @@ import {
   setToolStatus,
   TeamMemberCreateInput,
 } from "@/server/team";
+import {
+  TeamValidationError,
+  parseTeamMemberInput,
+  parseTeamMemberStatus,
+  parseToolStatus,
+} from "@/domains/identity/team";
 
 export type TeamActionResult =
   | { ok: true; member: TeamMember }
   | { ok: false; error: string };
+
+function actionError(error: unknown, fallback: string): string {
+  return error instanceof TeamValidationError ? error.message : fallback;
+}
 
 export async function createTeamMemberAction(
   input: TeamMemberCreateInput
 ): Promise<TeamActionResult> {
   const auth = await requireAuth();
   try {
-    if (!input.name?.trim()) {
-      return { ok: false, error: "O nome do colaborador é obrigatório." };
-    }
-    if (!input.role?.trim()) {
-      return { ok: false, error: "A função é obrigatória." };
-    }
-    const organizationId = auth.organizationId;
-    const member = await createTeamMember(organizationId, {
-      name: input.name.trim(),
-      role: input.role.trim(),
-      specialty: input.specialty?.trim() ?? "Geral",
-      level: input.level ?? "Assistente",
-      status: input.status ?? "disponivel",
-      email: input.email?.trim() || undefined,
-      phone: input.phone?.trim() || undefined,
-      certifications: input.certifications ?? [],
+    assertManagementAccess(auth);
+    const parsed = parseTeamMemberInput(input);
+    const member = await createTeamMember(auth.organizationId, {
+      name: parsed.name,
+      role: parsed.role,
+      specialty: parsed.specialty,
+      level: parsed.level,
+      status: parsed.status,
+      email: parsed.email,
+      phone: parsed.phone,
+      certifications: parsed.certifications,
     });
     revalidatePath("/team");
     return { ok: true, member };
-  } catch (e) {
+  } catch (error) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao criar o colaborador.",
+      error: actionError(error, "Não foi possível criar o colaborador."),
     };
   }
 }
@@ -53,14 +58,15 @@ export async function setTeamMemberStatusAction(
 ): Promise<{ ok: boolean; error?: string }> {
   const auth = await requireAuth();
   try {
-    const organizationId = auth.organizationId;
-    await setTeamMemberStatus(organizationId, memberId, status);
+    assertManagementAccess(auth);
+    parseTeamMemberStatus(status);
+    await setTeamMemberStatus(auth.organizationId, memberId, status);
     revalidatePath("/team");
     return { ok: true };
-  } catch (e) {
+  } catch (error) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao atualizar o estado.",
+      error: actionError(error, "Não foi possível atualizar o estado."),
     };
   }
 }
@@ -71,20 +77,20 @@ export async function setToolStatusAction(
 ): Promise<{ ok: boolean; error?: string }> {
   const auth = await requireAuth();
   try {
-    const organizationId = auth.organizationId;
-    await setToolStatus(organizationId, toolId, status);
+    assertManagementAccess(auth);
+    parseToolStatus(status);
+    await setToolStatus(auth.organizationId, toolId, status);
     revalidatePath("/tools");
     return { ok: true };
-  } catch (e) {
+  } catch (error) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao atualizar a ferramenta.",
+      error: actionError(error, "Não foi possível atualizar a ferramenta."),
     };
   }
 }
 
 export async function getTeamAction(): Promise<TeamMember[]> {
   const auth = await requireAuth();
-  const organizationId = auth.organizationId;
-  return listTeam(organizationId);
+  return listTeam(auth.organizationId);
 }

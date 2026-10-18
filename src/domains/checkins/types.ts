@@ -66,11 +66,16 @@ export interface Checkin {
   cleanlinessStatus: "clean" | "dusty" | "dirty" | "needs_decontamination";
   damages: CheckinDamage[];
   photos: CheckinPhoto[];
+  /** Contagens usadas em listagens para evitar carregar data URLs completos. */
+  photoCount?: number;
+  damageCount?: number;
   belongings: CheckinBelonging[];
   status: "draft" | "completed" | "signed";
   technicianName: string;
   signedByName?: string;
   signatureDataUrl?: string;
+  /** Presente em listagens para saber se há assinatura sem carregar a data URL. */
+  hasSignature?: boolean;
   token: string; // Token público seguro para envio de relatório por WhatsApp
   createdAt: string;
   completedAt?: string;

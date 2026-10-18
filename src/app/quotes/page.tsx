@@ -1,14 +1,19 @@
 import { QuotesView } from "./QuotesView";
-import { listQuotes } from "@/server/quotes";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { countQuotesWaitingOverFourDays, listQuotes } from "@/server/quotes";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function QuotesPage() {
-  await requireAuth();
-  const organizationId = await getPrimaryOrganizationId();
-  const quotes = await listQuotes(organizationId);
+  const auth = await requireRole(SCHEDULING_ROLES);
+  const quotes = await listQuotes(auth.organizationId);
+  const waitingOverFourDays = countQuotesWaitingOverFourDays(quotes);
 
-  return <QuotesView initialQuotes={quotes} />;
+  return (
+    <QuotesView
+      initialQuotes={quotes}
+      waitingOverFourDays={waitingOverFourDays}
+    />
+  );
 }

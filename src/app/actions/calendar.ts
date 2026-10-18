@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { AppointmentStatus, WorkshopBay } from "@/domains/calendar/types";
 import {
+  AppointmentConflictError,
   createBay,
   deleteBay,
   updateBay,
@@ -16,7 +17,14 @@ import {
   ConflictInfo,
   BayInput,
 } from "@/server/calendar";
-import { requireAuth } from "@/server/auth";
+import { assertManagementAccess, requireAuth, type AuthContext } from "@/server/auth";
+import { hasRole, SCHEDULING_ROLES } from "@/lib/roles";
+
+function assertSchedulingAccess(auth: AuthContext): void {
+  if (!hasRole(auth.role, SCHEDULING_ROLES)) {
+    throw new Error("Sem permissão para gerir a agenda.");
+  }
+}
 
 export type AppointmentResult =
   | { ok: true; appointmentId?: string; conflicts?: ConflictInfo[] }
@@ -27,6 +35,7 @@ export async function getAppointmentConflictsAction(
   excludeAppointmentId?: string
 ): Promise<ConflictInfo[]> {
   const auth = await requireAuth();
+  assertSchedulingAccess(auth);
   const organizationId = auth.organizationId;
   return getAppointmentConflicts(organizationId, input, excludeAppointmentId);
 }
@@ -37,11 +46,8 @@ export async function saveAppointmentAction(
 ): Promise<AppointmentResult> {
   const auth = await requireAuth();
   try {
+    assertSchedulingAccess(auth);
     const organizationId = auth.organizationId;
-    const conflicts = await getAppointmentConflicts(organizationId, input, appointmentId);
-    if (conflicts.length > 0) {
-      return { ok: false, error: "CONFLICT", conflicts };
-    }
     if (appointmentId) {
       await updateAppointment(organizationId, appointmentId, input);
     } else {
@@ -52,6 +58,9 @@ export async function saveAppointmentAction(
     revalidatePath("/production");
     return { ok: true, conflicts: [] };
   } catch (e) {
+    if (e instanceof AppointmentConflictError) {
+      return { ok: false, error: "CONFLICT", conflicts: e.conflicts };
+    }
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Erro ao guardar a marcação.",
@@ -65,11 +74,13 @@ export async function forceSaveAppointmentAction(
 ): Promise<AppointmentResult> {
   const auth = await requireAuth();
   try {
+    assertSchedulingAccess(auth);
     const organizationId = auth.organizationId;
+    const options = { checkConflicts: false };
     if (appointmentId) {
-      await updateAppointment(organizationId, appointmentId, input);
+      await updateAppointment(organizationId, appointmentId, input, options);
     } else {
-      await createAppointment(organizationId, input);
+      await createAppointment(organizationId, input, options);
     }
     revalidatePath("/calendar");
     revalidatePath("/");
@@ -91,12 +102,21 @@ export async function moveAppointmentAction(
 ): Promise<AppointmentResult> {
   const auth = await requireAuth();
   try {
+    assertSchedulingAccess(auth);
     const organizationId = auth.organizationId;
-    await moveAppointment(organizationId, appointmentId, new Date(newStartIso), new Date(newEndIso), bayId);
+    const newStart = new Date(newStartIso);
+    const newEnd = new Date(newEndIso);
+    if (Number.isNaN(newStart.getTime()) || Number.isNaN(newEnd.getTime())) {
+      return { ok: false, error: "Data ou hora inválida." };
+    }
+    await moveAppointment(organizationId, appointmentId, newStart, newEnd, bayId);
     revalidatePath("/calendar");
     revalidatePath("/");
     return { ok: true };
   } catch (e) {
+    if (e instanceof AppointmentConflictError) {
+      return { ok: false, error: "CONFLICT", conflicts: e.conflicts };
+    }
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Erro ao mover a marcação.",
@@ -107,6 +127,7 @@ export async function moveAppointmentAction(
 export async function cancelAppointmentAction(appointmentId: string): Promise<AppointmentResult> {
   const auth = await requireAuth();
   try {
+    assertSchedulingAccess(auth);
     const organizationId = auth.organizationId;
     await cancelAppointment(organizationId, appointmentId);
     revalidatePath("/calendar");
@@ -129,6 +150,7 @@ export async function createBayAction(
 ): Promise<{ ok: true; bay: WorkshopBay } | { ok: false; error: string }> {
   const auth = await requireAuth();
   try {
+    assertManagementAccess(auth);
     const organizationId = auth.organizationId;
     const bay = await createBay(organizationId, input);
     revalidatePath("/calendar");
@@ -144,6 +166,7 @@ export async function updateBayAction(
 ): Promise<{ ok: boolean; error?: string }> {
   const auth = await requireAuth();
   try {
+    assertManagementAccess(auth);
     const organizationId = auth.organizationId;
     await updateBay(organizationId, bayId, input);
     revalidatePath("/calendar");
@@ -156,6 +179,7 @@ export async function updateBayAction(
 export async function deleteBayAction(bayId: string): Promise<{ ok: boolean; error?: string }> {
   const auth = await requireAuth();
   try {
+    assertManagementAccess(auth);
     const organizationId = auth.organizationId;
     const r = await deleteBay(organizationId, bayId);
     if (!r.ok) return r;
@@ -173,6 +197,7 @@ export async function assignVehicleToBayAction(
 ): Promise<{ ok: boolean; error?: string }> {
   const auth = await requireAuth();
   try {
+    assertSchedulingAccess(auth);
     const organizationId = auth.organizationId;
     const r = await assignVehicleToBay(organizationId, vehicleId, bayId, date);
     if (r.ok) revalidatePath("/calendar");

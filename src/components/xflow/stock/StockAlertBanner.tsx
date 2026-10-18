@@ -1,10 +1,14 @@
 import React from "react";
 import { AlertTriangle } from "lucide-react";
-import { Material } from "@/domains/materials/types";
+import type { Material } from "@/domains/materials/types";
 import { Badge } from "@/components/ui/badge";
 
 interface StockAlertBannerProps {
   lowStockMaterials: Material[];
+}
+
+function unitLabel(material: Material): string {
+  return material.unit === "bottle" ? "un" : material.unit === "kit" ? "kit" : "m";
 }
 
 export function StockAlertBanner({ lowStockMaterials }: StockAlertBannerProps) {
@@ -19,10 +23,10 @@ export function StockAlertBanner({ lowStockMaterials }: StockAlertBannerProps) {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-bold text-sm text-[#f1ede5]">
-              Alerta de Stock Crítico: {lowStockMaterials.length} Materiais em Falta
+              Stock Crítico: {lowStockMaterials.length} materiais no limite ou esgotados
             </span>
             <Badge variant="danger" className="text-[11px]">
-              Ação Urgente
+              Requer reposição
             </Badge>
           </div>
         </div>
@@ -39,11 +43,11 @@ export function StockAlertBanner({ lowStockMaterials }: StockAlertBannerProps) {
                 {mat.brand} {mat.name}
               </span>
               <span className="text-[11px] text-[#a9adae]">
-                Mínimo: {mat.minimumStockAlertMeters} {mat.unit === "bottle" ? "un" : "m"}
+                Mínimo: {mat.minimumStockAlertMeters} {unitLabel(mat)}
               </span>
             </div>
             <span className="text-xs font-bold text-[#f05a50] tabular-nums shrink-0">
-              {mat.currentStockMeters} {mat.unit === "bottle" ? "un" : "m"}
+              {mat.status === "out_of_stock" ? "Esgotado" : `${mat.currentStockMeters} ${unitLabel(mat)}`}
             </span>
           </div>
         ))}

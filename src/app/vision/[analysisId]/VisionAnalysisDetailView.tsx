@@ -10,28 +10,39 @@ import {
   Wrench,
   Sparkles,
   FileCheck,
+  Info,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { initialVisionAnalyses } from "@/lib/demo-data/vision-simulation-data";
 import { VisionDamageAnnotator } from "@/components/xflow/vision/VisionDamageAnnotator";
 import { PanelAssessmentList } from "@/components/xflow/vision/PanelAssessmentList";
 import { formatCoverageLabel } from "@/domains/intelligence/vision-analyzer";
 import { VisionAnalysis } from "@/domains/intelligence/types";
+import { formatCheckinDate } from "@/domains/checkins/presentation";
 
 interface VisionAnalysisDetailViewProps {
-  analysisId: string;
+  initialAnalysis: VisionAnalysis;
+  vehicleId?: string;
 }
 
-export function VisionAnalysisDetailView({ analysisId }: VisionAnalysisDetailViewProps) {
+const COLOR_HEX: Record<string, string> = {
+  green: "#1b3a28",
+  silver: "#b8bcc0",
+  white: "#e8e6e1",
+  black: "#111314",
+  dark_grey: "#373a3c",
+  grey: "#70767c",
+  blue: "#28405f",
+  red: "#7a2424",
+};
+
+export function VisionAnalysisDetailView({
+  initialAnalysis,
+  vehicleId,
+}: VisionAnalysisDetailViewProps) {
   const router = useRouter();
-
-  const initialItem =
-    initialVisionAnalyses.find((a) => a.id === analysisId) ||
-    initialVisionAnalyses[0];
-
-  const [analysis, setAnalysis] = useState<VisionAnalysis>(initialItem);
+  const [analysis, setAnalysis] = useState<VisionAnalysis>(initialAnalysis);
   const [isSaved, setIsSaved] = useState(false);
 
   const handleUpdateDamageStatus = (
@@ -60,11 +71,10 @@ export function VisionAnalysisDetailView({ analysisId }: VisionAnalysisDetailVie
     }));
   };
 
-  const handleSaveAndTransfer = () => {
+  const handleOpenQuote = () => {
+    if (!vehicleId) return;
     setIsSaved(true);
-    setTimeout(() => {
-      router.push("/quotes/new");
-    }, 1200);
+    router.push(`/quotes/new?vehicle=${encodeURIComponent(vehicleId)}`);
   };
 
   return (
@@ -83,31 +93,59 @@ export function VisionAnalysisDetailView({ analysisId }: VisionAnalysisDetailVie
                 {analysis.vehiclePlate}
               </span>
               <Badge variant="gold" className="text-[11px] font-mono">
-                {Math.round(analysis.vehicleConfidence * 100)}% Confiança IA
+                Pré-visualização · {Math.round(analysis.vehicleConfidence * 100)}% demo
               </Badge>
             </div>
             <h1 className="text-2xl font-bold text-[#f1ede5]">
               {analysis.vehicleMake} {analysis.vehicleModel}
             </h1>
+            <span className="text-[12px] text-[#8a9092]">
+              {formatCheckinDate(analysis.createdAt)}
+            </span>
           </div>
         </div>
 
-        <Button
-          onClick={handleSaveAndTransfer}
-          className="bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d] font-bold"
-        >
-          {isSaved ? (
-            <>
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              <span>A transferir para Orçamento...</span>
-            </>
-          ) : (
-            <>
-              <FileCheck className="h-4 w-4 mr-2" />
-              <span>Validar e Usar em Orçamento</span>
-            </>
+        <div className="flex flex-col items-end gap-1.5">
+          <Button
+            onClick={handleOpenQuote}
+            disabled={!vehicleId || isSaved}
+            className="bg-[#d3a548] text-[#050606] hover:bg-[#f7d46d] font-bold"
+          >
+            {isSaved ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                <span>A abrir Orçamento...</span>
+              </>
+            ) : (
+              <>
+                <FileCheck className="h-4 w-4 mr-2" />
+                <span>Usar Viatura em Orçamento</span>
+              </>
+            )}
+          </Button>
+          {!vehicleId && (
+            <span className="text-[11px] text-[#f78e85]">
+              Matrícula demo sem viatura correspondente nesta organização.
+            </span>
           )}
-        </Button>
+        </div>
+      </div>
+
+      <div
+        role="status"
+        className="flex items-start gap-3 p-4 rounded-md bg-[#1f1b14] border border-[#d3a548]/40"
+      >
+        <Info className="h-5 w-5 shrink-0 text-[#f7d46d]" />
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-[#f7d46d]">
+            Revisão em pré-visualização
+          </span>
+          <p className="text-xs text-[#a9adae] leading-relaxed">
+            Confirmações e rejeições nesta ficha são apenas locais e não são guardadas.
+            O botão de orçamento abre a viatura real correspondente à matrícula, quando
+            existir.
+          </p>
+        </div>
       </div>
 
       {/* Color & Contrast Analysis Banner */}
@@ -115,7 +153,13 @@ export function VisionAnalysisDetailView({ analysisId }: VisionAnalysisDetailVie
         <Card className="p-4 bg-[#101314] border-white/[0.06] flex flex-col justify-between gap-2">
           <span className="text-xs text-[#a9adae]">Deteção de Cor de Fábrica</span>
           <div className="flex items-center gap-2">
-            <div className="h-4 w-4 rounded-full bg-[#1b3a28] border border-white/20" />
+            <div
+              className="h-4 w-4 rounded-full border border-white/20"
+              style={{
+                backgroundColor:
+                  COLOR_HEX[analysis.originalColorFamily] ?? "#8a9092",
+              }}
+            />
             <span className="font-bold text-sm text-[#f1ede5]">
               {analysis.originalColorName}
             </span>
@@ -181,7 +225,7 @@ export function VisionAnalysisDetailView({ analysisId }: VisionAnalysisDetailVie
 
         <VisionDamageAnnotator
           photoUrl="https://images.unsplash.com/photo-1617788138017-80ad40651399?w=1200&auto=format&fit=crop&q=80"
-          photoLabel="Frente da Viatura"
+          photoLabel="Frente da Viatura (fotografia ilustrativa)"
           suggestions={analysis.damageSuggestions}
           onUpdateStatus={handleUpdateDamageStatus}
         />

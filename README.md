@@ -4,7 +4,7 @@
 
 ## Estado do projeto
 
-MVP interno em desenvolvimento ativo. Última validação: typecheck OK, lint OK, 92/92 testes.
+MVP interno em desenvolvimento ativo. Última validação: typecheck OK, lint OK, 202 testes.
 
 **Ligado à BD (leitura e escritas reais):** dashboard (KPIs + alertas determinísticos), clientes (listar/criar/detalhe), viaturas + passaporte digital, orçamentos (emitir, aprovar — cria ordem de trabalho draft com 8 fases —, refazer, eliminar; portal do cliente por token), produção (kanban, fases, checklist, timesheet, progresso recalculado), agenda/calendário (baias, conflitos, mapa 3D da oficina), check-ins fotográficos (fotos, mapa de danos sobre a foto, pertences), entregas (gate QC, checklist, assinatura), O Meu Dia, pesquisa global (⌘K), equipa, Time Book, relatórios, painel de oficina para TV (`/shop-floor`) e simulador (catálogo `films` da BD + estúdio 3D three.js + simulação sobre foto real).
 
@@ -14,13 +14,13 @@ MVP interno em desenvolvimento ativo. Última validação: typecheck OK, lint OK
 
 ## Stack
 
-- **Next.js 16.3.3** — App Router, server actions, guarda de sessão em `src/proxy.ts`
+- **Next.js 16.4.2** — App Router, server actions, guarda de sessão em `src/proxy.ts`
 - **React 19** + **TypeScript strict**
 - **Tailwind CSS v4** — tokens em `src/app/globals.css` e `src/styles/tokens.css`
 - **Postgres (Neon)** via `pg` — repositórios SQL puros, RLS por organização
 - **three.js** + `@react-three/fiber` + `drei` — estúdio 3D do simulador
 - **@mediapipe/tasks-vision** — segmentação de viatura (DeepLab v3) no browser
-- **Vitest** + Testing Library (jsdom) — 92 testes
+- **Vitest** + Testing Library (jsdom) — 202 testes
 - **ESLint 9** (`eslint-config-next`), `lucide-react`, `clsx`, `tailwind-merge`
 
 ## Pré-requisitos
@@ -48,20 +48,30 @@ O `create-db-role.mjs` cria a role **não-owner** `xflow_app` (grants nas tabela
 - RLS por organização: o GUC `app.current_organization_id` é fixado por ligação (bootstrap) e atualizado com a organização da sessão em cada pedido. Com o owner (`DATABASE_URL`) a RLS é bypassed — a role não-owner é a que a aplica de facto.
 - O papel define a visibilidade financeira: admin e workshop_manager veem margens; technician não.
 
-Credenciais demo (password `xflow-demo-2026`):
+O acesso é individual. Define ou repõe a password de cada conta com:
 
-| Email | Papel |
-| --- | --- |
-| `patricia@xmotion.pt` | workshop_manager |
-| `joao@xmotion.pt`, `ricardo@xmotion.pt`, `miguel@xmotion.pt` | technician |
+```bash
+XFLOW_PASSWORD='uma-password-forte' node scripts/set-password.mjs luis@xmotion.pt
+```
 
-O admin `luis@xmotion.pt` tem password pessoal definida via `node scripts/set-password.mjs luis@xmotion.pt` (password passada na env `XFLOW_PASSWORD`).
+O script grava o hash scrypt, limpa a flag `must_change_password` e revoga as sessões antigas desse perfil. Para marcar como obrigatória a troca de password nos perfis que ainda usam a password demo:
+
+```bash
+node scripts/migrate.mjs --rotate-demo-passwords
+```
+
+Quem tiver `must_change_password = true` é encaminhado para `/change-password` no login e em qualquer `requireAuth()`; só depois de definir uma password pessoal (mínimo 12 caracteres, três classes) volta à aplicação.
+
+A autorização é aplicada no servidor: `requireRole()` protege páginas e `assertFinancialAccess()`/`assertManagementAccess()` protegem server actions. Admin e workshop_manager veem finanças; technician não. Configurações gerais são apenas para admin.
 
 ## Scripts
 
 | Comando | Descrição |
 | --- | --- |
-| `node scripts/migrate.mjs` | Aplica migrações estruturais pendentes (deteção de colunas/tabelas/políticas); backfill de passwords demo |
+| `npm run db:migrate` | Aplica migrações estruturais pendentes (deteção de colunas/tabelas/políticas). Aceita `--rotate-demo-passwords` |
+| `npm run db:verify` | Verifica a RLS efetiva com a role `xflow_app` |
+| `npm run check:env` | Valida `DATABASE_URL`, `DATABASE_URL_APP` e `NEXT_PUBLIC_APP_URL` antes do deploy |
+| `node scripts/set-password.mjs <email>` | Define a password de um perfil (env `XFLOW_PASSWORD`), limpa a rotação e revoga sessões |
 | `node scripts/seed.mjs` | Seed global demo: org, equipa, baias, catálogo, materiais, clientes, viaturas, orçamentos, ordens com fases/tempos, check-ins, QC, agenda, faturas, garantia+entrega. Ignora se a org `x-motion` já existir |
 | `node scripts/reset.mjs` | Truncate de todas as tabelas públicas (destrutivo — usar antes do seed para regenerar) |
 | `node scripts/seed-films.mjs` | Catálogo de películas — 245 (100 3M 1080 + 136 Avery SWF + 9 curadas XPEL/Stek/Inozetek/KPMF); DELETE+INSERT, substitui o catálogo da org |
@@ -74,7 +84,7 @@ O admin `luis@xmotion.pt` tem password pessoal definida via `node scripts/set-pa
 ## Testes
 
 ```bash
-npm run test         # Vitest (jsdom) — 92 testes em 24 ficheiros
+npm run test         # Vitest (jsdom) — 202 testes em 29 ficheiros
 npm run typecheck    # tsc --noEmit
 npm run lint         # ESLint 9 + eslint-config-next
 ```
@@ -84,8 +94,18 @@ npm run lint         # ESLint 9 + eslint-config-next
 - Padrão por domínio: `src/server/<domínio>.ts` (repositório `pg`, SQL puro, snake_case -> camelCase) + `src/app/actions/<domínio>.ts` (server actions com `revalidatePath`) + página server (`force-dynamic`) -> view client.
 - `src/lib/db.ts` — pool `pg` (max 8); prefere `DATABASE_URL_APP` e fixa o GUC da organização em cada ligação.
 - `src/proxy.ts` — guarda de sessão: redireciona para `/login` sem cookie; rotas públicas por token: `/portal/`, `/quotes/public/`, `/checkins/report/`, `/qc/certificate/`, `/warranties/certificate/`.
-- `supabase/migrations/` — 19 migrações SQL numeradas `202608280000NN` (40 tabelas).
+- `supabase/migrations/` — 25 migrações SQL numeradas `202608280000NN`.
 - Simulador: `src/lib/film-simulation.ts` (composição física por pixel), `src/lib/car-segmentation.ts` (MediaPipe), `src/lib/car-models.ts` + `CarStudio3D.tsx` (three.js).
+
+## Deploy (Vercel)
+
+1. Define `DATABASE_URL`, `DATABASE_URL_APP` (ligação direta, sem pooler) e `NEXT_PUBLIC_APP_URL` nas Environment Variables.
+2. Corre `npm run check:env` e `npm run db:migrate` contra a base de produção.
+3. Confirma a RLS com `npm run db:verify`.
+4. Faz deploy. O healthcheck está em `/api/health` (503 se a BD não responder).
+5. O CI em `.github/workflows/ci.yml` corre typecheck, lint, testes e build em cada push/PR.
+
+Sem `DATABASE_URL_APP` a aplicação recusa arrancar em produção — é intencional, para não ligar como owner e contornar a RLS.
 
 ## Roadmap / continuar
 

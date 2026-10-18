@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import {
   Camera,
   FileText,
@@ -9,13 +10,16 @@ import {
   StickyNote,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { buttonStyles } from "@/components/ui/button";
+import { formatCheckinDate } from "@/domains/checkins/presentation";
 import { VehicleTimelineEvent } from "@/domains/vehicles/types";
 
 interface VehicleTimelineProps {
   events?: VehicleTimelineEvent[];
+  vehicleId?: string;
 }
 
-export function VehicleTimeline({ events }: VehicleTimelineProps) {
+export function VehicleTimeline({ events, vehicleId }: VehicleTimelineProps) {
   if (!events || events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-[#101314] border border-white/[0.06] text-center">
@@ -25,6 +29,15 @@ export function VehicleTimeline({ events }: VehicleTimelineProps) {
         <span className="text-xs text-[#8a9092] mt-1">
           Os check-ins, orçamentos e intervenções concluídas aparecerão aqui cronologicamente.
         </span>
+        {vehicleId && (
+          <Link
+            href={`/checkins/new?vehicleId=${vehicleId}`}
+            className={buttonStyles({ variant: "outline", size: "sm", className: "mt-4" })}
+          >
+            <Camera className="h-3.5 w-3.5" />
+            <span>Registar Check-in</span>
+          </Link>
+        )}
       </div>
     );
   }
@@ -70,7 +83,9 @@ export function VehicleTimeline({ events }: VehicleTimelineProps) {
                   </Badge>
                 )}
               </div>
-              <span className="text-[12px] text-[#8a9092] tabular-nums font-mono">{event.date}</span>
+              <span className="text-[12px] text-[#8a9092] tabular-nums">
+                {formatCheckinDate(event.date)}
+              </span>
             </div>
 
             <p className="text-xs text-[#a9adae] leading-relaxed">{event.description}</p>

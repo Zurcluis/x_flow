@@ -25,7 +25,17 @@ export function QuoteOptionSelector({
         return (
           <div
             key={option.id}
+            role={isInteractive ? "button" : undefined}
+            tabIndex={isInteractive ? 0 : undefined}
+            aria-pressed={isInteractive ? isSelected : undefined}
             onClick={() => isInteractive && onSelectOption && onSelectOption(option.id)}
+            onKeyDown={(e) => {
+              if (!isInteractive || !onSelectOption) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelectOption(option.id);
+              }
+            }}
             className={`relative flex flex-col justify-between p-6 rounded-[20px] transition-all duration-200 ${
               isInteractive ? "cursor-pointer" : ""
             } ${

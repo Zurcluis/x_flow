@@ -10,9 +10,10 @@ import {
   ShieldCheck,
   Star,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonStyles } from "@/components/ui/button";
 import { Logo } from "@/components/xflow/Logo";
 import { formatCurrency } from "@/lib/formatting";
+import { formatQuoteDate, quoteStatusLabel } from "@/domains/quotes/presentation";
 import { approvePublicQuoteAction } from "@/app/actions/quotes";
 import type {
   PublicQuote,
@@ -27,13 +28,7 @@ const TIER_LABELS: Record<PublicQuoteOption["tier"], string> = {
 };
 
 function formatDatePtPT(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat("pt-PT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
+  return formatQuoteDate(iso);
 }
 
 function vatPercentLabel(rate: number): string {
@@ -68,7 +63,17 @@ function PublicOptionCard({
 }: PublicOptionCardProps) {
   return (
     <div
+      role={isInteractive ? "button" : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      aria-pressed={isInteractive ? isSelected : undefined}
       onClick={() => isInteractive && onSelect(option.id)}
+      onKeyDown={(e) => {
+        if (!isInteractive) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(option.id);
+        }
+      }}
       className={`relative flex flex-col p-6 rounded-[20px] transition-all duration-200 ${
         isInteractive ? "cursor-pointer" : ""
       } ${
@@ -202,7 +207,7 @@ export function PublicQuoteView({
           Proposta não encontrada ou link expirado
         </h1>
         <p className="text-xs text-[#a9adae] mt-2 max-w-sm">
-          Por favor, contacta a X-Motion para solicitar um novo link de proposta comercial.
+          Por favor, contacta a oficina para solicitar um novo link de proposta comercial.
         </p>
       </div>
     );
@@ -211,12 +216,24 @@ export function PublicQuoteView({
   const selectedOption =
     quote.options.find((o) => o.id === selectedOptionId) || quote.options[0];
 
+  const canRespond = quote.status === "sent" || quote.status === "viewed";
+  const contactHref = quote.organizationPhone
+    ? `https://wa.me/${quote.organizationPhone.replace(/\D/g, "")}`
+    : quote.organizationEmail
+      ? `mailto:${quote.organizationEmail}`
+      : null;
+
   const handleConfirmApproval = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOption) return;
     setApproving(true);
     setApprovalError(null);
-    const result = await approvePublicQuoteAction(token ?? "", selectedOption.id, approverName);
+    const result = await approvePublicQuoteAction(
+      token,
+      selectedOption.id,
+      approverName,
+      approvalNotes
+    );
     setApproving(false);
     if (!result.ok) {
       setApprovalError(result.error);
@@ -235,6 +252,9 @@ export function PublicQuoteView({
           <Logo variant="full" />
           <div className="flex flex-col sm:items-end">
             <span className="text-xs text-[#a9adae]">Proposta Comercial Oficial</span>
+            <span className="font-semibold text-sm text-[#f1ede5]">
+              {quote.organizationName}
+            </span>
             <span className="font-mono font-bold text-sm text-[#f7d46d]">
               {quote.quoteNumber}
             </span>
@@ -254,23 +274,23 @@ export function PublicQuoteView({
                 </span>
                 <span className="text-xs text-[#a9adae]">
                   Opção selecionada: <strong className="text-[#f7d46d]">{selectedOption.name}</strong>{" "}
-                  ({formatCurrency(selectedOption.totalWithVat)} c/ IVA). A equipa X-Motion já foi
-                  notificada.
+                  ({formatCurrency(selectedOption.totalWithVat)} c/ IVA). A oficina tem registo
+                  desta aprovação.
                 </span>
               </div>
             </div>
 
-            <a
-              href="https://wa.me/351912345678"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="self-start sm:self-auto"
-            >
-              <Button variant="primary" size="sm">
+            {contactHref && (
+              <a
+                href={contactHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonStyles({ variant: "primary", size: "sm" })}
+              >
                 <MessageCircle className="h-4 w-4" />
                 <span>Contactar Oficina</span>
-              </Button>
-            </a>
+              </a>
+            )}
           </div>
         )}
 
@@ -324,8 +344,8 @@ export function PublicQuoteView({
 
           {quote.options.length === 0 ? (
             <div className="p-8 rounded-[20px] bg-[#101314] border border-white/[0.08] text-center text-xs text-[#a9adae]">
-              Esta proposta ainda não tem opções disponíveis. Contacta a X-Motion para
-              receberes uma nova versão.
+              Esta proposta ainda não tem opções disponíveis. Contacta a{" "}
+              {quote.organizationName} para receberes uma nova versão.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -334,7 +354,7 @@ export function PublicQuoteView({
                   key={option.id}
                   option={option}
                   isSelected={selectedOptionId === option.id}
-                  isInteractive={!isApproved}
+                  isInteractive={!isApproved && canRespond}
                   onSelect={setSelectedOptionId}
                 />
               ))}
@@ -343,7 +363,20 @@ export function PublicQuoteView({
         </div>
 
         {/* Bottom Approval Action Bar */}
-        {!isApproved && selectedOption && (
+        {!isApproved && !canRespond && (
+          <div
+            role="status"
+            className="flex items-center gap-2 p-4 rounded-[18px] bg-[#1d1810] border border-[#d3a548]/40 text-xs text-[#f1ede5]"
+          >
+            <CheckCircle2 className="h-4 w-4 text-[#d3a548]" />
+            <span>
+              Esta proposta está {quoteStatusLabel(quote.status).toLowerCase()} e já não pode
+              ser respondida neste link. Contacta a oficina para mais informações.
+            </span>
+          </div>
+        )}
+
+        {!isApproved && canRespond && selectedOption && (
           <div className="sticky bottom-6 z-40 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-[20px] bg-[#101314]/95 backdrop-blur-md border border-[#d3a548]/40 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
             <div className="flex flex-col">
               <span className="text-xs text-[#a9adae]">Opção Selecionada:</span>
@@ -363,15 +396,17 @@ export function PublicQuoteView({
               className="w-full sm:w-auto px-8"
             >
               <Check className="h-5 w-5" />
-              <span>Aprovar Proposta e Agendar</span>
+              <span>Aprovar Proposta</span>
             </Button>
           </div>
         )}
 
         {/* Footer info */}
         <footer className="flex flex-col items-center justify-center gap-2 pt-8 pb-12 border-t border-white/[0.06] text-xs text-[#8a9092] text-center">
-          <span>X-Motion Performance Detailing & PPF · Barcelos, Portugal</span>
-          <span>Garantia de aplicação certificada e rastreabilidade por passaporte digital</span>
+          <span>{quote.organizationName}</span>
+          {quote.organizationPhone && <span>{quote.organizationPhone}</span>}
+          {quote.organizationEmail && <span>{quote.organizationEmail}</span>}
+          <span>Proposta sujeita aos termos e condições da oficina.</span>
         </footer>
       </div>
 
@@ -432,7 +467,9 @@ export function PublicQuoteView({
               </div>
 
               {approvalError && (
-                <p className="text-[11px] font-semibold text-[#f05a50]">{approvalError}</p>
+                <p role="alert" className="text-[11px] font-semibold text-[#f05a50]">
+                  {approvalError}
+                </p>
               )}
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/[0.08]">

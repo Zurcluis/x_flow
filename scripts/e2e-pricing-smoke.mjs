@@ -11,7 +11,7 @@ const { chromium } = cbRequire("playwright");
 const pg = createRequire(path.join(projectRoot, "package.json"))("pg");
 
 const BASE = process.env.XFLOW_BASE_URL ?? "http://localhost:3000";
-const DEMO_PASSWORD = "xflow-demo-2026";
+const DEMO_PASSWORD = process.env.E2E_DEMO_PASSWORD ?? "xflow-demo-2026";
 
 const results = [];
 function record(name, pass, detail = "") {

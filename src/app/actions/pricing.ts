@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAuth } from "@/server/auth";
+import { assertFinancialAccess, requireAuth } from "@/server/auth";
 import {
   archiveExpenseItem,
   createExpenseItemVersion,
@@ -14,6 +14,7 @@ import {
   todayIso,
 } from "@/server/pricing";
 import { validatePolicy } from "@/domains/pricing/engine";
+import { isUuid } from "@/domains/finance/validation";
 import type {
   ConsumableKitKind,
   ExpenseCategory,
@@ -30,6 +31,15 @@ function isIsoDate(value: string): boolean {
 
 function isNonNegativeNumber(value: number): boolean {
   return Number.isFinite(value) && value >= 0;
+}
+
+function safeErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) return fallback;
+  const message = error.message;
+  if (/violat|duplicate key|relation|column|syntax|null value|invalid input/i.test(message)) {
+    return fallback;
+  }
+  return message.length > 0 && message.length <= 240 ? message : fallback;
 }
 
 export interface SavePolicyInput {
@@ -51,6 +61,7 @@ export async function savePolicySettingsAction(
 ): Promise<{ ok: true; policyId: string; version: number } | { ok: false; error: string }> {
   const auth = await requireAuth();
   try {
+    assertFinancialAccess(auth);
     if (input.method !== "manual" && input.method !== "monthly") {
       return { ok: false, error: "Método de preços inválido." };
     }
@@ -141,7 +152,7 @@ export async function savePolicySettingsAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao guardar a política de preços.",
+      error: safeErrorMessage(e, "Erro ao guardar a política de preços."),
     };
   }
 }
@@ -167,6 +178,7 @@ export async function saveExpenseItemAction(
 ): Promise<{ ok: true; id: string; version: number } | { ok: false; error: string }> {
   const auth = await requireAuth();
   try {
+    assertFinancialAccess(auth);
     if (!input.name || input.name.trim() === "") {
       return { ok: false, error: "O nome da rubrica é obrigatório." };
     }
@@ -209,7 +221,7 @@ export async function saveExpenseItemAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao guardar a rubrica.",
+      error: safeErrorMessage(e, "Erro ao guardar a rubrica."),
     };
   }
 }
@@ -220,8 +232,12 @@ export async function archiveExpenseItemAction(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const auth = await requireAuth();
   try {
+    assertFinancialAccess(auth);
     if (!itemId) {
       return { ok: false, error: "Rubrica não indicada." };
+    }
+    if (!isUuid(itemId)) {
+      return { ok: false, error: "Rubrica não encontrada." };
     }
     if (!isIsoDate(effectiveTo)) {
       return { ok: false, error: "A data de fim de vigência é inválida." };
@@ -232,7 +248,7 @@ export async function archiveExpenseItemAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao arquivar a rubrica.",
+      error: safeErrorMessage(e, "Erro ao arquivar a rubrica."),
     };
   }
 }
@@ -250,11 +266,15 @@ export async function saveKitAction(
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const auth = await requireAuth();
   try {
+    assertFinancialAccess(auth);
     if (!input.name || input.name.trim() === "") {
       return { ok: false, error: "O nome do kit é obrigatório." };
     }
     if (!["spot", "ppf_front", "wrap_full", "custom"].includes(input.kind)) {
       return { ok: false, error: "Tipo de kit inválido." };
+    }
+    if (input.id && !isUuid(input.id)) {
+      return { ok: false, error: "Kit não encontrado." };
     }
     if (!isNonNegativeNumber(input.price)) {
       return { ok: false, error: "O preço do kit tem de ser um número igual ou superior a zero." };
@@ -271,7 +291,7 @@ export async function saveKitAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao guardar o kit.",
+      error: safeErrorMessage(e, "Erro ao guardar o kit."),
     };
   }
 }
@@ -289,8 +309,12 @@ export async function saveSupplierAction(
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const auth = await requireAuth();
   try {
+    assertFinancialAccess(auth);
     if (!input.name || input.name.trim() === "") {
       return { ok: false, error: "O nome do fornecedor é obrigatório." };
+    }
+    if (input.id && !isUuid(input.id)) {
+      return { ok: false, error: "Fornecedor não encontrado." };
     }
     const id = await saveSupplier(auth.organizationId, {
       id: input.id,
@@ -304,7 +328,7 @@ export async function saveSupplierAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao guardar o fornecedor.",
+      error: safeErrorMessage(e, "Erro ao guardar o fornecedor."),
     };
   }
 }
@@ -324,8 +348,15 @@ export async function saveSupplierServiceAction(
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const auth = await requireAuth();
   try {
+    assertFinancialAccess(auth);
     if (!input.supplierId) {
       return { ok: false, error: "Indica o fornecedor do serviço." };
+    }
+    if (!isUuid(input.supplierId)) {
+      return { ok: false, error: "Fornecedor inválido." };
+    }
+    if (input.id && !isUuid(input.id)) {
+      return { ok: false, error: "Serviço do fornecedor não encontrado." };
     }
     if (!input.serviceName || input.serviceName.trim() === "") {
       return { ok: false, error: "O nome do serviço é obrigatório." };
@@ -353,7 +384,7 @@ export async function saveSupplierServiceAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao guardar o serviço do fornecedor.",
+      error: safeErrorMessage(e, "Erro ao guardar o serviço do fornecedor."),
     };
   }
 }
@@ -371,8 +402,12 @@ export async function publishFormulaAction(
 ): Promise<{ ok: true; versionId: string; version: number } | { ok: false; error: string }> {
   const auth = await requireAuth();
   try {
+    assertFinancialAccess(auth);
     if (!input.formulaId) {
       return { ok: false, error: "Fórmula não indicada." };
+    }
+    if (!isUuid(input.formulaId)) {
+      return { ok: false, error: "Fórmula não encontrada." };
     }
     if (!input.name || input.name.trim() === "") {
       return { ok: false, error: "O nome da fórmula é obrigatório." };
@@ -396,7 +431,7 @@ export async function publishFormulaAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao publicar a fórmula.",
+      error: safeErrorMessage(e, "Erro ao publicar a fórmula."),
     };
   }
 }

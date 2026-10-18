@@ -14,6 +14,13 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/formatting";
+import {
+  currentInvoiceMonthKey,
+  formatInvoiceDate,
+  invoiceMonthKey,
+  isInvoiceOverdue,
+} from "@/domains/finance/presentation";
+import { todayWorkshopDateKey } from "@/domains/calendar/datetime";
 import type {
   Invoice,
   RecurringRule,
@@ -42,6 +49,7 @@ export function FinanceSubNav({ active }: { active: "dashboard" | "invoices" | "
         <Link
           key={i.id}
           href={i.href}
+          aria-current={active === i.id ? "page" : undefined}
           className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap ${
             active === i.id
               ? "bg-[#1f1b14] text-[#f7d46d]"
@@ -68,15 +76,15 @@ export function FinanceView({
   invoices: Invoice[];
   generatedCount: number;
 }) {
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const today = new Date().toISOString().slice(0, 10);
+  const currentMonth = currentInvoiceMonthKey();
+  const today = todayWorkshopDateKey();
   const monthBilled = invoices
-    .filter((i) => i.paymentStatus !== "cancelled" && i.issuedAt.slice(0, 7) === currentMonth)
+    .filter((i) => i.paymentStatus !== "cancelled" && invoiceMonthKey(i.issuedAt) === currentMonth)
     .reduce((acc, inv) => acc + inv.totalAmount, 0);
-  const breakEven = summary.recurringMonthlyTotal;
+  const breakEven = summary.recurringMonthlyExpense;
   const gap = monthBilled - breakEven;
   const overdue = invoices.filter(
-    (i) => i.paymentStatus === "pending" && i.dueAt.slice(0, 10) < today
+    (i) => i.paymentStatus === "overdue" || isInvoiceOverdue(i, today)
   );
 
   return (
@@ -93,7 +101,10 @@ export function FinanceView({
       </div>
 
       {generatedCount > 0 && (
-        <div className="rounded-md bg-[#142618] border border-[#68a46b]/30 px-4 py-2.5 text-xs text-[#68a46b] flex items-center gap-2">
+        <div
+          role="status"
+          className="rounded-md bg-[#142618] border border-[#68a46b]/30 px-4 py-2.5 text-xs text-[#68a46b] flex items-center gap-2"
+        >
           <Repeat className="h-3.5 w-3.5" />
           <span>
             {generatedCount} rubrica(s) recorrente(s) lançada(s) automaticamente neste acesso.
@@ -113,7 +124,7 @@ export function FinanceView({
               {formatCurrency(summary.currentBalance)}
             </span>
             <span className="block text-[12px] text-[#a9adae] mt-0.5">
-              contas configuradas + movimentos
+              saldo inicial das contas + movimentos
             </span>
           </div>
         </Card>
@@ -240,7 +251,7 @@ export function FinanceView({
                     {t.description ?? t.categoryName ?? "Movimento"}
                   </span>
                   <span className="text-[10px] text-[#8a9092]">
-                    {t.occurredAt.slice(0, 10)} · {SOURCE_LABELS[t.sourceType]}
+                    {formatInvoiceDate(t.occurredAt)} · {SOURCE_LABELS[t.sourceType]}
                     {t.categoryName ? ` · ${t.categoryName}` : ""}
                   </span>
                 </div>
@@ -280,8 +291,14 @@ export function FinanceView({
                 className="flex items-center justify-between rounded-md bg-[#0c0f10] border border-white/[0.05] px-3 py-2"
               >
                 <span className="text-xs text-[#a9adae] truncate pr-2">{r.name}</span>
-                <span className="font-mono text-xs text-[#c96a6a] shrink-0">
-                  −{formatCurrency(r.amount)}
+                <span
+                  className={
+                    "font-mono text-xs shrink-0 " +
+                    (r.type === "income" ? "text-[#68a46b]" : "text-[#c96a6a]")
+                  }
+                >
+                  {r.type === "income" ? "+" : "−"}
+                  {formatCurrency(r.amount)}
                 </span>
               </div>
             ))}

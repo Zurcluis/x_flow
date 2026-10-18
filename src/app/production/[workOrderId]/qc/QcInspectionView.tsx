@@ -7,20 +7,34 @@ import {
   ShieldCheck,
   CheckCircle2,
   ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { QCInspectionGrid } from "@/components/xflow/production/QCInspectionGrid";
 import { initialBMWQCInspection } from "@/lib/demo-data/production-phases-data";
 import { QCInspection, QCItem } from "@/domains/production/types";
+import { WorkOrder } from "@/domains/checkins/types";
 import { generateQCCertificateNumber } from "@/domains/production/qc-validator";
 
 interface QcInspectionViewProps {
-  workOrderId: string;
+  workOrder: WorkOrder;
+  inspectorName: string;
 }
 
-export function QcInspectionView({ workOrderId }: QcInspectionViewProps) {
-  const [inspection, setInspection] = useState<QCInspection>(initialBMWQCInspection);
+export function QcInspectionView({ workOrder, inspectorName }: QcInspectionViewProps) {
+  const [inspection, setInspection] = useState<QCInspection>(() => ({
+    ...initialBMWQCInspection,
+    id: `preview-${workOrder.id}`,
+    workOrderId: workOrder.id,
+    vehiclePlate: workOrder.vehiclePlate,
+    vehicleModel: workOrder.vehicleModel,
+    customerName: workOrder.customerName,
+    inspectorName,
+    status: "in_rework",
+    certificateNumber: undefined,
+    approvedAt: undefined,
+  }));
   const [isApprovedModalOpen, setIsApprovedModalOpen] = useState(false);
   const [certificateNumber, setCertificateNumber] = useState<string>(
     inspection.certificateNumber || generateQCCertificateNumber(inspection.vehiclePlate)
@@ -52,12 +66,24 @@ export function QcInspectionView({ workOrderId }: QcInspectionViewProps) {
       {/* Back button */}
       <div>
         <Link
-          href={`/production/${workOrderId}`}
+          href={`/production/${workOrder.id}`}
           className="inline-flex items-center gap-2 text-xs font-semibold text-[#a9adae] hover:text-[#f7d46d] transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Voltar à Ordem de Trabalho</span>
         </Link>
+      </div>
+
+      {/* Aviso de pré-visualização */}
+      <div
+        role="status"
+        className="flex items-start gap-2.5 rounded-md border border-[#d3a548]/30 bg-[#1f1b14] px-4 py-3 text-xs text-[#f7d46d]"
+      >
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>
+          Pré-visualização: os resultados desta inspeção ainda não são gravados na
+          base de dados nem atualizam o estado da ordem de trabalho.
+        </p>
       </div>
 
       {/* Hero Header */}

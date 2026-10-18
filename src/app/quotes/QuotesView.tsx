@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   FileText,
@@ -11,20 +11,28 @@ import {
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonStyles } from "@/components/ui/button";
 import { QuoteCard } from "@/components/xflow/quotes/QuoteCard";
 import { Quote } from "@/domains/quotes/types";
 import { formatCurrency } from "@/lib/formatting";
 
 interface QuotesViewProps {
   initialQuotes: Quote[];
+  waitingOverFourDays: number;
 }
 
-export function QuotesView({ initialQuotes }: QuotesViewProps) {
+const subscribeToOrigin = () => () => {};
+
+export function QuotesView({ initialQuotes, waitingOverFourDays }: QuotesViewProps) {
   const [quotes] = useState<Quote[]>(initialQuotes);
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "draft">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const appOrigin = useSyncExternalStore(
+    subscribeToOrigin,
+    () => window.location.origin,
+    () => ""
+  );
 
   const handleCopyLink = (token: string) => {
     const url = `${window.location.origin}/quotes/public/${token}`;
@@ -51,52 +59,59 @@ export function QuotesView({ initialQuotes }: QuotesViewProps) {
     return true;
   });
 
-  // Financial KPIs
-  const totalPendingAmount = quotes
-    .filter((q) => q.status === "sent" || q.status === "viewed")
-    .reduce((acc, q) => {
-      const mainOpt = q.options.find((o) => o.isRecommended) || q.options[0];
-      return acc + (mainOpt ? mainOpt.totalWithVat : 0);
-    }, 0);
-
+  const pendingQuotes = quotes.filter((q) => q.status === "sent" || q.status === "viewed");
   const approvedQuotes = quotes.filter((q) => q.status === "approved");
+  const nonDraftQuotes = quotes.filter((q) => q.status !== "draft");
+
+  const totalPendingAmount = pendingQuotes.reduce((acc, q) => {
+    const mainOpt = q.options.find((o) => o.isRecommended) || q.options[0];
+    return acc + (mainOpt ? mainOpt.totalWithVat : 0);
+  }, 0);
+
   const totalApprovedAmount = approvedQuotes.reduce((acc, q) => {
     const opt = q.options.find((o) => o.id === q.selectedOptionId) || q.options[0];
     return acc + (opt ? opt.totalWithVat : 0);
   }, 0);
 
-  const conversionRate = Math.round(
-    (approvedQuotes.length / (quotes.filter((q) => q.status !== "draft").length || 1)) * 100
-  );
+  const conversionRate =
+    nonDraftQuotes.length > 0
+      ? Math.round((approvedQuotes.length / nonDraftQuotes.length) * 100)
+      : 0;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.04]">
         <div className="flex flex-col">
-          <span className="text-xs font-medium text-[#a9adae]">Motor Comercial & Propostas</span>
+          <span className="text-xs font-medium text-[#a9adae]">
+            Motor Comercial e Propostas
+          </span>
           <h1 className="text-2xl font-bold tracking-tight text-[#f1ede5]">
             Orçamentos da Oficina
           </h1>
         </div>
 
-        <Link href="/quotes/new">
-          <Button variant="primary" className="self-start sm:self-auto">
-            <Plus className="h-4 w-4" />
-            <span>Novo Orçamento</span>
-          </Button>
+        <Link
+          href="/quotes/new"
+          className={buttonStyles({
+            variant: "primary",
+            className: "self-start sm:self-auto",
+          })}
+        >
+          <Plus className="h-4 w-4" />
+          <span>Novo Orçamento</span>
         </Link>
       </div>
 
-      {/* Copy notification toast */}
       {copiedToken && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-md bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in">
+        <div
+          role="status"
+          className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-md bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in"
+        >
           <CheckCircle2 className="h-4 w-4 text-[#d3a548]" />
-          <span>Link público seguro copiado para a área de transferência!</span>
+          <span>Link público seguro copiado para a área de transferência.</span>
         </div>
       )}
 
-      {/* KPI Top Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-[#101314] border border-white/[0.08]">
           <div className="flex items-center justify-between text-xs text-[#a9adae]">
@@ -107,13 +122,13 @@ export function QuotesView({ initialQuotes }: QuotesViewProps) {
             {formatCurrency(totalPendingAmount)}
           </span>
           <span className="text-[12px] text-[#8a9092]">
-            {quotes.filter((q) => q.status === "sent" || q.status === "viewed").length} orçamentos ativos
+            {pendingQuotes.length} orçamentos ativos
           </span>
         </div>
 
         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-[#101314] border border-white/[0.08]">
           <div className="flex items-center justify-between text-xs text-[#a9adae]">
-            <span>Aprovado no Mês</span>
+            <span>Aprovado</span>
             <CheckCircle2 className="h-4 w-4 text-[#68a46b]" />
           </div>
           <span className="text-2xl font-black text-[#68a46b] tabular-nums">
@@ -133,27 +148,25 @@ export function QuotesView({ initialQuotes }: QuotesViewProps) {
             {conversionRate}%
           </span>
           <span className="text-[12px] text-[#8a9092]">
-            Média de 3 dias para fecho
+            Aprovadas sobre propostas já enviadas
           </span>
         </div>
 
         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-[#1f1b14] border border-[#d3a548]/30">
           <div className="flex items-center justify-between text-xs text-[#d3a548]">
-            <span>Aguardam Resposta &gt; 4 dias</span>
+            <span>Pendentes há mais de 4 dias</span>
             <AlertTriangle className="h-4 w-4 text-[#d3a548]" />
           </div>
           <span className="text-2xl font-black text-[#f7d46d] tabular-nums">
-            3 Orçamentos
+            {waitingOverFourDays}
           </span>
           <span className="text-[12px] text-[#a9adae]">
-            Requer follow-up comercial
+            {waitingOverFourDays === 1 ? "orçamento requer" : "orçamentos requerem"} follow-up
           </span>
         </div>
       </div>
 
-      {/* Controls Bar: Search & Tabs */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* Search */}
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8a9092]" />
           <input
@@ -165,10 +178,11 @@ export function QuotesView({ initialQuotes }: QuotesViewProps) {
           />
         </div>
 
-        {/* Filter Tabs */}
         <div className="flex items-center gap-1.5 p-1 rounded-md bg-[#101314] border border-white/[0.06] overflow-x-auto select-none">
           <button
+            type="button"
             onClick={() => setActiveTab("all")}
+            aria-pressed={activeTab === "all"}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "all"
                 ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
@@ -178,17 +192,21 @@ export function QuotesView({ initialQuotes }: QuotesViewProps) {
             Todos ({quotes.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("pending")}
+            aria-pressed={activeTab === "pending"}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "pending"
                 ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
                 : "text-[#a9adae] hover:text-[#f1ede5]"
             }`}
           >
-            Pendentes ({quotes.filter((q) => q.status === "sent" || q.status === "viewed").length})
+            Pendentes ({pendingQuotes.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("approved")}
+            aria-pressed={activeTab === "approved"}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "approved"
                 ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
@@ -198,7 +216,9 @@ export function QuotesView({ initialQuotes }: QuotesViewProps) {
             Aprovados ({approvedQuotes.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("draft")}
+            aria-pressed={activeTab === "draft"}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "draft"
                 ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
@@ -210,11 +230,15 @@ export function QuotesView({ initialQuotes }: QuotesViewProps) {
         </div>
       </div>
 
-      {/* Quotes Cards Grid */}
       {filteredQuotes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredQuotes.map((quote) => (
-            <QuoteCard key={quote.id} quote={quote} onCopyLink={handleCopyLink} />
+            <QuoteCard
+              key={quote.id}
+              quote={quote}
+              onCopyLink={handleCopyLink}
+              appOrigin={appOrigin}
+            />
           ))}
         </div>
       ) : (

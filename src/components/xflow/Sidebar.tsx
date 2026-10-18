@@ -92,6 +92,25 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+const FINANCIAL_HREFS = new Set(["/finance", "/reports"]);
+const ADMIN_HREFS = new Set(["/settings"]);
+const MANAGEMENT_HREFS = new Set(["/b2b"]);
+
+export function navSectionsForRole(role?: string): NavSection[] {
+  const hideFinancials = role !== "admin" && role !== "workshop_manager";
+  const hideAdmin = role !== "admin";
+  const hideManagement = role !== "admin" && role !== "workshop_manager";
+  return NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => {
+      if (hideFinancials && FINANCIAL_HREFS.has(item.href)) return false;
+      if (hideAdmin && ADMIN_HREFS.has(item.href)) return false;
+      if (hideManagement && MANAGEMENT_HREFS.has(item.href)) return false;
+      return true;
+    }),
+  })).filter((section) => section.items.length > 0);
+}
+
 function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const pathname = usePathname();
   const Icon = item.icon;
@@ -121,8 +140,9 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ role }: { role?: string }) {
   const [collapsed, setCollapsed] = useState(false);
+  const sections = navSectionsForRole(role);
 
   return (
     <aside
@@ -145,7 +165,7 @@ export function Sidebar() {
           <NavLink key={item.href} item={item} collapsed={collapsed} />
         ))}
 
-        {NAV_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <div key={section.label} className="flex flex-col gap-1 pt-4 mt-1 border-t border-white/[0.04]">
             {collapsed ? null : (
               <span className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wider text-[#8a9092]">

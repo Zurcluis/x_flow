@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Plus, Settings, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Appointment, WorkshopBay } from "@/domains/calendar/types";
+import { civilDateKey } from "@/domains/calendar/datetime";
 import {
   assignVehicleToBayAction,
   createBayAction,
@@ -24,6 +25,7 @@ interface WorkshopMapProps {
   setDragType: (t: WorkshopBay["serviceType"] | null) => void;
   bayModal: "new" | WorkshopBay | null;
   setBayModal: (b: "new" | WorkshopBay | null) => void;
+  canManageBays: boolean;
   onOpenEditAppointment: (a: Appointment) => void;
   onRefresh: () => void;
 }
@@ -46,6 +48,13 @@ const SERVICE_STYLE: Record<WorkshopBay["serviceType"], { floor: string; edge: s
 
 const SERVICE_TYPES: WorkshopBay["serviceType"][] = ["ppf", "wrap", "detailing", "tint", "general"];
 
+const mapDateFormatter = new Intl.DateTimeFormat("pt-PT", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 export function WorkshopMap({
   date,
   appointments,
@@ -58,39 +67,55 @@ export function WorkshopMap({
   setDragType,
   bayModal,
   setBayModal,
+  canManageBays,
   onOpenEditAppointment,
   onRefresh,
 }: WorkshopMapProps) {
-  const dateStr = date.toISOString().slice(0, 10);
+  const dateStr = civilDateKey(date);
   const dayAppointments = appointments.filter((a) => a.date === dateStr);
 
   const [bayError, setBayError] = useState<string | null>(null);
 
   const dropBay = async (bay: WorkshopBay) => {
-    // 1. mudar tipo de serviço
-    if (dragType) {
-      const r = await updateBayAction(bay.id, { serviceType: dragType });
-      if (r.ok) onRefresh();
-      setDragType(null);
-      return;
-    }
-    // 2. arrastar viatura nova (pool)
-    if (draggedId?.startsWith("vehicle:")) {
-      const vehicleId = draggedId.replace("vehicle:", "");
-      const r = await assignVehicleToBayAction(vehicleId, bay.id, dateStr);
-      if (r.ok) onRefresh();
-      else setBayError(r.error ?? "Erro ao atribuir.");
-      setDraggedId(null);
-      return;
-    }
-    // 3. mover marcação existente entre baías
-    if (draggedId) {
-      const appt = appointments.find((a) => a.id === draggedId);
-      if (appt && appt.startIso && appt.endIso) {
-        await moveAppointmentAction(appt.id, appt.startIso, appt.endIso, bay.id);
-        onRefresh();
+    setBayError(null);
+    try {
+      if (dragType) {
+        const r = await updateBayAction(bay.id, { serviceType: dragType });
+        if (r.ok) onRefresh();
+        else setBayError(r.error ?? "Erro ao atualizar a baia.");
+        return;
       }
+      if (draggedId?.startsWith("vehicle:")) {
+        const vehicleId = draggedId.replace("vehicle:", "");
+        const r = await assignVehicleToBayAction(vehicleId, bay.id, dateStr);
+        if (r.ok) onRefresh();
+        else setBayError(r.error ?? "Erro ao atribuir.");
+        return;
+      }
+      if (draggedId) {
+        const appt = appointments.find((a) => a.id === draggedId);
+        if (appt && appt.startIso && appt.endIso) {
+          const r = await moveAppointmentAction(appt.id, appt.startIso, appt.endIso, bay.id);
+          if (r.ok) onRefresh();
+          else if (r.error === "CONFLICT" && r.conflicts?.length) {
+            setBayError(
+              `Conflito: ${r.conflicts
+                .slice(0, 2)
+                .map((conflict) => `${conflict.label} (${conflict.resource})`)
+                .join(" · ")}`
+            );
+          } else {
+            setBayError(r.error ?? "Erro ao mover a marcação.");
+          }
+        }
+      }
+    } catch (dropError) {
+      setBayError(
+        dropError instanceof Error ? dropError.message : "Erro ao atualizar a baia."
+      );
+    } finally {
       setDraggedId(null);
+      setDragType(null);
     }
   };
 
@@ -130,31 +155,35 @@ export function WorkshopMap({
         <span className="text-xs font-bold uppercase tracking-wider text-[#8a9092] px-1 mt-2">
           Tipos de serviço (arrasta para a baia)
         </span>
-        <div className="flex flex-wrap gap-1.5 p-3 rounded-md bg-[#0d0f10] border border-white/[0.06]">
-          {SERVICE_TYPES.map((t) => (
-            <div
-              key={t}
-              draggable
-              onDragStart={(e) => {
-                setDragType(t);
-                e.dataTransfer.setData("text/plain", `type:${t}`);
-                e.dataTransfer.effectAllowed = "move";
-              }}
-              onDragEnd={() => setDragType(null)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-grab active:cursor-grabbing ${SERVICE_STYLE[t].edge} ${SERVICE_STYLE[t].text} bg-[#15191a]`}
-            >
-              {SERVICE_LABEL[t]}
-            </div>
-          ))}
-        </div>
+        {canManageBays && (
+          <div className="flex flex-wrap gap-1.5 p-3 rounded-md bg-[#0d0f10] border border-white/[0.06]">
+            {SERVICE_TYPES.map((t) => (
+              <div
+                key={t}
+                draggable
+                onDragStart={(e) => {
+                  setDragType(t);
+                  e.dataTransfer.setData("text/plain", `type:${t}`);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragEnd={() => setDragType(null)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-grab active:cursor-grabbing ${SERVICE_STYLE[t].edge} ${SERVICE_STYLE[t].text} bg-[#15191a]`}
+              >
+                {SERVICE_LABEL[t]}
+              </div>
+            ))}
+          </div>
+        )}
 
-        <button
-          onClick={() => setBayModal("new")}
-          className="flex items-center justify-center gap-2 p-3 rounded-md border border-dashed border-white/[0.15] text-xs font-bold text-[#a9adae] hover:text-[#f7d46d] hover:border-[#d3a548]/60 transition-all cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Adicionar Baia</span>
-        </button>
+        {canManageBays && (
+          <button
+            onClick={() => setBayModal("new")}
+            className="flex items-center justify-center gap-2 p-3 rounded-md border border-dashed border-white/[0.15] text-xs font-bold text-[#a9adae] hover:text-[#f7d46d] hover:border-[#d3a548]/60 transition-all cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Adicionar Baia</span>
+          </button>
+        )}
 
         {bayError && <p className="text-[11px] font-semibold text-[#f05a50] px-1">{bayError}</p>}
       </div>
@@ -168,13 +197,12 @@ export function WorkshopMap({
           <span className="text-xs font-bold uppercase tracking-wider text-[#8a9092]">
             Planta da Oficina — vista de cima
           </span>
-          <span className="text-[11px] font-mono text-[#a9adae]">{dateStr}</span>
+          <span className="text-[11px] font-mono text-[#a9adae]">{mapDateFormatter.format(date)}</span>
         </div>
 
         <div
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 rounded-[16px] bg-[#0d0f10] border border-white/[0.05]"
+          className="grid grid-cols-1 gap-4 rounded-[16px] border border-white/[0.05] bg-[#0d0f10] p-4 transition-transform sm:grid-cols-2 md:grid-cols-4 md:p-6 md:[transform:rotateX(48deg)_scale(0.92)]"
           style={{
-            transform: "rotateX(48deg) scale(0.92)",
             transformStyle: "preserve-3d",
             boxShadow: "0 60px 80px rgba(0,0,0,0.5)",
           }}
@@ -205,27 +233,27 @@ export function WorkshopMap({
 
                 {/* Placa da baia (em pé, legível) */}
                 <div
-                  className="absolute -top-2 left-2 right-2 flex items-center justify-between"
-                  style={{ transform: "rotateX(-48deg)", transformOrigin: "bottom center" }}
+                  className="absolute -top-2 left-2 right-2 flex items-center justify-between origin-bottom md:[transform:rotateX(-48deg)]"
                 >
                   <span className={`text-[11px] font-black uppercase tracking-wider truncate ${style.text}`}>
                     {bay.name}
                   </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setBayModal(bay);
-                    }}
-                    className="p-1 rounded-md hover:bg-white/10 cursor-pointer shrink-0"
-                    aria-label={`Editar ${bay.name}`}
-                  >
-                    <Settings className="h-3.5 w-3.5 text-[#a9adae]" />
-                  </button>
+                  {canManageBays && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBayModal(bay);
+                      }}
+                      className="p-1 rounded-md hover:bg-white/10 cursor-pointer shrink-0"
+                      aria-label={`Editar ${bay.name}`}
+                    >
+                      <Settings className="h-3.5 w-3.5 text-[#a9adae]" />
+                    </button>
+                  )}
                 </div>
 
                 <span
-                  className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mb-2 ${style.edge} border ${style.text}`}
-                  style={{ transform: "rotateX(-48deg)", transformOrigin: "top center" }}
+                  className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mb-2 ${style.edge} border ${style.text} origin-top md:[transform:rotateX(-48deg)]`}
                 >
                   {SERVICE_LABEL[bay.serviceType]}
                 </span>
@@ -243,11 +271,7 @@ export function WorkshopMap({
                       }}
                       onDragEnd={() => setDraggedId(null)}
                       onClick={() => onOpenEditAppointment(a)}
-                      className="cursor-grab active:cursor-grabbing px-2.5 py-2 rounded-sm bg-[#1b2021] border border-white/[0.15] shadow-lg hover:border-[#d3a548]/60 transition-all"
-                      style={{
-                        transform: "rotateX(-48deg) translateZ(6px)",
-                        transformOrigin: "bottom center",
-                      }}
+                      className="cursor-grab active:cursor-grabbing px-2.5 py-2 rounded-sm bg-[#1b2021] border border-white/[0.15] shadow-lg hover:border-[#d3a548]/60 transition-all origin-bottom md:[transform:rotateX(-48deg)_translateZ(6px)]"
                     >
                       <span className="text-[11px] font-black font-mono text-[#f7d46d] block leading-tight">
                         {a.vehiclePlate}
@@ -271,18 +295,20 @@ export function WorkshopMap({
           })}
 
           {/* Tile adicionar baia */}
-          <button
-            onClick={() => setBayModal("new")}
-            className="min-h-[190px] rounded-md border-2 border-dashed border-white/[0.12] flex flex-col items-center justify-center gap-2 text-[#5a6062] hover:text-[#f7d46d] hover:border-[#d3a548]/60 transition-all cursor-pointer"
-          >
-            <Plus className="h-6 w-6" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Nova Baia</span>
-          </button>
+          {canManageBays && (
+            <button
+              onClick={() => setBayModal("new")}
+              className="min-h-[190px] rounded-md border-2 border-dashed border-white/[0.12] flex flex-col items-center justify-center gap-2 text-[#5a6062] hover:text-[#f7d46d] hover:border-[#d3a548]/60 transition-all cursor-pointer"
+            >
+              <Plus className="h-6 w-6" />
+              <span className="text-[11px] font-bold uppercase tracking-wider">Nova Baia</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Modal de baia (criar/editar) */}
-      {bayModal && (
+      {canManageBays && bayModal && (
         <BayModal
           bay={bayModal === "new" ? null : bayModal}
           technicians={technicians}
@@ -313,10 +339,58 @@ function BayModal({
     bay?.serviceType ?? "general"
   );
   const [technicianId, setTechnicianId] = useState(
-    technicians.find((t) => t.name === bay?.defaultTechnicianName)?.id ?? ""
+    bay?.defaultTechnicianId ??
+      technicians.find((t) => t.name === bay?.defaultTechnicianName)?.id ??
+      ""
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const node = dialogRef.current;
+    if (!node) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const focusableSelector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () =>
+      Array.from(node.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) => element.offsetParent !== null
+      );
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const firstInput =
+      node.querySelector<HTMLElement>("input, select, textarea") ?? getFocusable()[0];
+    window.setTimeout(() => firstInput?.focus(), 0);
+    node.addEventListener("keydown", onKeyDown);
+    return () => {
+      node.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, []);
 
   const inputClass =
     "h-10 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] w-full";
@@ -326,60 +400,76 @@ function BayModal({
       setError("O nome da baia é obrigatório.");
       return;
     }
+    setError(null);
     setSaving(true);
-    if (bay) {
-      const r = await updateBayAction(bay.id, {
-        name: name.trim(),
-        serviceType,
-        technicianId: technicianId || undefined,
-      });
-      if (!r.ok) {
-        setError(r.error ?? "Erro ao guardar.");
-        setSaving(false);
-        return;
+    try {
+      if (bay) {
+        const r = await updateBayAction(bay.id, {
+          name: name.trim(),
+          serviceType,
+          technicianId: technicianId || null,
+        });
+        if (!r.ok) {
+          setError(r.error ?? "Erro ao guardar.");
+          return;
+        }
+      } else {
+        const code = `B-${Math.floor(Math.random() * 90 + 10)}`;
+        const r = await createBayAction({
+          name: name.trim(),
+          code,
+          serviceType,
+          technicianId: technicianId || undefined,
+        });
+        if (!r.ok) {
+          setError(r.error ?? "Erro ao criar a baia.");
+          return;
+        }
       }
-    } else {
-      const code = `B-${Math.floor(Math.random() * 90 + 10)}`;
-      const r = await createBayAction({
-        name: name.trim(),
-        code,
-        serviceType,
-        technicianId: technicianId || undefined,
-      });
-      if (!r.ok) {
-        setError(r.error ?? "Erro ao criar a baia.");
-        setSaving(false);
-        return;
-      }
+      onRefresh();
+      onClose();
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    onRefresh();
-    onClose();
   };
 
   const handleDelete = async () => {
     if (!bay) return;
+    setError(null);
     setSaving(true);
-    const r = await deleteBayAction(bay.id);
-    setSaving(false);
-    if (!r.ok) {
-      setError(r.error ?? "Erro ao eliminar.");
-      return;
+    try {
+      const r = await deleteBayAction(bay.id);
+      if (!r.ok) {
+        setError(r.error ?? "Erro ao eliminar.");
+        return;
+      }
+      onRefresh();
+      onClose();
+    } finally {
+      setSaving(false);
     }
-    onRefresh();
-    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#050606]/85 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050606]/85 p-4 backdrop-blur-sm">
       <div
-        className="relative w-full max-w-md rounded-[18px] bg-[#101314] border border-white/[0.12] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.6)] text-[#f1ede5]"
+        ref={dialogRef}
+        className="relative w-full max-w-md rounded-[18px] border border-white/[0.12] bg-[#101314] p-6 text-[#f1ede5] shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="bay-modal-title"
       >
         <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-          <h2 className="text-lg font-bold">{bay ? "Editar Baia" : "Nova Baia"}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/[0.06] cursor-pointer" aria-label="Fechar">
+          <h2 id="bay-modal-title" className="text-lg font-bold">
+            {bay ? "Editar Baia" : "Nova Baia"}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="p-1.5 rounded-lg hover:bg-white/[0.06] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Fechar"
+          >
             <X className="h-5 w-5 text-[#a9adae]" />
           </button>
         </div>
@@ -423,30 +513,63 @@ function BayModal({
               ))}
             </select>
           </label>
-          {error && <p className="text-xs font-semibold text-[#f05a50]">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs font-semibold text-[#f05a50]">
+              {error}
+            </p>
+          )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 mt-5 pt-4 border-t border-white/[0.06]">
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-5 pt-4 border-t border-white/[0.06]">
           {bay ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDelete}
-              disabled={saving}
-              className="border-[#f05a50]/40 text-[#f05a50] hover:bg-[#f05a50]/10"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Eliminar</span>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {confirmDelete ? (
+                <>
+                  <span className="text-[11px] font-semibold text-[#f78e85]">
+                    Eliminar esta baia?
+                  </span>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    onClick={handleDelete}
+                    disabled={saving}
+                  >
+                    <span>Confirmar</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmDelete(false)}
+                    disabled={saving}
+                  >
+                    <span>Voltar</span>
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={saving}
+                  className="border-[#f05a50]/40 text-[#f05a50] hover:bg-[#f05a50]/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Eliminar</span>
+                </Button>
+              )}
+            </div>
           ) : (
             <span />
           )}
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
+            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={saving}>
               <span>Fechar</span>
             </Button>
-            <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
-              <span>{bay ? "Guardar" : "Criar Baia"}</span>
+            <Button type="button" variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+              <span>{saving ? "A guardar…" : bay ? "Guardar" : "Criar Baia"}</span>
             </Button>
           </div>
         </div>

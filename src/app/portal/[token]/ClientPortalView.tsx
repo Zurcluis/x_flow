@@ -36,6 +36,17 @@ const TIER_LABEL: Record<string, string> = {
   premium: "Premium",
 };
 
+function formatDatePt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
 function vatPercentLabel(rate: number): string {
   // quote_options.vat_rate é fração (0.23 = 23%)
   const percent = Math.round(rate * 100);
@@ -61,9 +72,11 @@ function displayLineLabel(line: {
 export function ClientPortalView({
   quote,
   token,
+  expired,
 }: {
   quote: PublicQuote;
   token: string;
+  expired: boolean;
 }) {
   const [status, setStatus] = useState(quote.status);
   const [selectedOptionId, setSelectedOptionId] = useState(
@@ -72,7 +85,12 @@ export function ClientPortalView({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const canDecide = status === "sent" || status === "viewed" || status === "draft";
+  const canDecide =
+    !expired && (status === "sent" || status === "viewed");
+  const displayStatus =
+    expired && (status === "sent" || status === "viewed")
+      ? "expired"
+      : status;
 
   const handleAccept = async (optionId: string) => {
     setBusy(optionId);
@@ -118,7 +136,8 @@ export function ClientPortalView({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-col gap-1.5">
               <span className="text-xs text-[#8a9092]">
-                Proposta {quote.quoteNumber} · {STATUS_LABEL[status] ?? status}
+                Proposta {quote.quoteNumber} ·{" "}
+                {STATUS_LABEL[displayStatus] ?? displayStatus}
               </span>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 {quote.vehicleModel}
@@ -132,22 +151,31 @@ export function ClientPortalView({
                 {quote.vehicleColor && <span>{quote.vehicleColor}</span>}
                 <span>·</span>
                 <span>Bem-vindo, {quote.customerName}</span>
+                <span>·</span>
+                <span className={expired ? "text-[#f05a50]" : ""}>
+                  {expired ? "Expirada em " : "Válida até "}
+                  {formatDatePt(quote.expiresAt)}
+                </span>
               </div>
             </div>
 
             <Badge
               variant="outline"
               className={`text-xs px-3 py-1.5 font-bold ${
-                status === "approved"
+                displayStatus === "approved"
                   ? "bg-[#68a46b]/20 text-[#68a46b] border-[#68a46b]/30"
-                  : status === "rejected"
+                  : displayStatus === "rejected" || displayStatus === "expired"
                   ? "bg-[#f05a50]/20 text-[#f05a50] border-[#f05a50]/30"
                   : "bg-[#d3a548]/20 text-[#f7d46d] border-[#d3a548]/30"
               }`}
             >
-              {status === "approved" && <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
-              {status === "rejected" && <XCircle className="h-3.5 w-3.5 mr-1" />}
-              {STATUS_LABEL[status] ?? status}
+              {displayStatus === "approved" && (
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+              )}
+              {(displayStatus === "rejected" || displayStatus === "expired") && (
+                <XCircle className="h-3.5 w-3.5 mr-1" />
+              )}
+              {STATUS_LABEL[displayStatus] ?? displayStatus}
             </Badge>
           </div>
         </div>
@@ -242,6 +270,7 @@ export function ClientPortalView({
                     size="sm"
                     onClick={() => handleAccept(opt.id)}
                     disabled={busy !== null}
+                    aria-busy={isThisBusy}
                     className="mt-1 self-start"
                   >
                     {isThisBusy ? (
@@ -257,14 +286,44 @@ export function ClientPortalView({
           })}
         </div>
 
-        {error && <p className="text-xs font-semibold text-[#f05a50]">{error}</p>}
+        {error && (
+          <p role="alert" className="text-xs font-semibold text-[#f05a50]">
+            {error}
+          </p>
+        )}
 
         {status === "approved" && (
-          <div className="p-5 rounded-[16px] bg-[#141b17] border border-[#68a46b]/30 flex items-center gap-3 text-sm text-[#f1ede5]">
+          <div
+            role="status"
+            className="p-5 rounded-[16px] bg-[#141b17] border border-[#68a46b]/30 flex items-center gap-3 text-sm text-[#f1ede5]"
+          >
             <Award className="h-5 w-5 text-[#68a46b] shrink-0" />
             <span>
-              Proposta aceite! A equipa X-Motion vai contactar-te para agendar a entrada da
-              viatura.
+              Proposta aceite e registada. A equipa X-Motion vai contactar-te para
+              agendar a entrada da viatura.
+            </span>
+          </div>
+        )}
+
+        {status === "rejected" && (
+          <div
+            role="status"
+            className="p-5 rounded-[16px] bg-[#251515] border border-[#f05a50]/30 flex items-center gap-3 text-sm text-[#f1ede5]"
+          >
+            <XCircle className="h-5 w-5 text-[#f05a50] shrink-0" />
+            <span>Proposta recusada e registada. Obrigado pelo teu retorno.</span>
+          </div>
+        )}
+
+        {expired && (status === "sent" || status === "viewed") && (
+          <div
+            role="status"
+            className="p-5 rounded-[16px] bg-[#251515] border border-[#f05a50]/30 flex items-center gap-3 text-sm text-[#f1ede5]"
+          >
+            <XCircle className="h-5 w-5 text-[#f05a50] shrink-0" />
+            <span>
+              Esta proposta expirou e já não aceita decisões. Contacta a X-Motion
+              para receber uma nova versão.
             </span>
           </div>
         )}

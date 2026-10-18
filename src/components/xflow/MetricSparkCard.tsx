@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUp, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,14 @@ export function MetricCard({
   className,
   children,
 }: MetricCardBaseProps) {
+  const trimmedChange = change.trim();
+  const isNegative = trimmedChange.startsWith("-");
+  const isNeutral =
+    trimmedChange === "0" ||
+    trimmedChange === "0%" ||
+    trimmedChange.startsWith("0 ");
+  const ChangeIcon = isNegative ? ArrowDown : isNeutral ? Minus : ArrowUp;
+
   return (
     <Card
       className={cn(
@@ -35,8 +43,17 @@ export function MetricCard({
           <span className="text-2xl font-bold tracking-tight text-[#f1ede5] tabular-nums">
             {value}
           </span>
-          <div className="inline-flex items-center gap-0.5 rounded-full bg-[#68a46b]/15 px-2 py-0.5 text-xs font-semibold text-[#68a46b] border border-[#68a46b]/30">
-            <ArrowUp className="h-3 w-3 stroke-[2.5]" />
+          <div
+            className={cn(
+              "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold border",
+              isNegative
+                ? "bg-[#f05a50]/15 text-[#f05a50] border-[#f05a50]/30"
+                : isNeutral
+                  ? "bg-white/[0.04] text-[#a9adae] border-white/[0.08]"
+                  : "bg-[#68a46b]/15 text-[#68a46b] border-[#68a46b]/30"
+            )}
+          >
+            <ChangeIcon className="h-3 w-3 stroke-[2.5]" />
             <span>{change}</span>
           </div>
         </div>

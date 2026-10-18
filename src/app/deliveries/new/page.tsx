@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { buttonStyles } from "@/components/ui/button";
 import { listDeliveryCandidates } from "@/server/deliveries";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 import { NewDeliveryWizard } from "./NewDeliveryWizard";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewDeliveryPage() {
-  await requireAuth();
-  const organizationId = await getPrimaryOrganizationId();
-  const candidates = await listDeliveryCandidates(organizationId);
+  const auth = await requireRole(SCHEDULING_ROLES);
+  const candidates = await listDeliveryCandidates(auth.organizationId);
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -37,13 +37,23 @@ export default async function NewDeliveryPage() {
 
       {candidates.length === 0 ? (
         <div className="p-8 rounded-[18px] bg-[#101314] border border-white/[0.06] text-sm text-[#a9adae]">
-          Não há ordens de trabalho concluídas com QC aprovado à espera de entrega.
-          As OTs aparecem aqui assim que estiverem <strong className="text-[#f1ede5]">concluídas</strong> e
-          com o <strong className="text-[#f1ede5]">QC aprovado</strong>.
+          Não há ordens de trabalho concluídas sem entrega registada. As OTs aparecem
+          aqui assim que estiverem <strong className="text-[#f1ede5]">concluídas</strong>.
+          O certificado de QC aprovado é mostrado no passo 1 quando existir.
         </div>
       ) : (
         <NewDeliveryWizard candidates={candidates} />
       )}
+
+      <div>
+        <Link
+          href="/deliveries"
+          className={buttonStyles({ variant: "ghost", size: "sm" })}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Voltar às Entregas</span>
+        </Link>
+      </div>
     </div>
   );
 }

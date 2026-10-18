@@ -1,14 +1,13 @@
 import { DeliveriesView } from "./DeliveriesView";
-import { listDeliveries } from "@/server/finance";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { listDeliveries } from "@/server/deliveries";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function DeliveriesPage() {
-  await requireAuth();
-  const organizationId = await getPrimaryOrganizationId();
-  const deliveries = await listDeliveries(organizationId);
+  const auth = await requireRole(SCHEDULING_ROLES);
+  const deliveries = await listDeliveries(auth.organizationId);
 
   return <DeliveriesView initialDeliveries={deliveries} />;
 }

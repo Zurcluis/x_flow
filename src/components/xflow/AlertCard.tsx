@@ -27,6 +27,11 @@ export function XFlowIntelligenceCard({ alerts }: XFlowIntelligenceCardProps) {
         </CardHeader>
 
         <CardContent className="p-0 flex flex-col gap-3">
+          {alerts.length === 0 && (
+            <p className="text-xs text-[#8a9092] py-4">
+              Sem alertas operacionais neste momento.
+            </p>
+          )}
           {alerts.map((alert) => {
             const isDanger = alert.severity === "danger";
 

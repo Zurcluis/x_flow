@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Layers,
   Wrench,
@@ -31,48 +32,113 @@ const KANBAN_COLUMNS: Array<{
   { status: "completed", label: "Concluído", accent: "text-[#68a46b]" },
 ];
 
+const STATUS_BADGE: Record<
+  WorkOrder["status"],
+  { label: string; variant: "in_progress" | "waiting_parts" | "success" | "danger" | "outline" }
+> = {
+  draft: { label: "Rascunho", variant: "outline" },
+  in_progress: { label: "Em Produção", variant: "in_progress" },
+  waiting_parts: { label: "A Guardar Peças", variant: "danger" },
+  quality_control: { label: "Em Controlo de Qualidade", variant: "in_progress" },
+  completed: { label: "Concluída", variant: "success" },
+};
+
+function statusLabel(status: WorkOrder["status"]): string {
+  return KANBAN_COLUMNS.find((column) => column.status === status)?.label ?? status;
+}
+
 interface ProductionViewProps {
   initialWorkOrders: WorkOrder[];
 }
 
 export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
+  const router = useRouter();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(initialWorkOrders);
   const [activeTab, setActiveTab] = useState<"all" | "in_progress" | "waiting_parts">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropColumn, setDropColumn] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
+    null
+  );
+  const [lastSynced, setLastSynced] = useState(initialWorkOrders);
+  if (lastSynced !== initialWorkOrders) {
+    setLastSynced(initialWorkOrders);
+    setWorkOrders(initialWorkOrders);
+  }
 
   const handleMoveCard = async (workOrderId: string, status: WorkOrder["status"]) => {
+    if (pendingId) return;
     const wo = workOrders.find((w) => w.id === workOrderId);
     if (!wo || wo.status === status) return;
-    // otimista
+
+    const previousStatus = wo.status;
+    setPendingId(workOrderId);
+    setFeedback(null);
     setWorkOrders((prev) =>
       prev.map((w) => (w.id === workOrderId ? { ...w, status } : w))
     );
-    const result = await updateWorkOrderStatusAction(workOrderId, status);
-    if (!result.ok) console.error("Falha ao mudar estado:", result.error);
+
+    try {
+      const result = await updateWorkOrderStatusAction(workOrderId, status);
+      if (!result.ok) {
+        setWorkOrders((prev) =>
+          prev.map((w) => (w.id === workOrderId ? { ...w, status: previousStatus } : w))
+        );
+        setFeedback({
+          tone: "error",
+          message: result.error || "Não foi possível alterar o estado da ordem.",
+        });
+        return;
+      }
+      setFeedback({
+        tone: "success",
+        message: `${wo.workOrderNumber} movida para ${statusLabel(status)}.`,
+      });
+      router.refresh();
+    } catch (error) {
+      setWorkOrders((prev) =>
+        prev.map((w) => (w.id === workOrderId ? { ...w, status: previousStatus } : w))
+      );
+      setFeedback({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível alterar o estado da ordem.",
+      });
+    } finally {
+      setPendingId(null);
+    }
   };
 
   const totalActiveJobs = workOrders.filter((wo) => wo.status === "in_progress").length;
+  const draftOrders = workOrders.filter((wo) => wo.status === "draft");
+  const qcOrders = workOrders.filter((wo) => wo.status === "quality_control");
+  const completedOrders = workOrders.filter((wo) => wo.status === "completed");
   const waitingOrders = workOrders.filter((wo) => wo.status === "waiting_parts");
   const averageProgress = Math.round(
     workOrders.reduce((acc, wo) => acc + wo.progressPercentage, 0) / (workOrders.length || 1)
   );
   const totalHours = workOrders.reduce((acc, wo) => acc + wo.actualHoursSpent, 0);
 
-  const filteredOrders = workOrders.filter((wo) => {
+  const searchedOrders = workOrders.filter((wo) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      wo.workOrderNumber.toLowerCase().includes(q) ||
+      wo.vehiclePlate.toLowerCase().includes(q) ||
+      wo.vehicleModel.toLowerCase().includes(q) ||
+      wo.customerName.toLowerCase().includes(q) ||
+      wo.primaryTechnicianName.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredOrders = searchedOrders.filter((wo) => {
     if (activeTab === "in_progress" && wo.status !== "in_progress") return false;
     if (activeTab === "waiting_parts" && wo.status !== "waiting_parts") return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      return (
-        wo.workOrderNumber.toLowerCase().includes(q) ||
-        wo.vehiclePlate.toLowerCase().includes(q) ||
-        wo.vehicleModel.toLowerCase().includes(q) ||
-        wo.primaryTechnicianName.toLowerCase().includes(q)
-      );
-    }
     return true;
   });
 
@@ -90,9 +156,14 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 p-1 rounded-md bg-[#101314] border border-white/[0.06]">
+          <div
+            className="flex items-center gap-1 p-1 rounded-md bg-[#101314] border border-white/[0.06]"
+            role="group"
+            aria-label="Modo de visualização"
+          >
             <button
               onClick={() => setViewMode("kanban")}
+              aria-pressed={viewMode === "kanban"}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
                 viewMode === "kanban"
                   ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40"
@@ -104,6 +175,7 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
             </button>
             <button
               onClick={() => setViewMode("list")}
+              aria-pressed={viewMode === "list"}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
                 viewMode === "list"
                   ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40"
@@ -131,10 +203,10 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
             <Layers className="h-4 w-4 text-[#d3a548]" />
           </div>
           <span className="text-2xl font-black text-[#f1ede5] tabular-nums">
-            {totalActiveJobs} Viaturas
+            {totalActiveJobs} Viatura{totalActiveJobs === 1 ? "" : "s"}
           </span>
-          <span className="text-[12px] text-[#68a46b]">
-            100% de capacidade das baias
+          <span className="text-[12px] text-[#8a9092]">
+            {draftOrders.length} em rascunho · {qcOrders.length} em QC
           </span>
         </div>
 
@@ -147,7 +219,7 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
             {averageProgress}%
           </span>
           <span className="text-[12px] text-[#8a9092]">
-            Alinhado com os prazos
+            {completedOrders.length} de {workOrders.length} ordens concluídas
           </span>
         </div>
 
@@ -168,23 +240,56 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
 
         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-[#101314] border border-white/[0.08]">
           <div className="flex items-center justify-between text-xs text-[#a9adae]">
-            <span>Horas Dedicadas Hoje</span>
+            <span>Horas Acumuladas</span>
             <Clock className="h-4 w-4 text-[#d3a548]" />
           </div>
           <span className="text-2xl font-black text-[#f1ede5] tabular-nums">
             {totalHours.toFixed(1)}h
           </span>
           <span className="text-[12px] text-[#8a9092]">
-            Total acumulado em produção
+            Total registado em produção
           </span>
         </div>
+      </div>
+
+      {feedback && (
+        <div
+          role={feedback.tone === "error" ? "alert" : "status"}
+          className={`flex items-center justify-between gap-3 rounded-md border px-4 py-3 text-xs ${
+            feedback.tone === "error"
+              ? "border-[#f05a50]/30 bg-[#f05a50]/10 text-[#f8a19b]"
+              : "border-[#68a46b]/30 bg-[#68a46b]/10 text-[#9ed3a0]"
+          }`}
+        >
+          <span>{feedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="cursor-pointer font-bold uppercase tracking-wide opacity-70 hover:opacity-100"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
+
+      {/* Shared search */}
+      <div className="relative w-full max-w-md">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8a9092]" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Pesquisar por OT, matrícula, modelo, cliente ou técnico..."
+          aria-label="Pesquisar ordens de trabalho"
+          className="w-full h-10 pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
+        />
       </div>
 
       {/* Kanban Board */}
       {viewMode === "kanban" && (
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-3">
           {KANBAN_COLUMNS.map((col) => {
-            const columnOrders = workOrders.filter((wo) => wo.status === col.status);
+            const columnOrders = searchedOrders.filter((wo) => wo.status === col.status);
             const isDropTarget = dropColumn === col.status;
             return (
               <div
@@ -217,18 +322,29 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
 
                 {columnOrders.map((wo) => {
                   const isWaiting = wo.status === "waiting_parts";
+                  const isPending = pendingId === wo.id;
                   return (
                     <div
                       key={wo.id}
-                      draggable
-                      onDragStart={() => setDraggedId(wo.id)}
+                      draggable={!isPending}
+                      onDragStart={(e) => {
+                        setDraggedId(wo.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
                       onDragEnd={() => setDraggedId(null)}
-                      className="cursor-grab active:cursor-grabbing p-3 rounded-md bg-[#101314] border border-white/[0.08] hover:border-[#d3a548]/40 transition-all"
+                      className={`cursor-grab active:cursor-grabbing p-3 rounded-md bg-[#101314] border transition-all ${
+                        isPending
+                          ? "opacity-60 pointer-events-none border-[#d3a548]/60"
+                          : "border-white/[0.08] hover:border-[#d3a548]/40"
+                      }`}
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center justify-between gap-1.5 mb-1">
                         <span className="font-mono font-black text-[11px] text-[#f7d46d]">
                           {wo.workOrderNumber}
                         </span>
+                        <Badge variant={STATUS_BADGE[wo.status].variant} className="text-[10px]">
+                          {STATUS_BADGE[wo.status].label}
+                        </Badge>
                       </div>
                       <span className="text-xs font-bold text-[#f1ede5] block truncate">
                         {wo.vehicleModel}
@@ -236,7 +352,14 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
                       <span className="text-[11px] text-[#8a9092] block truncate">
                         {wo.serviceTitle}
                       </span>
-                      <div className="relative h-1.5 w-full rounded-full bg-white/[0.08] overflow-hidden mt-2">
+                      <div
+                        className="relative h-1.5 w-full rounded-full bg-white/[0.08] overflow-hidden mt-2"
+                        role="progressbar"
+                        aria-valuenow={wo.progressPercentage}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`Progresso de ${wo.workOrderNumber}`}
+                      >
                         <div
                           className={`h-full rounded-full ${
                             isWaiting ? "bg-[#f05a50]" : "bg-gradient-to-r from-[#d3a548] to-[#f7d46d]"
@@ -248,12 +371,30 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
                         <span className="truncate">{wo.primaryTechnicianName}</span>
                         <span className="font-mono">{wo.progressPercentage}%</span>
                       </div>
-                      <Link
-                        href={`/production/${wo.id}`}
-                        className="text-[11px] font-semibold text-[#d3a548] hover:underline mt-1.5 inline-block"
-                      >
-                        Painel da Obra →
-                      </Link>
+                      <div className="flex items-center justify-between gap-2 mt-2">
+                        <Link
+                          href={`/production/${wo.id}`}
+                          className="text-[11px] font-semibold text-[#d3a548] hover:underline"
+                        >
+                          Painel da Obra →
+                        </Link>
+                        <select
+                          value={wo.status}
+                          disabled={isPending}
+                          aria-label={`Alterar estado de ${wo.workOrderNumber}`}
+                          onChange={(e) => {
+                            const next = e.target.value as WorkOrder["status"];
+                            if (next !== wo.status) void handleMoveCard(wo.id, next);
+                          }}
+                          className="cursor-pointer rounded-sm border border-white/[0.08] bg-[#0d0f10] px-1.5 py-1 text-[10px] text-[#a9adae] hover:border-[#d3a548]/40 focus:border-[#d3a548] disabled:cursor-wait"
+                        >
+                          {KANBAN_COLUMNS.map((option) => (
+                            <option key={option.status} value={option.status}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   );
                 })}
@@ -272,24 +413,17 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
       {/* List View */}
       {viewMode === "list" && (
         <>
-          {/* Controls Bar: Search & Tabs */}
+          {/* Controls Bar: Tabs */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8a9092]" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Pesquisar por OT, matrícula, modelo ou técnico..."
-            className="w-full h-10 pl-10 pr-4 rounded-md bg-[#101314] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] placeholder-[#8a9092] transition-colors"
-          />
-        </div>
+        <span className="text-xs text-[#8a9092]">
+          {filteredOrders.length} de {workOrders.length} ordens
+        </span>
 
         {/* Tabs */}
         <div className="flex items-center gap-1.5 p-1 rounded-md bg-[#101314] border border-white/[0.06] select-none">
           <button
             onClick={() => setActiveTab("all")}
+            aria-pressed={activeTab === "all"}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
               activeTab === "all"
                 ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
@@ -300,6 +434,7 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
           </button>
           <button
             onClick={() => setActiveTab("in_progress")}
+            aria-pressed={activeTab === "in_progress"}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
               activeTab === "in_progress"
                 ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
@@ -310,6 +445,7 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
           </button>
           <button
             onClick={() => setActiveTab("waiting_parts")}
+            aria-pressed={activeTab === "waiting_parts"}
             className={`px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer ${
               activeTab === "waiting_parts"
                 ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
@@ -325,11 +461,16 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredOrders.map((wo) => {
           const isWaiting = wo.status === "waiting_parts";
+          const isPending = pendingId === wo.id;
 
           return (
             <Card
               key={wo.id}
-              className="flex flex-col justify-between p-5 bg-[#101314] border border-white/[0.08] hover:border-white/20 transition-all duration-150"
+              className={`flex flex-col justify-between p-5 bg-[#101314] border transition-all duration-150 ${
+                isPending
+                  ? "opacity-60 border-[#d3a548]/60"
+                  : "border-white/[0.08] hover:border-white/20"
+              }`}
             >
               <div>
                 {/* Header: OT Number, Plate & Status */}
@@ -350,10 +491,10 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
                   </div>
 
                   <Badge
-                    variant={isWaiting ? "danger" : "in_progress"}
+                    variant={STATUS_BADGE[wo.status].variant}
                     className="text-[11px] shrink-0"
                   >
-                    {isWaiting ? "A Guardar Peças" : "Em Produção"}
+                    {STATUS_BADGE[wo.status].label}
                   </Badge>
                 </div>
 
@@ -422,6 +563,18 @@ export function ProductionView({ initialWorkOrders }: ProductionViewProps) {
             </Card>
           );
         })}
+
+        {filteredOrders.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-white/[0.08] bg-[#101314]/50 px-6 py-12 text-center">
+            <Search className="h-6 w-6 text-[#5a6062]" />
+            <span className="text-sm font-semibold text-[#f1ede5]">
+              Nenhuma ordem encontrada
+            </span>
+            <span className="text-xs text-[#8a9092]">
+              Ajusta a pesquisa ou o filtro para ver outras ordens de trabalho.
+            </span>
+          </div>
+        )}
       </div>
         </>
       )}

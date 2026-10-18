@@ -11,13 +11,15 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Quote } from "@/domains/quotes/types";
 import { formatCurrency } from "@/lib/formatting";
+import { formatQuoteDate } from "@/domains/quotes/presentation";
 
 interface QuoteCardProps {
   quote: Quote;
   onCopyLink?: (token: string) => void;
+  appOrigin?: string;
 }
 
-export function QuoteCard({ quote, onCopyLink }: QuoteCardProps) {
+export function QuoteCard({ quote, onCopyLink, appOrigin = "" }: QuoteCardProps) {
   // Find recommended or approved option
   const mainOption =
     quote.options.find((o) => o.id === quote.selectedOptionId) ||
@@ -43,7 +45,7 @@ export function QuoteCard({ quote, onCopyLink }: QuoteCardProps) {
   };
 
   const whatsappMessage = encodeURIComponent(
-    `Olá ${quote.customerName}, segue a proposta comercial da X-Motion para o seu ${quote.vehicleModel} (${quote.vehiclePlate}):\n${typeof window !== "undefined" ? window.location.origin : ""}/quotes/public/${quote.publicToken}`
+    `Olá ${quote.customerName}, segue a proposta comercial para o seu ${quote.vehicleModel} (${quote.vehiclePlate}):\n${appOrigin}/quotes/public/${quote.publicToken}`
   );
 
   return (
@@ -56,7 +58,7 @@ export function QuoteCard({ quote, onCopyLink }: QuoteCardProps) {
               {quote.quoteNumber}
             </span>
             <span className="text-[12px] text-[#8a9092]">
-              · {quote.createdAt.slice(0, 10)}
+              · {formatQuoteDate(quote.createdAt)}
             </span>
           </div>
 
@@ -130,15 +132,18 @@ export function QuoteCard({ quote, onCopyLink }: QuoteCardProps) {
             rel="noopener noreferrer"
             className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-[#68a46b]/20 hover:text-[#68a46b] text-[#8a9092] transition-colors"
             title="Enviar por WhatsApp"
+            aria-label="Enviar por WhatsApp"
           >
             <MessageCircle className="h-4 w-4" />
           </a>
 
           {/* Copy Public Link */}
           <button
+            type="button"
             onClick={() => onCopyLink && onCopyLink(quote.publicToken)}
             className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/10 text-[#8a9092] hover:text-[#f1ede5] transition-colors cursor-pointer"
-            title="Copiar Link Público"
+            title="Copiar link público"
+            aria-label="Copiar link público"
           >
             <Share2 className="h-4 w-4" />
           </button>
@@ -148,7 +153,8 @@ export function QuoteCard({ quote, onCopyLink }: QuoteCardProps) {
             href={`/quotes/public/${quote.publicToken}`}
             target="_blank"
             className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-[#d3a548]/20 hover:text-[#f7d46d] text-[#8a9092] transition-colors"
-            title="Ver Página do Cliente"
+            title="Ver página do cliente"
+            aria-label="Ver página do cliente"
           >
             <ExternalLink className="h-4 w-4" />
           </Link>

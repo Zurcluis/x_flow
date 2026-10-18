@@ -32,6 +32,12 @@ export interface CustomerCommunication {
   createdAt: string;
 }
 
+export type CustomerB2BDraft = Partial<Omit<B2BAccountDetails, "id" | "customerId">>;
+
+export type CustomerDraft = Omit<Partial<Customer>, "b2bDetails"> & {
+  b2bDetails?: CustomerB2BDraft;
+};
+
 export interface Customer {
   id: string;
   organizationId: string;

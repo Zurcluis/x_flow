@@ -2,16 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Key,
-  ExternalLink,
-  CreditCard,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowLeft, Key, ExternalLink, CreditCard } from "lucide-react";
+import { buttonStyles } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { BelongingsChecklist } from "@/components/xflow/deliveries/BelongingsChecklist";
+import { formatCheckinDate } from "@/domains/checkins/presentation";
 
 import { Delivery, Invoice } from "@/domains/finance/types";
 
@@ -21,11 +17,8 @@ interface DeliveryDetailViewProps {
 }
 
 export function DeliveryDetailView({ delivery, linkedInvoice }: DeliveryDetailViewProps) {
-
-
   return (
     <div className="flex flex-col gap-6 pb-12">
-      {/* Back button */}
       <div>
         <Link
           href="/deliveries"
@@ -36,7 +29,6 @@ export function DeliveryDetailView({ delivery, linkedInvoice }: DeliveryDetailVi
         </Link>
       </div>
 
-      {/* Hero Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
@@ -44,10 +36,10 @@ export function DeliveryDetailView({ delivery, linkedInvoice }: DeliveryDetailVi
               <Key className="h-6 w-6" />
             </div>
             <h1 className="text-2xl font-bold text-[#f1ede5]">
-              Ficha de Levantamento & Entrega
+              Ficha de Levantamento e Entrega
             </h1>
             <Badge variant="success" className="text-xs">
-              Entrega Concluída
+              Entrega concluída
             </Badge>
           </div>
 
@@ -60,40 +52,52 @@ export function DeliveryDetailView({ delivery, linkedInvoice }: DeliveryDetailVi
             <span>·</span>
             <span>Cliente: {delivery.customerName}</span>
             <span>·</span>
-            <span>Data: {delivery.deliveredAt}</span>
+            <span>Data: {formatCheckinDate(delivery.deliveredAt)}</span>
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex items-center gap-2.5">
           {linkedInvoice && (
-            <Link href={`/invoices/${linkedInvoice.id}`}>
-              <Button variant="outline" size="sm" className="bg-[#15191a]">
-                <CreditCard className="h-4 w-4 text-[#d3a548]" />
-                <span>Ver Fatura {linkedInvoice.invoiceNumber}</span>
-              </Button>
+            <Link
+              href={`/invoices/${linkedInvoice.id}`}
+              className={buttonStyles({
+                variant: "outline",
+                size: "sm",
+                className: "bg-[#15191a]",
+              })}
+            >
+              <CreditCard className="h-4 w-4 text-[#d3a548]" />
+              <span>Ver Fatura {linkedInvoice.invoiceNumber}</span>
             </Link>
           )}
 
-          <Link href={`/passport/${delivery.vehiclePlate}`} target="_blank">
-            <Button variant="primary" size="sm" className="bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-bold">
-              <ExternalLink className="h-4 w-4" />
-              <span>Passaporte Digital</span>
-            </Button>
+          <Link
+            href={`/passport/${delivery.vehiclePlate}`}
+            target="_blank"
+            className={buttonStyles({
+              variant: "primary",
+              size: "sm",
+              className:
+                "bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-bold",
+            })}
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span>Passaporte Digital</span>
           </Link>
         </div>
       </div>
 
-      {/* Delivery Summary Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Receiver details & Signature */}
         <Card className="p-6 flex flex-col gap-4 text-xs">
           <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
             <span className="text-[11px] uppercase font-bold tracking-wider text-[#d3a548]">
               Dados de Quem Levantou a Viatura
             </span>
-            <Badge variant="gold" className="text-[11px]">
-              Assinatura Válida
+            <Badge
+              variant={delivery.signatureDataUrl ? "gold" : "outline"}
+              className="text-[11px]"
+            >
+              {delivery.signatureDataUrl ? "Assinatura recolhida" : "Sem assinatura"}
             </Badge>
           </div>
 
@@ -105,7 +109,9 @@ export function DeliveryDetailView({ delivery, linkedInvoice }: DeliveryDetailVi
 
             <div className="flex items-center justify-between text-[#a9adae]">
               <span>Documento de Identificação:</span>
-              <span className="font-mono text-[#f1ede5]">{delivery.receiverIdDocument || "CC Verificado"}</span>
+              <span className="font-mono text-[#f1ede5]">
+                {delivery.receiverIdDocument || "Não indicado"}
+              </span>
             </div>
 
             <div className="flex items-center justify-between text-[#a9adae]">
@@ -114,14 +120,27 @@ export function DeliveryDetailView({ delivery, linkedInvoice }: DeliveryDetailVi
             </div>
           </div>
 
-          {/* Signature representation */}
           <div className="flex flex-col gap-1.5 pt-3 border-t border-white/[0.04]">
-            <span className="font-semibold text-[#a9adae]">Assinatura Recolhida no Levantamento:</span>
-            <div className="p-4 rounded-md bg-[#0c0f10] border border-[#d3a548]/30 flex items-center justify-center">
-              <span className="font-mono text-sm font-bold text-[#f7d46d] italic">
-                {delivery.receiverName}
-              </span>
-            </div>
+            <span className="font-semibold text-[#a9adae]">
+              Assinatura Recolhida no Levantamento:
+            </span>
+            {delivery.signatureDataUrl ? (
+              <div className="p-3 rounded-md bg-[#0c0f10] border border-[#d3a548]/30 flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={delivery.signatureDataUrl}
+                  alt={`Assinatura de ${delivery.receiverName}`}
+                  className="max-h-28 w-auto"
+                />
+              </div>
+            ) : (
+              <div
+                role="alert"
+                className="p-3 rounded-md bg-[#1d1810] border border-[#d3a548]/40 text-[12px] text-[#f1ede5]"
+              >
+                Não existe assinatura guardada para esta entrega.
+              </div>
+            )}
           </div>
 
           {delivery.notes && (
@@ -131,7 +150,6 @@ export function DeliveryDetailView({ delivery, linkedInvoice }: DeliveryDetailVi
           )}
         </Card>
 
-        {/* Right: Belongings checklist (read only) */}
         <BelongingsChecklist
           belongings={delivery.belongings}
           onToggleBelonging={() => {}}

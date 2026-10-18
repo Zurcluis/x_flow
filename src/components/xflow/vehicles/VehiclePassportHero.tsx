@@ -9,7 +9,7 @@ import {
   Fuel,
   Gauge,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonStyles } from "@/components/ui/button";
 import { Vehicle } from "@/domains/vehicles/types";
 import { formatNumber } from "@/lib/formatting";
 
@@ -59,23 +59,38 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <Link href={`/checkins/new?vehicleId=${vehicle.id}`}>
-            <Button variant="primary" size="sm" className="h-9 px-3.5 text-xs">
-              <Camera className="h-4 w-4" />
-              <span>Novo Check-in</span>
-            </Button>
+          <Link
+            href={`/checkins/new?vehicleId=${vehicle.id}`}
+            className={buttonStyles({
+              variant: "primary",
+              size: "sm",
+              className: "h-9 px-3.5 text-xs",
+            })}
+          >
+            <Camera className="h-4 w-4" />
+            <span>Novo Check-in</span>
           </Link>
-          <Link href={`/quotes/new?vehicleId=${vehicle.id}`}>
-            <Button variant="outline" size="sm" className="h-9 px-3.5 text-xs bg-[#101314]">
-              <FileText className="h-4 w-4 text-[#d3a548]" />
-              <span>Orçamento</span>
-            </Button>
+          <Link
+            href={`/quotes/new?vehicleId=${vehicle.id}`}
+            className={buttonStyles({
+              variant: "outline",
+              size: "sm",
+              className: "h-9 px-3.5 text-xs bg-[#101314]",
+            })}
+          >
+            <FileText className="h-4 w-4 text-[#d3a548]" />
+            <span>Orçamento</span>
           </Link>
-          <Link href={`/calendar/new?vehicleId=${vehicle.id}`}>
-            <Button variant="outline" size="sm" className="h-9 px-3.5 text-xs bg-[#101314]">
-              <Calendar className="h-4 w-4 text-[#d3a548]" />
-              <span>Marcar</span>
-            </Button>
+          <Link
+            href={`/calendar?nova=1&vehicleId=${vehicle.id}`}
+            className={buttonStyles({
+              variant: "outline",
+              size: "sm",
+              className: "h-9 px-3.5 text-xs bg-[#101314]",
+            })}
+          >
+            <Calendar className="h-4 w-4 text-[#d3a548]" />
+            <span>Marcar</span>
           </Link>
         </div>
       </div>
@@ -119,7 +134,7 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
           <Fuel className="h-4 w-4 text-[#d3a548] shrink-0" />
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] text-[#8a9092] uppercase">Combustível</span>
-            <span className="font-semibold text-[#f1ede5] capitalize truncate">{vehicle.fuelType || "Gasolina"}</span>
+            <span className="font-semibold text-[#f1ede5] capitalize truncate">{vehicle.fuelType || "Não indicado"}</span>
           </div>
         </div>
 

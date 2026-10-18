@@ -27,6 +27,11 @@ export function AgendaTimeline({ events }: AgendaTimelineProps) {
         </CardHeader>
 
         <CardContent className="p-0">
+          {events.length === 0 && (
+            <p className="text-xs text-[#8a9092] py-4">
+              Sem marcações para hoje.
+            </p>
+          )}
           <div className="relative pl-6 flex flex-col gap-4 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-white/[0.08]">
             {events.map((event) => (
               <div key={event.id} className="relative flex items-start gap-4 text-xs">

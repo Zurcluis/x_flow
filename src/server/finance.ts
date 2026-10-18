@@ -1,5 +1,11 @@
 import { getDb } from "@/lib/db";
 import {
+  postgresDateKey,
+  todayWorkshopDateKey,
+  workshopDateKey,
+} from "@/domains/calendar/datetime";
+import { isUuid } from "@/domains/finance/validation";
+import {
   Delivery,
   Invoice,
   PassportEvent,
@@ -57,6 +63,14 @@ function linesById(
 function mapInvoiceRow(linesFor: (invoiceId: string) => Row[]) {
   return (r: Row): Invoice => {
     const id = String(r.id);
+    const dueDate = r.due_at ? new Date(String(r.due_at)) : null;
+    const dueAt =
+      dueDate && !Number.isNaN(dueDate.getTime()) ? workshopDateKey(dueDate) : "";
+    const rawStatus = (r.payment_status as Invoice["paymentStatus"]) ?? "pending";
+    const paymentStatus =
+      rawStatus === "pending" && dueAt < todayWorkshopDateKey()
+        ? "overdue"
+        : rawStatus;
     return {
       id,
       invoiceNumber: String(r.invoice_number),
@@ -73,9 +87,9 @@ function mapInvoiceRow(linesFor: (invoiceId: string) => Row[]) {
       vatAmount: num(r.vat_amount),
       totalAmount: num(r.total_amount),
       paymentMethod: (r.payment_method as Invoice["paymentMethod"]) ?? "bank_transfer",
-      paymentStatus: (r.payment_status as Invoice["paymentStatus"]) ?? "pending",
+      paymentStatus,
       issuedAt: iso(r.issued_at),
-      dueAt: iso(r.due_at).slice(0, 10),
+      dueAt,
       paidAt: r.paid_at ? iso(r.paid_at) : undefined,
       lines: linesFor(id).map((l) => ({
         id: String(l.id),
@@ -93,6 +107,7 @@ export async function getInvoiceById(
   organizationId: string,
   invoiceId: string
 ): Promise<Invoice | null> {
+  if (!isUuid(invoiceId)) return null;
   const db = getDb();
   const { rows } = await db.query<Row>(
     `SELECT i.*, v.make || ' ' || v.model AS vehicle_model_full
@@ -106,8 +121,10 @@ export async function getInvoiceById(
   if (rows.length === 0) return null;
 
   const { rows: lineRows } = await db.query<Row>(
-    `SELECT il.* FROM invoice_lines il WHERE il.invoice_id = $1`,
-    [invoiceId]
+    `SELECT il.* FROM invoice_lines il
+     JOIN invoices i ON i.id = il.invoice_id
+     WHERE il.invoice_id = $1 AND i.organization_id = $2`,
+    [invoiceId, organizationId]
   );
 
   return mapInvoiceRow(linesById(lineRows))(rows[0]);
@@ -117,6 +134,7 @@ export async function getInvoiceByWorkOrderId(
   organizationId: string,
   workOrderId: string
 ): Promise<Invoice | null> {
+  if (!isUuid(workOrderId)) return null;
   const db = getDb();
   const { rows } = await db.query<Row>(
     `SELECT id, invoice_number FROM invoices
@@ -170,6 +188,7 @@ export async function getDeliveryById(
   organizationId: string,
   deliveryId: string
 ): Promise<Delivery | null> {
+  if (!isUuid(deliveryId)) return null;
   const db = getDb();
   const { rows } = await db.query<Row>(
     `SELECT d.*, v.plate_display, v.make || ' ' || v.model AS vehicle_model_full,
@@ -236,8 +255,8 @@ function mapWarranty(r: Row): WarrantyCertificate {
     qcCertificateNumber: String(r.qc_certificate_number),
     termsText: (r.terms_text as string) ?? "",
     maintenanceRules: WARRANTY_RULES,
-    startsAt: String(r.starts_at).slice(0, 10),
-    expiresAt: String(r.expires_at).slice(0, 10),
+    startsAt: postgresDateKey(r.starts_at),
+    expiresAt: postgresDateKey(r.expires_at),
     status: (r.status as WarrantyCertificate["status"]) ?? "active",
     token: String(r.token),
   };
@@ -247,6 +266,7 @@ export async function getWarrantyById(
   organizationId: string,
   warrantyId: string
 ): Promise<WarrantyCertificate | null> {
+  if (!isUuid(warrantyId)) return null;
   const { rows } = await getDb().query<Row>(
     `SELECT w.*, v.plate_display, v.make || ' ' || v.model AS vehicle_model_full,
             c.name AS customer_name
@@ -293,15 +313,17 @@ export async function getPassportByPlate(
 
   const events: PassportEvent[] = [];
   const { rows: qRows } = await db.query<Row>(
-    `SELECT id, quote_number, status, created_at FROM quotes WHERE vehicle_id = $1`,
-    [vehicleId]
+    `SELECT id, quote_number, status, created_at FROM quotes
+     WHERE vehicle_id = $1 AND organization_id = $2`,
+    [vehicleId, organizationId]
   );
   for (const r of qRows) {
     events.push({ id: `q-${r.id}`, date: iso(r.created_at), type: "quote", title: `Orçamento ${r.quote_number}`, subtitle: `Estado: ${r.status}`, description: "Proposta comercial emitida.", badgeText: String(r.status), badgeVariant: "default", linkHref: `/quotes/${r.id}` });
   }
   const { rows: ckRows } = await db.query<Row>(
-    `SELECT id, type, mileage, created_at FROM checkins WHERE vehicle_id = $1`,
-    [vehicleId]
+    `SELECT id, type, mileage, created_at FROM checkins
+     WHERE vehicle_id = $1 AND organization_id = $2`,
+    [vehicleId, organizationId]
   );
   for (const r of ckRows) {
     events.push({ id: `ck-${r.id}`, date: iso(r.created_at), type: "checkin", title: r.type === "entry" ? "Check-in de entrada" : "Check-in de saída", subtitle: `${Number(r.mileage)} km`, description: "Inspeção fotográfica registada.", badgeText: r.type === "entry" ? "Entrada" : "Saída", linkHref: `/checkins/${r.id}` });
@@ -311,8 +333,8 @@ export async function getPassportByPlate(
             qc.status AS qc_status, qc.certificate_number, qc.approved_at
      FROM work_orders w
      LEFT JOIN qc_inspections qc ON qc.work_order_id = w.id
-     WHERE w.vehicle_id = $1`,
-    [vehicleId]
+     WHERE w.vehicle_id = $1 AND w.organization_id = $2`,
+    [vehicleId, organizationId]
   );
   for (const r of woRows) {
     events.push({ id: `wo-${r.id}`, date: iso(r.created_at), type: "work_order", title: `Ordem ${r.work_order_number}`, subtitle: String(r.service_title), description: `Estado: ${r.status}`, badgeText: String(r.status), badgeVariant: r.status === "completed" ? "success" : "gold", linkHref: `/production/${r.id}` });
@@ -322,18 +344,20 @@ export async function getPassportByPlate(
   }
   const { rows: invRows } = await db.query<Row>(
     `SELECT i.id, i.invoice_number, i.total_amount, i.payment_status, i.issued_at FROM invoices i
-     WHERE regexp_replace(upper(i.vehicle_plate), '[\\s-]', '', 'g') = (SELECT plate_normalized FROM vehicles WHERE id = $1)`,
-    [vehicleId]
+     WHERE i.organization_id = $2
+       AND regexp_replace(upper(i.vehicle_plate), '[\\s-]', '', 'g') = (SELECT plate_normalized FROM vehicles WHERE id = $1)`,
+    [vehicleId, organizationId]
   );
   for (const r of invRows) {
     events.push({ id: `inv-${r.id}`, date: iso(r.issued_at), type: "invoice", title: `Fatura ${r.invoice_number}`, subtitle: `${Number(r.total_amount).toFixed(2)} €`, description: `Pagamento: ${r.payment_status}`, badgeText: String(r.payment_status), badgeVariant: r.payment_status === "paid" ? "success" : "gold", linkHref: `/invoices/${r.id}` });
   }
   const { rows: wtyRows } = await db.query<Row>(
-    `SELECT id, certificate_number, material_name, warranty_years, starts_at, expires_at, batch_number, token FROM warranties WHERE vehicle_id = $1`,
-    [vehicleId]
+    `SELECT id, certificate_number, material_name, warranty_years, starts_at, expires_at, batch_number, token
+     FROM warranties WHERE vehicle_id = $1 AND organization_id = $2`,
+    [vehicleId, organizationId]
   );
   for (const r of wtyRows) {
-    events.push({ id: `wty-${r.id}`, date: String(r.starts_at), type: "warranty", title: `Garantia ${r.warranty_years} anos`, subtitle: `Certificado ${r.certificate_number}`, description: `Material ${r.material_name}, lote ${r.batch_number}.`, badgeText: "Garantia", badgeVariant: "success", linkHref: `/warranties/certificate/${r.token}` });
+    events.push({ id: `wty-${r.id}`, date: postgresDateKey(r.starts_at), type: "warranty", title: `Garantia ${r.warranty_years} anos`, subtitle: `Certificado ${r.certificate_number}`, description: `Material ${r.material_name}, lote ${r.batch_number}.`, badgeText: "Garantia", badgeVariant: "success", linkHref: `/warranties/certificate/${r.token}` });
   }
 
   events.sort((a, b) => b.date.localeCompare(a.date));
@@ -358,7 +382,7 @@ export async function getPassportByPlate(
           materialName: String(activeWarranty.material_name),
           batchNumber: String(activeWarranty.batch_number),
           warrantyYears: num(activeWarranty.warranty_years),
-          expiresAt: String(activeWarranty.expires_at).slice(0, 10),
+          expiresAt: postgresDateKey(activeWarranty.expires_at),
           certificateNumber: String(activeWarranty.certificate_number),
         }
       : undefined,

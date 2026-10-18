@@ -1,10 +1,8 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { notFound } from "next/navigation";
 import { InvoiceDetailView } from "./InvoiceDetailView";
 import { getInvoiceById } from "@/server/finance";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { FINANCIAL_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -13,23 +11,12 @@ export default async function InvoiceDetailPage({
 }: {
   params: Promise<{ invoiceId: string }>;
 }) {
-  await requireAuth();
+  const auth = await requireRole(FINANCIAL_ROLES);
   const { invoiceId } = await params;
-  const organizationId = await getPrimaryOrganizationId();
-  const invoice = await getInvoiceById(organizationId, invoiceId);
+  const invoice = await getInvoiceById(auth.organizationId, invoiceId);
 
   if (!invoice) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-        <h2 className="text-2xl font-bold text-[#f1ede5]">Fatura não encontrada</h2>
-        <Link href="/invoices">
-          <Button variant="outline">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Voltar a Faturação</span>
-          </Button>
-        </Link>
-      </div>
-    );
+    notFound();
   }
 
   return <InvoiceDetailView invoice={invoice} />;

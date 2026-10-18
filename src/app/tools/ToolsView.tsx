@@ -16,11 +16,32 @@ import { setToolStatusAction } from "@/app/actions/team";
 
 import { WorkshopTool } from "@/lib/demo-data/tools-team-data";
 
+function formatDatePt(value: string): string {
+  if (!value) return "Não definida";
+  const date = new Date(`${value.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function toolStatusLabel(status: WorkshopTool["status"]): string {
+  if (status === "disponivel") return "Disponível";
+  if (status === "em_uso") return "Em Utilização";
+  return "Manutenção";
+}
+
 export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
   const [tools, setTools] = useState<WorkshopTool[]>(initialTools);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<
+    { kind: "status" | "error"; message: string } | null
+  >(null);
   const [, startTransition] = useTransition();
 
   const filtered = tools.filter((tool) => {
@@ -62,8 +83,8 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
             <span className="text-2xl font-bold font-mono text-[#f1ede5]">
               {tools.length} Unidades
             </span>
-            <span className="block text-[12px] text-[#68a46b] mt-0.5">
-              100% calibrados e operacionais
+            <span className="block text-[12px] text-[#a9adae] mt-0.5">
+              Inventário registado para esta organização
             </span>
           </div>
         </Card>
@@ -98,6 +119,17 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
           </div>
         </Card>
       </div>
+
+      {feedback && (
+        <p
+          role={feedback.kind === "error" ? "alert" : "status"}
+          className={`text-xs font-semibold ${
+            feedback.kind === "error" ? "text-[#f05a50]" : "text-[#68a46b]"
+          }`}
+        >
+          {feedback.message}
+        </p>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -138,6 +170,20 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
 
       {/* Tools Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.length === 0 && (
+          <Card className="p-6 md:col-span-2 lg:col-span-3 bg-[#101314] border border-white/[0.06]">
+            <p className="text-sm font-semibold text-[#f1ede5]">
+              {tools.length === 0
+                ? "Sem ferramentas registadas nesta organização."
+                : "Nenhuma ferramenta corresponde aos filtros."}
+            </p>
+            <p className="text-xs text-[#a9adae] mt-1">
+              {tools.length === 0
+                ? "O inventário desta organização ainda não tem equipamentos registados."
+                : "Ajusta a pesquisa ou escolhe outra categoria."}
+            </p>
+          </Card>
+        )}
         {filtered.map((tool) => (
           <Card
             key={tool.id}
@@ -150,10 +196,16 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
                 </span>
 
                 <Badge
-                  variant={tool.status === "disponivel" ? "success" : "in_progress"}
+                  variant={
+                    tool.status === "disponivel"
+                      ? "success"
+                      : tool.status === "em_uso"
+                        ? "in_progress"
+                        : "danger"
+                  }
                   className="text-[11px]"
                 >
-                  {tool.status === "disponivel" ? "Disponível" : "Em Utilização"}
+                  {toolStatusLabel(tool.status)}
                 </Badge>
               </div>
 
@@ -179,7 +231,7 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
 
                 <div className="flex items-center justify-between text-[12px] text-[#8a9092] pt-1 mt-1 border-t border-white/[0.04]">
                   <span>Série: <strong className="font-mono text-[#a9adae]">{tool.serialNumber}</strong></span>
-                  <span>Próx. Calibração: {tool.nextMaintenance}</span>
+                  <span>Próxima manutenção: {formatDatePt(tool.nextMaintenance)}</span>
                 </div>
               </div>
 
@@ -191,6 +243,7 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
                   className="w-full bg-[#15191a] text-[#a9adae]"
                   onClick={() => {
                     setTogglingId(tool.id);
+                    setFeedback(null);
                     const next = tool.status === "disponivel" ? "em_uso" : "disponivel";
                     startTransition(async () => {
                       const res = await setToolStatusAction(tool.id, next);
@@ -202,6 +255,15 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
                               : t
                           )
                         );
+                        setFeedback({
+                          kind: "status",
+                          message: `Estado de ${tool.name} atualizado para ${toolStatusLabel(next)}.`,
+                        });
+                      } else {
+                        setFeedback({
+                          kind: "error",
+                          message: res.error ?? "Não foi possível atualizar a ferramenta.",
+                        });
                       }
                       setTogglingId(null);
                     });
@@ -209,9 +271,11 @@ export function ToolsView({ initialTools }: { initialTools: WorkshopTool[] }) {
                 >
                   <ArrowLeftRight className="h-3.5 w-3.5 mr-1" />
                   <span>
-                    {tool.status === "disponivel"
-                      ? "Marcar em Utilização"
-                      : "Devolver à Bancada"}
+                    {togglingId === tool.id
+                      ? "A atualizar…"
+                      : tool.status === "disponivel"
+                        ? "Marcar em Utilização"
+                        : "Devolver à Bancada"}
                   </span>
                 </Button>
               )}

@@ -5,12 +5,25 @@ import { X, Car, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Vehicle, BodyType, ColorFamily, FuelType } from "@/domains/vehicles/types";
 import { Customer } from "@/domains/crm/types";
-import { normalizePlate, formatPlateForDisplay } from "@/domains/vehicles/plate-normalizer";
+import {
+  formatPlateForDisplay,
+  isValidPlate,
+  normalizePlate,
+} from "@/domains/vehicles/plate-normalizer";
+import {
+  parseGenerationYear,
+  parseMileage,
+  VehicleValidationError,
+} from "@/domains/vehicles/validation";
+
+export type VehicleSaveResult = { ok: true } | { ok: false; error: string };
 
 interface VehicleFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (vehicle: Partial<Vehicle>) => void | Promise<void>;
+  onSave: (
+    vehicle: Partial<Vehicle> & { customerId?: string }
+  ) => Promise<VehicleSaveResult>;
   customers: Customer[];
   initialCustomerId?: string;
 }
@@ -25,74 +38,83 @@ export function VehicleFormModal({
   const [plate, setPlate] = useState("");
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
-  const [generationYear, setGenerationYear] = useState(new Date().getFullYear().toString());
-  const [bodyType, setBodyType] = useState<BodyType>("coupe");
+  const [generationYear, setGenerationYear] = useState("");
+  const [bodyType, setBodyType] = useState<BodyType | "">("");
   const [colorName, setColorName] = useState("");
-  const [colorFamily, setColorFamily] = useState<ColorFamily>("black");
+  const [colorFamily, setColorFamily] = useState<ColorFamily | "">("");
   const [vin, setVin] = useState("");
   const [mileage, setMileage] = useState("");
-  const [fuelType, setFuelType] = useState<FuelType>("gasoline");
-  const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId || (customers[0]?.id ?? ""));
+  const [fuelType, setFuelType] = useState<FuelType | "">("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId ?? "");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pending) return;
     if (!plate.trim()) {
       setError("A matrícula é obrigatória.");
+      return;
+    }
+    if (!isValidPlate(plate)) {
+      setError("A matrícula indicada não é válida.");
       return;
     }
     if (!make.trim() || !model.trim()) {
       setError("Indica a marca e o modelo da viatura.");
       return;
     }
+    if (!bodyType) {
+      setError("Seleciona a carroçaria da viatura.");
+      return;
+    }
+    if (!colorFamily) {
+      setError("Seleciona a família de cor da viatura.");
+      return;
+    }
 
-    const normPlate = normalizePlate(plate);
-    const displayPlate = formatPlateForDisplay(plate);
-    const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
+    let year: number;
+    let parsedMileage: number | undefined;
+    try {
+      year = parseGenerationYear(generationYear);
+      parsedMileage = parseMileage(mileage);
+    } catch (e) {
+      setError(e instanceof VehicleValidationError ? e.message : "Dados da viatura inválidos.");
+      return;
+    }
 
-    onSave({
-      id: `veh-${Date.now()}`,
-      organizationId: "org-xmotion-1",
-      plateDisplay: displayPlate,
-      plateNormalized: normPlate,
-      vin: vin.trim() || undefined,
-      make: make.trim(),
-      model: model.trim(),
-      generationYear: parseInt(generationYear, 10) || new Date().getFullYear(),
-      bodyType,
-      originalColorName: colorName.trim() || "Cor Original",
-      originalColorFamily: colorFamily,
-      currentMileage: mileage ? parseInt(mileage, 10) : undefined,
-      fuelType,
-      notes: notes.trim() || undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      currentOwner: selectedCustomer
-        ? {
-            customerId: selectedCustomer.id,
-            customerName: selectedCustomer.name,
-            customerType: selectedCustomer.type,
-            since: new Date().toISOString().split("T")[0],
-          }
-        : undefined,
-      timeline: [
-        {
-          id: `tl-${Date.now()}`,
-          vehicleId: `veh-${Date.now()}`,
-          type: "note_added",
-          title: "Viatura Registada no Sistema",
-          description: `Viatura criada e associada a ${selectedCustomer?.name || "Sem proprietário"}.`,
-          date: new Date().toISOString().replace("T", " ").slice(0, 16),
-          authorName: "Luís Gonçalves",
-          badgeText: "Registo Inicial",
-        },
-      ],
-    });
+    setPending(true);
+    setError(null);
+    try {
+      const result = await onSave({
+        plateDisplay: formatPlateForDisplay(plate),
+        plateNormalized: normalizePlate(plate),
+        vin: vin.trim() || undefined,
+        make: make.trim(),
+        model: model.trim(),
+        generationYear: year,
+        bodyType,
+        originalColorName: colorName.trim() || "Por identificar",
+        originalColorFamily: colorFamily,
+        currentMileage: parsedMileage,
+        fuelType: fuelType || undefined,
+        notes: notes.trim() || undefined,
+        customerId: selectedCustomerId || undefined,
+      });
 
-    onClose();
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      onClose();
+    } catch {
+      setError("Não foi possível guardar a viatura. Tenta novamente.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -103,7 +125,6 @@ export function VehicleFormModal({
         aria-modal="true"
         aria-labelledby="vehicle-modal-title"
       >
-        {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-2">
             <Car className="h-5 w-5 text-[#d3a548]" />
@@ -113,7 +134,8 @@ export function VehicleFormModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#8a9092] hover:text-[#f1ede5] hover:bg-white/[0.05] cursor-pointer"
+            disabled={pending}
+            className="p-1.5 rounded-lg text-[#8a9092] hover:text-[#f1ede5] hover:bg-white/[0.05] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Fechar"
           >
             <X className="h-5 w-5" />
@@ -122,13 +144,15 @@ export function VehicleFormModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-5">
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-sm bg-[#f05a50]/15 border border-[#f05a50]/30 text-xs text-[#f05a50]">
+            <div
+              role="alert"
+              className="flex items-center gap-2 p-3 rounded-sm bg-[#f05a50]/15 border border-[#f05a50]/30 text-xs text-[#f05a50]"
+            >
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Plate & Owner */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[#a9adae]">Matrícula *</label>
@@ -144,12 +168,15 @@ export function VehicleFormModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Proprietário Associado *</label>
+              <label className="text-xs font-medium text-[#a9adae]">Proprietário Associado</label>
               <select
                 value={selectedCustomerId}
                 onChange={(e) => setSelectedCustomerId(e.target.value)}
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
               >
+                <option value="" className="bg-[#15191a] text-[#f1ede5]">
+                  Sem proprietário
+                </option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id} className="bg-[#15191a] text-[#f1ede5]">
                     {c.name} ({c.type === "business" ? "B2B" : "Particular"})
@@ -159,7 +186,6 @@ export function VehicleFormModal({
             </div>
           </div>
 
-          {/* Make, Model & Year */}
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[#a9adae]">Marca *</label>
@@ -184,25 +210,28 @@ export function VehicleFormModal({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Ano</label>
+              <label className="text-xs font-medium text-[#a9adae]">Ano *</label>
               <input
                 type="number"
                 value={generationYear}
                 onChange={(e) => setGenerationYear(e.target.value)}
+                placeholder="ex: 2024"
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
               />
             </div>
           </div>
 
-          {/* Body Type & Fuel */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Carroçaria</label>
+              <label className="text-xs font-medium text-[#a9adae]">Carroçaria *</label>
               <select
                 value={bodyType}
-                onChange={(e) => setBodyType(e.target.value as BodyType)}
+                onChange={(e) => setBodyType(e.target.value as BodyType | "")}
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
               >
+                <option value="" disabled>
+                  Selecionar
+                </option>
                 <option value="coupe">Coupé</option>
                 <option value="sedan">Sedan</option>
                 <option value="suv">SUV</option>
@@ -217,9 +246,10 @@ export function VehicleFormModal({
               <label className="text-xs font-medium text-[#a9adae]">Combustível</label>
               <select
                 value={fuelType}
-                onChange={(e) => setFuelType(e.target.value as FuelType)}
+                onChange={(e) => setFuelType(e.target.value as FuelType | "")}
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
               >
+                <option value="">Não indicado</option>
                 <option value="gasoline">Gasolina</option>
                 <option value="diesel">Diesel</option>
                 <option value="electric">Elétrico</option>
@@ -228,7 +258,6 @@ export function VehicleFormModal({
             </div>
           </div>
 
-          {/* Color Name & Color Family */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[#a9adae]">Nome da Cor Original</label>
@@ -241,12 +270,15 @@ export function VehicleFormModal({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Família de Cor</label>
+              <label className="text-xs font-medium text-[#a9adae]">Família de Cor *</label>
               <select
                 value={colorFamily}
-                onChange={(e) => setColorFamily(e.target.value as ColorFamily)}
+                onChange={(e) => setColorFamily(e.target.value as ColorFamily | "")}
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
               >
+                <option value="" disabled>
+                  Selecionar
+                </option>
                 <option value="black">Preto</option>
                 <option value="white">Branco</option>
                 <option value="grey">Cinzento</option>
@@ -261,12 +293,13 @@ export function VehicleFormModal({
             </div>
           </div>
 
-          {/* Mileage & VIN */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[#a9adae]">Quilometragem (km)</label>
               <input
                 type="number"
+                min="0"
+                step="1"
                 value={mileage}
                 onChange={(e) => setMileage(e.target.value)}
                 placeholder="ex: 15000"
@@ -285,7 +318,6 @@ export function VehicleFormModal({
             </div>
           </div>
 
-          {/* Notes */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-[#a9adae]">Observações Iniciais</label>
             <textarea
@@ -297,14 +329,13 @@ export function VehicleFormModal({
             />
           </div>
 
-          {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/[0.08]">
-            <Button variant="ghost" type="button" onClick={onClose}>
+            <Button variant="ghost" type="button" onClick={onClose} disabled={pending}>
               Cancelar
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" disabled={pending}>
               <Check className="h-4 w-4" />
-              <span>Registar Viatura</span>
+              <span>{pending ? "A guardar..." : "Registar Viatura"}</span>
             </Button>
           </div>
         </form>

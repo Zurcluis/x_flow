@@ -6,19 +6,10 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/xflow/Logo";
 import { loginAction } from "@/app/actions/auth";
-import { cn } from "@/lib/utils";
 
 interface LoginViewProps {
   next?: string;
 }
-
-const DEMO_PROFILES = [
-  { name: "Luís Gonçalves", role: "Administrador", email: "luis@xmotion.pt" },
-  { name: "Patrícia Sousa", role: "Gestora de Oficina", email: "patricia@xmotion.pt" },
-  { name: "João Martins", role: "Técnico", email: "joao@xmotion.pt" },
-  { name: "Ricardo Almeida", role: "Técnico", email: "ricardo@xmotion.pt" },
-  { name: "Miguel Costa", role: "Técnico", email: "miguel@xmotion.pt" },
-];
 
 export function LoginView({ next }: LoginViewProps) {
   const router = useRouter();
@@ -36,7 +27,8 @@ export function LoginView({ next }: LoginViewProps) {
     setError(null);
     const result = await loginAction({ email: email.trim(), password });
     if (result.ok) {
-      router.push(safeNext);
+      router.push(result.mustChangePassword ? "/change-password" : safeNext);
+      router.refresh();
       return;
     }
     setError(result.error);
@@ -109,35 +101,8 @@ export function LoginView({ next }: LoginViewProps) {
             </Button>
           </form>
 
-          <div className="flex flex-col gap-2 pt-6 mt-6 border-t border-white/[0.08]">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#8a9092]">
-              Entrar como
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {DEMO_PROFILES.map((profile) => (
-                <button
-                  key={profile.email}
-                  type="button"
-                  onClick={() => {
-                    setEmail(profile.email);
-                    setError(null);
-                  }}
-                  className={cn(
-                    "px-2.5 py-1.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-[11px] transition-colors cursor-pointer",
-                    email === profile.email
-                      ? "border-[#d3a548]/50 text-[#f7d46d]"
-                      : "text-[#a9adae] hover:border-[#d3a548]/40 hover:text-[#f1ede5]"
-                  )}
-                >
-                  {profile.name}
-                  <span className="text-[#8a9092]"> · {profile.role}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <p className="text-[11px] text-[#8a9092] text-center pt-5 mt-5 border-t border-white/[0.06]">
-            Demo: restantes perfis com a password xflow-demo-2026
+            O acesso é individual. Se não te lembras da password, contacta o administrador.
           </p>
         </div>
       </div>

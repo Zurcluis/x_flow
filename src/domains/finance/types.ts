@@ -212,6 +212,7 @@ export interface TreasurySummary {
   monthExpense: number;
   monthNet: number;
   recurringMonthlyTotal: number;
+  recurringMonthlyExpense: number;
   pendingInvoiceTotal: number;
   pendingInvoiceCount: number;
   overdueInvoiceTotal: number;

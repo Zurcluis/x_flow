@@ -11,6 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/formatting";
+import {
+  todayWorkshopDateKey,
+  workshopIsoFromWallTime,
+} from "@/domains/calendar/datetime";
+import { formatInvoiceDate } from "@/domains/finance/presentation";
 import { createTransactionAction } from "@/app/actions/finance";
 import { FinanceSubNav } from "../FinanceView";
 import type {
@@ -53,7 +58,7 @@ export function MovementsView({
   const [description, setDescription] = useState("");
   const [accountId, setAccountId] = useState("");
   const [method, setMethod] = useState("bank_transfer");
-  const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [occurredAt, setOccurredAt] = useState(() => todayWorkshopDateKey());
   const [vatAmount, setVatAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -79,8 +84,7 @@ export function MovementsView({
     setDescription("");
     setAccountId(accounts[0]?.id ?? "");
     setMethod("bank_transfer");
-    setOccurredAt(new Date().toISOString().slice(0, 10));
-    setVatAmount("");
+    setOccurredAt(todayWorkshopDateKey());    setVatAmount("");
     setError(null);
     setFormOpen(true);
   };
@@ -92,24 +96,38 @@ export function MovementsView({
       setError("Introduz um valor superior a zero.");
       return;
     }
+    const vatValue = Number(vatAmount.replace(",", ".")) || 0;
+    if (!Number.isFinite(vatValue) || vatValue < 0) {
+      setError("O IVA tem de ser um número igual ou superior a zero.");
+      return;
+    }
+    if (vatValue > value) {
+      setError("O IVA não pode ser superior ao valor do movimento.");
+      return;
+    }
+    const occurredAtIso = workshopIsoFromWallTime(occurredAt, "12:00");
+    if (!occurredAtIso) {
+      setError("A data do movimento é inválida.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     const res = await createTransactionAction({
       type: type as Exclude<TransactionType, "transfer">,
-      occurredAt: `${occurredAt}T12:00:00`,
+      occurredAt: occurredAtIso,
       amount: value,
       categoryId: categoryId || undefined,
       bankAccountId: accountId || undefined,
       description: description || undefined,
       paymentMethod: method,
-      vatAmount: Number(vatAmount.replace(",", ".")) || 0,
+      vatAmount: vatValue,
     });
     setSubmitting(false);
     if (res.ok) {
       const optimistic: Transaction = {
         id: `tmp-${Date.now()}`,
         type,
-        occurredAt: `${occurredAt}T12:00:00`,
+        occurredAt: occurredAtIso,
         amount: value,
         categoryId: categoryId || undefined,
         categoryName: categories.find((c) => c.id === categoryId)?.name,
@@ -117,7 +135,7 @@ export function MovementsView({
         bankAccountName: accounts.find((a) => a.id === accountId)?.name,
         description: description || undefined,
         paymentMethod: method,
-        vatAmount: Number(vatAmount.replace(",", ".")) || 0,
+        vatAmount: vatValue,
         sourceType: "manual",
       };
       setTransactions((prev) => [optimistic, ...prev]);
@@ -152,6 +170,7 @@ export function MovementsView({
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
+              aria-pressed={typeFilter === t}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                 typeFilter === t
                   ? "bg-[#1f1b14] text-[#f7d46d]"
@@ -179,7 +198,7 @@ export function MovementsView({
       <div className="flex flex-col gap-2">
         {filtered.length === 0 && (
           <Card className="p-8 text-center text-xs text-[#8a9092]">
-            Sem movimentos registados.
+            Sem movimentos para este filtro. Regista a primeira entrada ou despesa.
           </Card>
         )}
         {filtered.map((t) => (
@@ -204,7 +223,7 @@ export function MovementsView({
                   {t.description ?? t.categoryName ?? "Movimento"}
                 </span>
                 <span className="text-[10px] text-[#8a9092]">
-                  {t.occurredAt.slice(0, 10)} · {SOURCE_LABELS[t.sourceType]}
+                  {formatInvoiceDate(t.occurredAt)} · {SOURCE_LABELS[t.sourceType]}
                   {t.categoryName ? ` · ${t.categoryName}` : ""}
                   {t.reference ? ` · ${t.reference}` : ""}
                 </span>
@@ -233,7 +252,12 @@ export function MovementsView({
       {/* Modal de registo */}
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-[16px] bg-[#101314] border border-white/[0.1] shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Registar movimento"
+            className="w-full max-w-md rounded-[16px] bg-[#101314] border border-white/[0.1] shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between p-5 border-b border-white/[0.08]">
               <span className="text-sm font-bold text-[#f1ede5]">Registar Movimento</span>
               <button
@@ -382,7 +406,10 @@ export function MovementsView({
               </div>
 
               {error && (
-                <div className="rounded-md bg-[#2b1616] border border-[#c96a6a]/40 px-3 py-2 text-xs text-[#c96a6a]">
+                <div
+                  role="alert"
+                  className="rounded-md bg-[#2b1616] border border-[#c96a6a]/40 px-3 py-2 text-xs text-[#c96a6a]"
+                >
                   {error}
                 </div>
               )}

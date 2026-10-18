@@ -1,4 +1,11 @@
 import { getDb } from "@/lib/db";
+import { postgresDateKey, todayWorkshopDateKey } from "@/domains/calendar/datetime";
+import {
+  isIsoDateTime,
+  isMoneyAmount,
+  isPositiveMoneyAmount,
+  isUuid,
+} from "@/domains/finance/validation";
 import {
   BankAccount,
   RecurringRule,
@@ -71,44 +78,53 @@ function iso(value: unknown): string {
 }
 
 export async function ensureDefaultCategories(organizationId: string): Promise<void> {
-  const db = getDb();
-  for (const c of DEFAULT_CATEGORIES) {
-    await db.query(
-      `INSERT INTO transaction_categories (organization_id, name, kind, is_recurring)
-       VALUES ($1,$2,$3,$4) ON CONFLICT (organization_id, name) DO NOTHING`,
-      [organizationId, c.name, c.kind, c.isRecurring]
+  const client = await getDb().connect();
+  try {
+    await client.query("BEGIN");
+    for (const c of DEFAULT_CATEGORIES) {
+      await client.query(
+        `INSERT INTO transaction_categories (organization_id, name, kind, is_recurring)
+         VALUES ($1,$2,$3,$4) ON CONFLICT (organization_id, name) DO NOTHING`,
+        [organizationId, c.name, c.kind, c.isRecurring]
+      );
+    }
+    await client.query(
+      `INSERT INTO bank_accounts (organization_id, name, iban, bic, kind)
+       VALUES ($1,'Millennium BCP','PT50.0036.0096.99100129889.26','MPIOPTPL','bank')
+       ON CONFLICT (organization_id, name) DO NOTHING`,
+      [organizationId]
     );
-  }
-  await db.query(
-    `INSERT INTO bank_accounts (organization_id, name, iban, bic, kind)
-     VALUES ($1,'Millennium BCP','PT50.0036.0096.99100129889.26','MPIOPTPL','bank')
-     ON CONFLICT (organization_id, name) DO NOTHING`,
-    [organizationId]
-  );
-  await db.query(
-    `INSERT INTO bank_accounts (organization_id, name, kind)
-     VALUES ($1,'Caixa','cash') ON CONFLICT (organization_id, name) DO NOTHING`,
-    [organizationId]
-  );
-
-  const { rows: categoryRows } = await db.query<Row>(
-    `SELECT id, name FROM transaction_categories WHERE organization_id = $1`,
-    [organizationId]
-  );
-  const categoryIdByName = new Map(categoryRows.map((r) => [String(r.name), String(r.id)]));
-
-  const { rows: ruleRows } = await db.query<Row>(
-    `SELECT name FROM recurring_rules WHERE organization_id = $1`,
-    [organizationId]
-  );
-  const existingRules = new Set(ruleRows.map((r) => String(r.name)));
-  for (const r of DEFAULT_RECURRING) {
-    if (existingRules.has(r.name)) continue;
-    await db.query(
-      `INSERT INTO recurring_rules (organization_id, name, category_id, type, amount, frequency, day_of_month, notes)
-       VALUES ($1,$2,$3,'expense',$4,'monthly',$5,$6)`,
-      [organizationId, r.name, categoryIdByName.get(r.category) ?? null, r.amount.toFixed(2), r.dayOfMonth, r.notes ?? null]
+    await client.query(
+      `INSERT INTO bank_accounts (organization_id, name, kind)
+       VALUES ($1,'Caixa','cash') ON CONFLICT (organization_id, name) DO NOTHING`,
+      [organizationId]
     );
+
+    const { rows: categoryRows } = await client.query<Row>(
+      `SELECT id, name FROM transaction_categories WHERE organization_id = $1`,
+      [organizationId]
+    );
+    const categoryIdByName = new Map(categoryRows.map((r) => [String(r.name), String(r.id)]));
+
+    const { rows: ruleRows } = await client.query<Row>(
+      `SELECT name FROM recurring_rules WHERE organization_id = $1`,
+      [organizationId]
+    );
+    const existingRules = new Set(ruleRows.map((r) => String(r.name)));
+    for (const r of DEFAULT_RECURRING) {
+      if (existingRules.has(r.name)) continue;
+      await client.query(
+        `INSERT INTO recurring_rules (organization_id, name, category_id, type, amount, frequency, day_of_month, notes)
+         VALUES ($1,$2,$3,'expense',$4,'monthly',$5,$6)`,
+        [organizationId, r.name, categoryIdByName.get(r.category) ?? null, r.amount.toFixed(2), r.dayOfMonth, r.notes ?? null]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
   }
 }
 
@@ -146,6 +162,7 @@ export async function listRecurringRules(organizationId: string): Promise<Recurr
   const { rows } = await getDb().query<Row>(
     `SELECT r.*, c.name AS category_name FROM recurring_rules r
      LEFT JOIN transaction_categories c ON c.id = r.category_id
+       AND c.organization_id = r.organization_id
      WHERE r.organization_id = $1 ORDER BY r.type, r.amount DESC`,
     [organizationId]
   );
@@ -159,8 +176,8 @@ export async function listRecurringRules(organizationId: string): Promise<Recurr
     vatRate: num(r.vat_rate),
     frequency: (r.frequency as RecurringRule["frequency"]) ?? "monthly",
     dayOfMonth: num(r.day_of_month),
-    startsAt: iso(r.starts_at).slice(0, 10),
-    endsAt: r.ends_at ? iso(r.ends_at).slice(0, 10) : undefined,
+    startsAt: postgresDateKey(r.starts_at),
+    endsAt: r.ends_at ? postgresDateKey(r.ends_at) : undefined,
     active: Boolean(r.active),
     notes: (r.notes as string) ?? undefined,
   }));
@@ -171,21 +188,48 @@ export async function createRecurringRule(
   input: RecurringRuleCreateInput
 ): Promise<void> {
   if (!input.name?.trim()) throw new Error("O nome da rubrica é obrigatório.");
-  if (!(input.amount > 0)) throw new Error("O valor tem de ser superior a zero.");
+  if (input.type !== "income" && input.type !== "expense") {
+    throw new Error("Tipo de rubrica inválido.");
+  }
+  if (!isPositiveMoneyAmount(input.amount)) {
+    throw new Error("O valor tem de ser um número superior a zero.");
+  }
+  const frequency = input.frequency ?? "monthly";
+  if (!["monthly", "quarterly", "yearly"].includes(frequency)) {
+    throw new Error("Frequência inválida.");
+  }
+  const dayOfMonth = input.dayOfMonth ?? 1;
+  if (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
+    throw new Error("O dia do mês tem de estar entre 1 e 31.");
+  }
+  const vatRate = input.vatRate ?? 0;
+  if (!isMoneyAmount(vatRate) || vatRate > 100) {
+    throw new Error("A taxa de IVA tem de estar entre 0 e 100.");
+  }
+  if (input.categoryId && !isUuid(input.categoryId)) {
+    throw new Error("Categoria inválida.");
+  }
+  if (input.categoryId) {
+    const { rows } = await getDb().query<Row>(
+      `SELECT 1 FROM transaction_categories WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      [input.categoryId, organizationId]
+    );
+    if (rows.length === 0) throw new Error("Categoria não encontrada.");
+  }
   await getDb().query(
     `INSERT INTO recurring_rules
       (organization_id, name, category_id, type, amount, vat_rate, frequency, day_of_month, notes)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
     [
       organizationId,
-      input.name.trim(),
+      input.name.trim().slice(0, 160),
       input.categoryId || null,
       input.type,
       input.amount.toFixed(2),
-      (input.vatRate ?? 0).toFixed(2),
-      input.frequency ?? "monthly",
-      Math.min(Math.max(input.dayOfMonth ?? 1, 1), 31),
-      input.notes?.trim() || null,
+      vatRate.toFixed(2),
+      frequency,
+      dayOfMonth,
+      input.notes?.trim().slice(0, 2000) || null,
     ]
   );
 }
@@ -195,6 +239,7 @@ export async function toggleRecurringRule(
   ruleId: string,
   active: boolean
 ): Promise<void> {
+  if (!isUuid(ruleId)) throw new Error("Rubrica recorrente não encontrada.");
   const { rowCount } = await getDb().query(
     `UPDATE recurring_rules SET active = $3 WHERE id = $1 AND organization_id = $2`,
     [ruleId, organizationId, active]
@@ -207,8 +252,40 @@ export async function createTransaction(
   profileId: string | undefined,
   input: TransactionCreateInput
 ): Promise<string> {
-  if (!(input.amount > 0)) throw new Error("O valor tem de ser superior a zero.");
+  if (input.type !== "income" && input.type !== "expense") {
+    throw new Error("Tipo de movimento inválido.");
+  }
+  if (!isIsoDateTime(input.occurredAt)) {
+    throw new Error("A data do movimento é inválida.");
+  }
+  if (!isPositiveMoneyAmount(input.amount)) {
+    throw new Error("O valor tem de ser um número superior a zero.");
+  }
+  const vatAmount = input.vatAmount ?? 0;
+  if (!isMoneyAmount(vatAmount) || vatAmount > input.amount) {
+    throw new Error("O IVA não pode ser negativo nem superior ao valor do movimento.");
+  }
+  if (input.categoryId && !isUuid(input.categoryId)) {
+    throw new Error("Categoria inválida.");
+  }
+  if (input.bankAccountId && !isUuid(input.bankAccountId)) {
+    throw new Error("Conta inválida.");
+  }
   const db = getDb();
+  if (input.categoryId) {
+    const { rows } = await db.query<Row>(
+      `SELECT 1 FROM transaction_categories WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      [input.categoryId, organizationId]
+    );
+    if (rows.length === 0) throw new Error("Categoria não encontrada.");
+  }
+  if (input.bankAccountId) {
+    const { rows } = await db.query<Row>(
+      `SELECT 1 FROM bank_accounts WHERE id = $1 AND organization_id = $2 AND active = TRUE LIMIT 1`,
+      [input.bankAccountId, organizationId]
+    );
+    if (rows.length === 0) throw new Error("Conta não encontrada.");
+  }
   const { rows } = await db.query<Row>(
     `INSERT INTO transactions
       (organization_id, type, occurred_at, amount, category_id, bank_account_id, description,
@@ -221,10 +298,10 @@ export async function createTransaction(
       input.amount.toFixed(2),
       input.categoryId || null,
       input.bankAccountId || null,
-      input.description?.trim() || null,
+      input.description?.trim().slice(0, 400) || null,
       input.paymentMethod ?? "bank_transfer",
-      input.reference?.trim() || null,
-      (input.vatAmount ?? 0).toFixed(2),
+      input.reference?.trim().slice(0, 120) || null,
+      vatAmount.toFixed(2),
       profileId ?? null,
     ]
   );
@@ -254,7 +331,9 @@ export async function listTransactions(
     `SELECT t.*, c.name AS category_name, b.name AS bank_account_name
      FROM transactions t
      LEFT JOIN transaction_categories c ON c.id = t.category_id
+       AND c.organization_id = t.organization_id
      LEFT JOIN bank_accounts b ON b.id = t.bank_account_id
+       AND b.organization_id = t.organization_id
      WHERE ${conditions.join(" AND ")}
      ORDER BY t.occurred_at DESC, t.created_at DESC
      LIMIT 500`,
@@ -280,73 +359,89 @@ export async function listTransactions(
   }));
 }
 
-function monthKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+function monthKey(year: number, monthIndex: number): string {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
 }
 
-function periodDate(year: number, month: number, dayOfMonth: number): Date {
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  return new Date(Date.UTC(year, month, Math.min(dayOfMonth, lastDay), 12, 0, 0));
+function periodDate(year: number, monthIndex: number, dayOfMonth: number): Date {
+  const lastDay = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(year, monthIndex, Math.min(dayOfMonth, lastDay), 12, 0, 0));
+}
+
+function civilParts(value: string): { year: number; monthIndex: number } | null {
+  const match = /^(\d{4})-(\d{2})-\d{2}/.exec(value);
+  if (!match) return null;
+  return { year: Number(match[1]), monthIndex: Number(match[2]) - 1 };
 }
 
 export async function generateDueRecurring(organizationId: string): Promise<number> {
-  const db = getDb();
-  const now = new Date();
-  const { rows: rules } = await db.query<Row>(
-    `SELECT * FROM recurring_rules WHERE organization_id = $1 AND active = TRUE`,
-    [organizationId]
-  );
-  if (rules.length === 0) return 0;
+  const client = await getDb().connect();
+  try {
+    await client.query("BEGIN");
+    const { rows: rules } = await client.query<Row>(
+      `SELECT * FROM recurring_rules WHERE organization_id = $1 AND active = TRUE
+       ORDER BY id`,
+      [organizationId]
+    );
+    if (rules.length === 0) {
+      await client.query("COMMIT");
+      return 0;
+    }
 
-  let generated = 0;
-  for (const rule of rules) {
-    const start = new Date(String(rule.starts_at));
-    const end = rule.ends_at ? new Date(String(rule.ends_at)) : now;
-    const monthsCount =
-      (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-    const monthSteps: Array<{ year: number; month: number }> = [];
-    for (let i = 0; i <= Math.max(monthsCount, 0); i++) {
-      const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-      if (d > end) break;
-      if (d.getFullYear() > now.getFullYear()) break;
-      if (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth()) break;
-      monthSteps.push({ year: d.getFullYear(), month: d.getMonth() });
+    const todayKey = todayWorkshopDateKey();
+    const [todayYear, todayMonth] = todayKey.split("-").map(Number);
+    const currentIndex = todayYear * 12 + (todayMonth - 1);
+
+    let generated = 0;
+    for (const rule of rules) {
+      const start = civilParts(String(rule.starts_at));
+      if (!start) continue;
+      const end = rule.ends_at ? civilParts(String(rule.ends_at)) : null;
+      const startIndex = start.year * 12 + start.monthIndex;
+      const endIndex = end
+        ? Math.min(currentIndex, end.year * 12 + end.monthIndex)
+        : currentIndex;
+      if (endIndex < startIndex) continue;
+
+      const frequency = String(rule.frequency ?? "monthly");
+      const step = frequency === "yearly" ? 12 : frequency === "quarterly" ? 3 : 1;
+      const dayOfMonth = num(rule.day_of_month);
+
+      for (let index = startIndex; index <= endIndex; index += step) {
+        const year = Math.floor(index / 12);
+        const monthIndex = index % 12;
+        const occurredAt = periodDate(year, monthIndex, dayOfMonth);
+        const key = monthKey(year, monthIndex);
+        if (key > todayKey) continue;
+        const { rowCount } = await client.query(
+          `INSERT INTO transactions
+            (organization_id, type, occurred_at, amount, category_id, bank_account_id, description,
+             payment_method, vat_amount, source_type, source_id, recurring_rule_id, period_key)
+           SELECT $1, r.type, $2, r.amount, r.category_id, NULL, r.name, 'bank_transfer', 0,
+                  'recurring', r.id, r.id, $3::text
+           FROM recurring_rules r WHERE r.id = $4 AND r.organization_id = $1
+             AND NOT EXISTS (
+               SELECT 1 FROM transactions t
+               WHERE t.organization_id = $1 AND t.recurring_rule_id = r.id
+                 AND t.period_key = $3::text
+             )`,
+          [organizationId, occurredAt, key, String(rule.id)]
+        );
+        generated += rowCount ?? 0;
+      }
     }
-    if (rule.frequency === "yearly") {
-      const kept = monthSteps.filter((s) => s.month === start.getMonth());
-      monthSteps.length = 0;
-      monthSteps.push(...kept);
-    }
-    for (const step of monthSteps) {
-      const periodKey = monthKey(new Date(step.year, step.month, 1));
-      const { rowCount } = await db.query(
-        `INSERT INTO transactions
-          (organization_id, type, occurred_at, amount, category_id, bank_account_id, description,
-           payment_method, vat_amount, source_type, source_id, recurring_rule_id, period_key)
-         SELECT $1, r.type, $2, r.amount, r.category_id, NULL, r.name, 'bank_transfer', 0,
-                'recurring', r.id, r.id, $3::text
-         FROM recurring_rules r WHERE r.id = $4
-           AND NOT EXISTS (
-             SELECT 1 FROM transactions t
-             WHERE t.recurring_rule_id = r.id AND t.period_key = $3::text
-           )`,
-        [
-          organizationId,
-          periodDate(step.year, step.month, num(rule.day_of_month)),
-          periodKey,
-          String(rule.id),
-        ]
-      );
-      generated += rowCount ?? 0;
-    }
+    await client.query("COMMIT");
+    return generated;
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
   }
-  return generated;
 }
 
 export async function getTreasurySummary(organizationId: string): Promise<TreasurySummary> {
   const db = getDb();
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const { rows: balanceRows } = await db.query<Row>(
     `SELECT
@@ -360,18 +455,29 @@ export async function getTreasurySummary(organizationId: string): Promise<Treasu
     `SELECT
        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income,
        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expense
-     FROM transactions WHERE organization_id = $1 AND occurred_at >= $2`,
-    [organizationId, monthStart]
+     FROM transactions
+     WHERE organization_id = $1
+       AND occurred_at >= date_trunc('month', NOW() AT TIME ZONE 'Europe/Lisbon')
+           AT TIME ZONE 'Europe/Lisbon'
+       AND occurred_at < (date_trunc('month', NOW() AT TIME ZONE 'Europe/Lisbon') + interval '1 month')
+           AT TIME ZONE 'Europe/Lisbon'`,
+    [organizationId]
   );
 
   const { rows: recurringRows } = await db.query<Row>(
     `SELECT type, frequency, amount FROM recurring_rules WHERE organization_id = $1 AND active = TRUE`,
     [organizationId]
   );
-  let recurringMonthly = 0;
+  let recurringExpense = 0;
+  let recurringIncome = 0;
   for (const r of recurringRows) {
     const factor = r.frequency === "yearly" ? 1 / 12 : r.frequency === "quarterly" ? 1 / 3 : 1;
-    recurringMonthly += num(r.amount) * factor * (r.type === "expense" ? 1 : -1);
+    const monthly = num(r.amount) * factor;
+    if (r.type === "income") {
+      recurringIncome += monthly;
+    } else {
+      recurringExpense += monthly;
+    }
   }
 
   const { rows: pendingRows } = await db.query<Row>(
@@ -380,7 +486,8 @@ export async function getTreasurySummary(organizationId: string): Promise<Treasu
        count(CASE WHEN due_at < NOW() THEN 1 END)::int AS overdue_count,
        COALESCE(SUM(total_amount), 0) AS pending_total,
        count(*)::int AS pending_count
-     FROM invoices WHERE organization_id = $1 AND payment_status = 'pending'`,
+     FROM invoices
+     WHERE organization_id = $1 AND payment_status IN ('pending', 'overdue')`,
     [organizationId]
   );
 
@@ -389,7 +496,8 @@ export async function getTreasurySummary(organizationId: string): Promise<Treasu
     monthIncome: num(monthRows[0].income),
     monthExpense: num(monthRows[0].expense),
     monthNet: num(monthRows[0].income) - num(monthRows[0].expense),
-    recurringMonthlyTotal: recurringMonthly,
+    recurringMonthlyTotal: recurringExpense - recurringIncome,
+    recurringMonthlyExpense: recurringExpense,
     pendingInvoiceTotal: num(pendingRows[0].pending_total),
     pendingInvoiceCount: num(pendingRows[0].pending_count),
     overdueInvoiceTotal: num(pendingRows[0].overdue_total),

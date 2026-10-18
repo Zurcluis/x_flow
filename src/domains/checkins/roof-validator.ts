@@ -72,6 +72,10 @@ export function validateCheckinSubmission(checkin: {
     errors.push("A quilometragem do odómetro é obrigatória e deve ser superior a zero.");
   }
 
+  if (!checkin.signedByName?.trim()) {
+    errors.push("Indica o nome de quem entrega a viatura.");
+  }
+
   const photoValidation = validateCheckinPhotos(checkin.photos);
   if (!photoValidation.isValid && photoValidation.message) {
     errors.push(photoValidation.message);

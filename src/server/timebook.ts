@@ -1,103 +1,38 @@
 import { getDb } from "@/lib/db";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { VehicleTimeBookModel } from "@/domains/timebook/types";
+import { buildTimeBookModels, type TimeBookEntryRow } from "@/domains/timebook/benchmarks";
+import type { VehicleTimeBookModel } from "@/domains/timebook/types";
 
-
-
-
-
-function confidence(samples: number): "initial" | "learning" | "reliable" {
-  if (samples >= 15) return "reliable";
-  if (samples >= 5) return "learning";
-  return "initial";
-}
+type Row = Record<string, unknown>;
 
 export async function listTimeBookBenchmarks(
   organizationId: string
 ): Promise<VehicleTimeBookModel[]> {
-  const { rows } = await getDb().query<Record<string, unknown>>(
+  const { rows } = await getDb().query<Row>(
     `SELECT v.make, v.model, v.generation_year, v.body_type,
-            te.phase_key, te.hours_spent
+            v.id AS vehicle_id, w.service_title, w.id AS work_order_id, w.estimated_hours,
+            te.phase_key, te.hours_spent, te.notes
      FROM work_order_time_entries te
      JOIN work_orders w ON w.id = te.work_order_id
      JOIN vehicles v ON v.id = w.vehicle_id
-     WHERE w.organization_id = $1`,
+     WHERE w.organization_id = $1 AND w.status = 'completed'
+       AND v.organization_id = w.organization_id
+     ORDER BY v.make, v.model, v.generation_year, v.body_type, w.service_title, w.id, te.phase_key`,
     [organizationId]
   );
 
-  if (rows.length === 0) return [];
+  const entries: TimeBookEntryRow[] = rows.map((row) => ({
+    make: String(row.make),
+    model: String(row.model),
+    generationYear: Number(row.generation_year ?? 0),
+    bodyType: String(row.body_type ?? ""),
+    vehicleId: String(row.vehicle_id),
+    serviceTitle: String(row.service_title ?? ""),
+    workOrderId: String(row.work_order_id),
+    estimatedHours: Number(row.estimated_hours ?? 0),
+    phaseKey: String(row.phase_key),
+    hoursSpent: Number(row.hours_spent ?? 0),
+    notes: (row.notes as string | null) ?? null,
+  }));
 
-  // agrupar por viatura (marca+modelo) → fase
-  const byModel = new Map<
-    string,
-    { make: string; model: string; year: number; body: string; phases: Map<string, number[]> }
-  >();
-  for (const r of rows) {
-    const key = `${r.make}|${r.model}`;
-    if (!byModel.has(key)) {
-      byModel.set(key, {
-        make: String(r.make),
-        model: String(r.model),
-        year: Number(r.generation_year),
-        body: String(r.body_type),
-        phases: new Map(),
-      });
-    }
-    const phases = byModel.get(key)!.phases;
-    const pk = String(r.phase_key);
-    if (!phases.has(pk)) phases.set(pk, []);
-    phases.get(pk)!.push(Number(r.hours_spent));
-  }
-
-  const results: VehicleTimeBookModel[] = [];
-  for (const [key, entry] of byModel) {
-    const phaseBenchmarks: VehicleTimeBookModel["panels"] = [];
-    let totalSamples = 0;
-    let totalMedian = 0;
-    for (const [phaseKey, values] of entry.phases) {
-      const sorted = [...values].sort((a, b) => a - b);
-      const median = sorted[Math.floor(sorted.length / 2)];
-      const medianMinutes = Math.round(median * 60);
-      totalSamples += values.length;
-      totalMedian += median;
-      phaseBenchmarks.push({
-        panelCode: phaseKey,
-        panelName: PHASE_NAMES[phaseKey] ?? phaseKey,
-        serviceType: "PPF",
-        medianMinutes,
-        minMinutes: Math.round(sorted[0] * 60),
-        maxMinutes: Math.round(sorted[sorted.length - 1] * 60),
-        sampleCount: values.length,
-        confidence: confidence(values.length),
-      });
-    }
-    results.push({
-      id: `tb-${key.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-      make: entry.make,
-      model: entry.model,
-      generationYear: entry.year,
-      bodyType: entry.body,
-        serviceType: entry.body.toLowerCase().includes("wrap") ? "Wrap" : "PPF",
-      totalEstimatedHours: totalMedian,
-      totalMedianHours: totalMedian,
-      totalSamples,
-      overallConfidence: confidence(totalSamples),
-      panels: phaseBenchmarks,
-    });
-  }
-  return results.sort((a, b) => b.totalSamples - a.totalSamples);
+  return buildTimeBookModels(entries);
 }
-
-const PHASE_NAMES: Record<string, string> = {
-  prep_decontamination: "Preparação e Descontaminação",
-  disassembly: "Desmontagem",
-  film_cutting: "Corte de Filme",
-  application: "Aplicação",
-  assembly: "Montagem",
-  thermal_cure: "Cura Térmica",
-  detailing_finish: "Detalhes e Acabamento",
-  quality_control: "Controlo de Qualidade",
-  subcontracted: "Subcontratação",
-};
-
-export { getPrimaryOrganizationId };

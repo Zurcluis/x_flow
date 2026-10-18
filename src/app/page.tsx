@@ -49,7 +49,10 @@ function FinancialRestrictedCard() {
 
 export default async function CentroDeComandoPage() {
   const auth = await requireAuth();
-  const data = await getDashboardData();
+  const data = await getDashboardData(auth.organizationId, {
+    name: auth.name,
+    role: auth.role,
+  });
   const canSeeMoney = canSeeFinancials(auth.role);
   const firstName = auth.name.split(" ")[0] ?? auth.name;
 

@@ -9,12 +9,20 @@ import { Badge } from "@/components/ui/badge";
 import { BelongingsChecklist } from "@/components/xflow/deliveries/BelongingsChecklist";
 import { DeliverySignaturePad } from "@/components/xflow/deliveries/DeliverySignaturePad";
 import { createDeliveryAction } from "@/app/actions/deliveries";
-import { DeliveryCandidate } from "@/server/deliveries";
+import type { DeliveryCandidate } from "@/server/deliveries";
 
 interface BelongingItem {
   id: string;
   name: string;
   isReturned: boolean;
+}
+
+function belongingsFromCandidate(candidate: DeliveryCandidate): BelongingItem[] {
+  return candidate.belongings.map((b) => ({
+    id: b.id,
+    name: b.itemName,
+    isReturned: b.isPresent,
+  }));
 }
 
 export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidate[] }) {
@@ -31,9 +39,7 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
   );
 
   const [belongings, setBelongings] = useState<BelongingItem[]>(() =>
-    candidate.belongings.length > 0
-      ? candidate.belongings.map((b) => ({ id: b.id, name: b.itemName, isReturned: true }))
-      : [{ id: "bel-1", name: "Chave principal", isReturned: true }]
+    belongingsFromCandidate(candidate)
   );
 
   const [signerName, setSignerName] = useState("");
@@ -44,11 +50,9 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
   const handleSelectCandidate = (woId: string) => {
     setSelectedWoId(woId);
     const next = candidates.find((c) => c.workOrderId === woId);
-    setBelongings(
-      next && next.belongings.length > 0
-        ? next.belongings.map((b) => ({ id: b.id, name: b.itemName, isReturned: true }))
-        : [{ id: "bel-1", name: "Chave principal", isReturned: true }]
-    );
+    setBelongings(next ? belongingsFromCandidate(next) : []);
+    setSignatureData("");
+    setError(null);
   };
 
   const handleToggleBelonging = (id: string) => {
@@ -61,6 +65,11 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
     setError(null);
     if (!signerName.trim()) {
       setError("Indique quem levanta a viatura.");
+      return;
+    }
+    if (!signatureData) {
+      setError("Recolha a assinatura de quem levanta a viatura.");
+      setCurrentStep(3);
       return;
     }
     setSubmitting(true);
@@ -82,7 +91,6 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
 
   return (
     <>
-      {/* Seleção da OT (passo prévio) */}
       <Card className="p-4 flex flex-col gap-3">
         <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
           Ordem de Trabalho a Entregar
@@ -93,6 +101,7 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
               key={c.workOrderId}
               type="button"
               onClick={() => handleSelectCandidate(c.workOrderId)}
+              aria-pressed={c.workOrderId === selectedWoId}
               className={`px-3 py-2 rounded-md text-xs border transition-all cursor-pointer text-left ${
                 c.workOrderId === selectedWoId
                   ? "bg-[#d3a548]/10 border-[#d3a548] text-[#f1ede5]"
@@ -108,7 +117,6 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
         </div>
       </Card>
 
-      {/* Step Indicator */}
       <div className="flex items-center gap-2 text-xs font-mono">
         {[
           { step: 1, label: "1. Viatura & QC" },
@@ -119,12 +127,13 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
             key={s.step}
             type="button"
             onClick={() => setCurrentStep(s.step)}
+            aria-pressed={currentStep === s.step}
             className={`px-3 py-1 rounded-sm border transition-all cursor-pointer ${
               currentStep === s.step
                 ? "bg-[#d3a548] text-[#050606] font-bold border-[#d3a548]"
                 : currentStep > s.step
-                ? "bg-[#142618] text-[#68a46b] border-[#68a46b]/40"
-                : "bg-[#101314] text-[#8a9092] border-white/[0.04]"
+                  ? "bg-[#142618] text-[#68a46b] border-[#68a46b]/40"
+                  : "bg-[#101314] text-[#8a9092] border-white/[0.04]"
             }`}
           >
             {s.label}
@@ -132,15 +141,14 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
         ))}
       </div>
 
-      {/* Step 1: Vehicle & QC Gate Verification */}
       {currentStep === 1 && (
         <Card className="p-6 flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-[#d3a548]">
-              Passo 1 · Validação de QC & Viatura Pronta para Entrega
+              Passo 1 · Validação de QC e Viatura Pronta para Entrega
             </span>
             <Badge variant="success" className="text-xs">
-              {candidate.qcCertificateNumber ? "QC 100% Aprovado" : "QC sem registo"}
+              {candidate.qcCertificateNumber ? "QC aprovado" : "QC sem registo"}
             </Badge>
           </div>
 
@@ -171,20 +179,23 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
             }`}
           >
             <ShieldCheck
-              className={`h-5 w-5 shrink-0 ${candidate.qcCertificateNumber ? "text-[#68a46b]" : "text-[#d3a548]"}`}
+              className={`h-5 w-5 shrink-0 ${
+                candidate.qcCertificateNumber ? "text-[#68a46b]" : "text-[#d3a548]"
+              }`}
             />
             <span>
               {candidate.qcCertificateNumber ? (
                 <>
-                  <strong>Gate de Qualidade Aprovado:</strong> A OT {candidate.workOrderNumber} (
-                  {candidate.serviceTitle}) está concluída e o QC foi aprovado. A viatura está apta
-                  para levantamento.
+                  <strong>Gate de Qualidade aprovado:</strong> a OT {candidate.workOrderNumber}{" "}
+                  ({candidate.serviceTitle}) está concluída e o QC foi aprovado. A viatura
+                  está apta para levantamento.
                 </>
               ) : (
                 <>
-                  <strong>Gate de Qualidade sem registo:</strong> A OT {candidate.workOrderNumber} (
-                  {candidate.serviceTitle}) está concluída mas não tem certificado QC associado.
-                  Confirma a inspeção antes de assinar a entrega.
+                  <strong>Gate de Qualidade sem registo:</strong> a OT{" "}
+                  {candidate.workOrderNumber} ({candidate.serviceTitle}) está concluída mas
+                  não tem certificado QC associado. Confirma a inspeção antes de assinar a
+                  entrega.
                 </>
               )}
             </span>
@@ -198,10 +209,12 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
         </Card>
       )}
 
-      {/* Step 2: Belongings Return */}
       {currentStep === 2 && (
         <div className="flex flex-col gap-6">
-          <BelongingsChecklist belongings={belongings} onToggleBelonging={handleToggleBelonging} />
+          <BelongingsChecklist
+            belongings={belongings}
+            onToggleBelonging={handleToggleBelonging}
+          />
 
           <div className="flex items-center justify-between">
             <Button variant="ghost" onClick={() => setCurrentStep(1)}>
@@ -214,7 +227,6 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
         </div>
       )}
 
-      {/* Step 3: Signature & Finish */}
       {currentStep === 3 && (
         <div className="flex flex-col gap-6">
           <DeliverySignaturePad
@@ -226,8 +238,11 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
           />
 
           <div className="flex flex-col gap-1.5 p-5 rounded-lg bg-[#101314] border border-white/[0.08] text-xs">
-            <label className="font-semibold text-[#a9adae]">Notas Finais de Entrega</label>
+            <label htmlFor="delivery-notes" className="font-semibold text-[#a9adae]">
+              Notas Finais de Entrega
+            </label>
             <textarea
+              id="delivery-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
@@ -237,7 +252,10 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
           </div>
 
           {error && (
-            <div className="p-3 rounded-sm bg-[#2a1214] border border-[#f05a50]/40 text-xs text-[#f78e85]">
+            <div
+              role="alert"
+              className="p-3 rounded-sm bg-[#2a1214] border border-[#f05a50]/40 text-xs text-[#f78e85]"
+            >
               {error}
             </div>
           )}
@@ -254,7 +272,7 @@ export function NewDeliveryWizard({ candidates }: { candidates: DeliveryCandidat
               className="bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-black"
             >
               <CheckCircle2 className="h-5 w-5" />
-              <span>{submitting ? "A registar entrega…" : "Concluir Entrega e Ativar Passaporte Digital"}</span>
+              <span>{submitting ? "A registar entrega..." : "Concluir Entrega"}</span>
             </Button>
           </div>
         </div>

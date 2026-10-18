@@ -3,21 +3,25 @@
 import React from "react";
 import { Check, CheckCircle2 } from "lucide-react";
 import { WorkOrderPhase } from "@/domains/production/types";
+import { workshopTime } from "@/domains/calendar/datetime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface PhaseChecklistCardProps {
   phase: WorkOrderPhase;
+  disabled?: boolean;
   onToggleItem: (itemId: string) => void;
   onCompletePhase: (phaseKey: string) => void;
 }
 
 export function PhaseChecklistCard({
   phase,
+  disabled = false,
   onToggleItem,
   onCompletePhase,
 }: PhaseChecklistCardProps) {
-  const allCompleted = phase.checklist.every((i) => i.isCompleted);
+  const allCompleted =
+    phase.checklist.length > 0 && phase.checklist.every((i) => i.isCompleted);
 
   return (
     <div className="flex flex-col gap-4 p-5 rounded-[18px] bg-[#101314] border border-white/[0.08]">
@@ -52,11 +56,21 @@ export function PhaseChecklistCard({
 
       {/* Checklist items */}
       <div className="flex flex-col gap-2">
+        {phase.checklist.length === 0 && (
+          <div className="rounded-md border border-dashed border-white/[0.08] bg-[#15191a]/40 px-4 py-6 text-center text-[11px] text-[#8a9092]">
+            Checklist ainda não configurada para esta fase.
+          </div>
+        )}
         {phase.checklist.map((item) => (
           <label
             key={item.id}
-            onClick={() => onToggleItem(item.id)}
-            className={`flex items-center justify-between p-3 rounded-md border transition-all cursor-pointer select-none ${
+            aria-disabled={disabled}
+            onClick={() => {
+              if (!disabled) onToggleItem(item.id);
+            }}
+            className={`flex items-center justify-between p-3 rounded-md border transition-all select-none ${
+              disabled ? "cursor-wait opacity-70" : "cursor-pointer"
+            } ${
               item.isCompleted
                 ? "bg-[#141b17] border-[#68a46b]/40 text-[#f1ede5]"
                 : "bg-[#15191a]/50 border-white/[0.04] text-[#a9adae] hover:border-white/15 hover:text-[#f1ede5]"
@@ -79,7 +93,7 @@ export function PhaseChecklistCard({
 
             {item.isCompleted && item.completedByName && (
               <span className="text-[11px] text-[#68a46b] shrink-0 font-medium">
-                ✓ {item.completedByName.split(" ")[0]} ({item.completedAt?.slice(-5)})
+                ✓ {item.completedByName.split(" ")[0]} ({item.completedAt ? workshopTime(new Date(item.completedAt)) : ""})
               </span>
             )}
           </label>
@@ -93,7 +107,7 @@ export function PhaseChecklistCard({
             variant="primary"
             size="sm"
             onClick={() => onCompletePhase(phase.phaseKey)}
-            disabled={!allCompleted}
+            disabled={!allCompleted || disabled}
             className={!allCompleted ? "opacity-50 cursor-not-allowed" : ""}
           >
             <CheckCircle2 className="h-4 w-4" />

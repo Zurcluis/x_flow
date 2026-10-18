@@ -74,7 +74,7 @@ export function VisionDamageAnnotator({
           <Eye className="h-3.5 w-3.5 text-[#d3a548]" />
           <span>{photoLabel}</span>
           <span className="text-[#a9adae] font-normal">
-            ({suggestions.length} anomalias detetadas por IA)
+            ({suggestions.length} anomalias sinalizadas)
           </span>
         </div>
       </div>

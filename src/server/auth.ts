@@ -8,16 +8,14 @@ import {
 } from "node:crypto";
 import { promisify } from "node:util";
 import { getDb, restoreBootstrapOrg } from "@/lib/db";
+import { canSeeFinancials, hasRole, type OrganizationRole } from "@/lib/roles";
+import { validateNewPassword } from "@/lib/password-policy";
+
+export type { OrganizationRole } from "@/lib/roles";
+export { canSeeFinancials } from "@/lib/roles";
 
 export const SESSION_COOKIE = "xflow_session";
 const SESSION_TTL_DAYS = 30;
-
-export type OrganizationRole =
-  | "admin"
-  | "workshop_manager"
-  | "technician"
-  | "customer"
-  | "b2b_user";
 
 export interface AuthContext {
   profileId: string;
@@ -25,6 +23,7 @@ export interface AuthContext {
   email: string;
   role: OrganizationRole;
   organizationId: string;
+  mustChangePassword: boolean;
 }
 
 export type PublicTokenKind =
@@ -166,8 +165,9 @@ export async function loginAndCreateSession(
       name: string;
       email: string;
       password_hash: string | null;
+      must_change_password: boolean;
     }>(
-      `SELECT p.id, p.name, p.email, p.password_hash
+      `SELECT p.id, p.name, p.email, p.password_hash, p.must_change_password
        FROM profiles p
        WHERE lower(p.email) = current_setting('app.auth_lookup_email', true)
        LIMIT 1`
@@ -221,6 +221,7 @@ export async function loginAndCreateSession(
       email: profile.email,
       role: membership.role as OrganizationRole,
       organizationId,
+      mustChangePassword: Boolean(profile.must_change_password),
     };
   } finally {
     await client.query("RESET app.current_profile_id").catch(() => {});
@@ -287,8 +288,9 @@ async function loadAuthContext(
       name: string;
       email: string;
       role: string;
+      must_change_password: boolean;
     }>(
-      `SELECT p.id AS profile_id, p.name, p.email, m.role
+      `SELECT p.id AS profile_id, p.name, p.email, m.role, p.must_change_password
        FROM profiles p
        JOIN organization_memberships m ON m.profile_id = p.id
        WHERE p.id = $1 AND m.organization_id = $2 AND m.status = 'active'
@@ -305,6 +307,7 @@ async function loadAuthContext(
       email: r.email,
       role: r.role as OrganizationRole,
       organizationId,
+      mustChangePassword: Boolean(r.must_change_password),
     };
   } finally {
     client.release();
@@ -325,7 +328,32 @@ export async function requireAuth(): Promise<AuthContext> {
   if (!auth) {
     redirect("/login");
   }
+  if (auth.mustChangePassword) {
+    redirect("/change-password");
+  }
   return auth;
+}
+
+export async function requireRole(
+  allowed: readonly OrganizationRole[]
+): Promise<AuthContext> {
+  const auth = await requireAuth();
+  if (!hasRole(auth.role, allowed)) {
+    redirect("/");
+  }
+  return auth;
+}
+
+export function assertFinancialAccess(auth: AuthContext): void {
+  if (!canSeeFinancials(auth.role)) {
+    throw new Error("Sem permissão para aceder a dados financeiros.");
+  }
+}
+
+export function assertManagementAccess(auth: AuthContext): void {
+  if (!hasRole(auth.role, ["admin", "workshop_manager"])) {
+    throw new Error("Sem permissão para gerir esta área.");
+  }
 }
 
 export async function requirePublicToken(
@@ -375,6 +403,69 @@ export async function requirePublicToken(
   return { organizationId };
 }
 
+export async function changeOwnPassword(
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await getOptionalAuth();
+  if (!auth) {
+    return { ok: false, error: "Sessão expirada. Volta a entrar." };
+  }
+  const policyError = validateNewPassword(currentPassword, newPassword, confirmPassword);
+  if (policyError) {
+    return { ok: false, error: policyError };
+  }
+
+  const client = await getDb().connect();
+  try {
+    await client.query("SELECT set_config('app.current_profile_id', $1, false)", [
+      auth.profileId,
+    ]);
+    const { rows } = await client.query<{ password_hash: string | null }>(
+      "SELECT password_hash FROM profiles WHERE id = $1 LIMIT 1",
+      [auth.profileId]
+    );
+    const stored = rows[0]?.password_hash;
+    if (!stored || !(await verifyPassword(currentPassword, stored))) {
+      return { ok: false, error: "A password atual não está correta." };
+    }
+
+    const hash = await hashPassword(newPassword);
+    await client.query(
+      `UPDATE profiles
+       SET password_hash = $1, must_change_password = FALSE, updated_at = NOW()
+       WHERE id = $2`,
+      [hash, auth.profileId]
+    );
+
+    const store = await cookies();
+    const currentToken = store.get(SESSION_COOKIE)?.value;
+    if (currentToken) {
+      await client.query(
+        `UPDATE auth_sessions SET revoked_at = NOW()
+         WHERE profile_id = $1 AND revoked_at IS NULL AND token_hash <> $2`,
+        [auth.profileId, hashSessionToken(currentToken)]
+      );
+    } else {
+      await client.query(
+        "UPDATE auth_sessions SET revoked_at = NOW() WHERE profile_id = $1 AND revoked_at IS NULL",
+        [auth.profileId]
+      );
+    }
+
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Erro ao atualizar a password.",
+    };
+  } finally {
+    await client.query("RESET app.current_profile_id").catch(() => {});
+    client.release();
+  }
+}
+
 export async function logoutCurrentSession(): Promise<void> {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
@@ -387,6 +478,3 @@ export async function logoutCurrentSession(): Promise<void> {
   store.delete(SESSION_COOKIE);
 }
 
-export function canSeeFinancials(role: OrganizationRole): boolean {
-  return role === "admin" || role === "workshop_manager";
-}

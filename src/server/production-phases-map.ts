@@ -7,6 +7,7 @@
 
 import type { PoolClient } from "pg";
 import { round2 } from "@/domains/pricing/engine";
+import { CHECKLIST_TEMPLATES } from "@/domains/production/checklist-templates";
 import type { PhaseKey } from "@/domains/production/types";
 
 type Row = Record<string, unknown>;
@@ -312,6 +313,21 @@ export function buildPhasePlan(input: PhasePlanInput): PhasePlan {
 
 // ===== Camada de base de dados (executada dentro da transação de aprovação) =====
 
+export async function insertPhaseChecklistItems(
+  client: PhaseInsertClient,
+  phaseId: string,
+  phaseKey: PhaseKey
+): Promise<void> {
+  const labels = CHECKLIST_TEMPLATES[phaseKey] ?? [];
+  for (const label of labels) {
+    await client.query(
+      `INSERT INTO work_order_checklist_items (phase_id, label, is_completed)
+       VALUES ($1,$2,false)`,
+      [phaseId, label]
+    );
+  }
+}
+
 export async function insertPlannedPhases(
   client: PhaseInsertClient,
   workOrderId: string,
@@ -319,11 +335,12 @@ export async function insertPlannedPhases(
 ): Promise<void> {
   for (let index = 0; index < phases.length; index++) {
     const phase = phases[index];
-    await client.query(
+    const { rows } = await client.query<Row>(
       `INSERT INTO work_order_phases
         (work_order_id, phase_key, name, status, order_index, estimated_hours,
          supplier_service_id, sublet_base_cost, sublet_fee_cost)
-       VALUES ($1,$2,$3,'pending',$4,$5,$6,$7,$8)`,
+       VALUES ($1,$2,$3,'pending',$4,$5,$6,$7,$8)
+       RETURNING id`,
       [
         workOrderId,
         phase.phaseKey,
@@ -335,6 +352,7 @@ export async function insertPlannedPhases(
         phase.sublet?.feeCost ?? null,
       ]
     );
+    await insertPhaseChecklistItems(client, String(rows[0].id), phase.phaseKey);
   }
 }
 

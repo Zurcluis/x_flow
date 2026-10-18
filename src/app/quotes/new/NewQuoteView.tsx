@@ -16,7 +16,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonStyles } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { QuotePartsMatrix } from "@/components/xflow/quotes/QuotePartsMatrix";
 import { QuoteFinancialSummary } from "@/components/xflow/quotes/QuoteFinancialSummary";
@@ -696,10 +696,16 @@ export function NewQuoteView({
       {/* Top Header */}
       <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/[0.04]">
         <div className="flex items-center gap-3">
-          <Link href="/quotes">
-            <Button variant="ghost" size="sm" className="p-2">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+          <Link
+            href="/quotes"
+            className={buttonStyles({
+              variant: "ghost",
+              size: "sm",
+              className: "p-2",
+            })}
+            aria-label="Voltar aos orçamentos"
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="flex flex-col">
             <span className="text-xs font-medium text-[#a9adae]">Configurador Comercial</span>
@@ -1508,7 +1514,7 @@ export function NewQuoteView({
                       : "text-[#a9adae] hover:text-[#f1ede5]"
                   }`}
                 >
-                  Opção 2: Recomendada ⭐ ({recommendedParts.length} peças)
+                  Opção 2: Recomendada ({recommendedParts.length} peças)
                 </button>
                 <button
                   type="button"
@@ -1575,15 +1581,6 @@ export function NewQuoteView({
             ) : (
               <>
                 <QuoteFinancialSummary financials={currentActiveOption} />
-
-                <div className="p-4 rounded-lg bg-[#101314] border border-white/[0.06] text-xs text-[#a9adae] flex flex-col gap-2">
-                  <span className="font-bold text-[#f1ede5]">
-                    Dica da Metodologia X-Motion:
-                  </span>
-                  <p className="leading-relaxed">
-                    Apresentar 3 opções estruturadas aumenta a taxa de conversão em 40%, permitindo ao cliente escolher o nível de proteção adequado ao seu perfil de condução.
-                  </p>
-                </div>
 
                 <Button variant="primary" onClick={handleCreateQuote} size="lg" className="w-full">
                   <Check className="h-4 w-4" />

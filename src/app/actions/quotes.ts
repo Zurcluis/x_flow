@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 import {
   approveQuote,
   createQuote,
@@ -9,6 +10,7 @@ import {
   emitQuote,
   getQuoteByToken,
   loadDraftQuote,
+  quoteErrorMessage,
   rejectQuote,
   updateDraftQuote,
 } from "@/server/quotes";
@@ -33,7 +35,7 @@ export type UpdateDraftQuoteResult =
 export async function loadDraftQuoteAction(
   quoteId: string
 ): Promise<LoadDraftQuoteResult> {
-  const auth = await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   try {
     if (!quoteId) {
       return { ok: false, error: "Orçamento não indicado." };
@@ -46,7 +48,7 @@ export async function loadDraftQuoteAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao carregar o rascunho.",
+      error: quoteErrorMessage(e, "Erro ao carregar o rascunho."),
     };
   }
 }
@@ -54,7 +56,7 @@ export async function loadDraftQuoteAction(
 export async function updateDraftQuoteAction(
   input: CreateQuoteInput & { quoteId: string }
 ): Promise<UpdateDraftQuoteResult> {
-  const auth = await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   try {
     if (!input.quoteId) {
       return { ok: false, error: "Orçamento não indicado." };
@@ -85,7 +87,7 @@ export async function updateDraftQuoteAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao atualizar o rascunho.",
+      error: quoteErrorMessage(e, "Erro ao atualizar o rascunho."),
     };
   }
 }
@@ -93,7 +95,7 @@ export async function updateDraftQuoteAction(
 export async function createQuoteAction(
   input: CreateQuoteInput
 ): Promise<CreateQuoteResult> {
-  const auth = await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   try {
     if (!input.vehicleId || !input.customerId) {
       return { ok: false, error: "Viatura e cliente são obrigatórios." };
@@ -115,7 +117,7 @@ export async function createQuoteAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao emitir o orçamento.",
+      error: quoteErrorMessage(e, "Erro ao emitir o orçamento."),
     };
   }
 }
@@ -123,7 +125,7 @@ export async function createQuoteAction(
 export async function emitQuoteAction(
   quoteId: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   try {
     if (!quoteId) {
       return { ok: false, error: "Orçamento não indicado." };
@@ -137,7 +139,7 @@ export async function emitQuoteAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao emitir o orçamento.",
+      error: quoteErrorMessage(e, "Erro ao emitir o orçamento."),
     };
   }
 }
@@ -145,10 +147,12 @@ export async function emitQuoteAction(
 export async function deleteQuoteAction(
   quoteId: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const auth = await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   try {
-    const organizationId = auth.organizationId;
-    const result = await deleteQuote(organizationId, quoteId);
+    if (!quoteId) {
+      return { ok: false, error: "Orçamento não indicado." };
+    }
+    const result = await deleteQuote(auth.organizationId, quoteId);
     if (result.ok) {
       revalidatePath("/quotes");
       revalidatePath("/");
@@ -157,7 +161,7 @@ export async function deleteQuoteAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao eliminar o orçamento.",
+      error: quoteErrorMessage(e, "Erro ao eliminar o orçamento."),
     };
   }
 }
@@ -171,14 +175,24 @@ export async function rejectPublicQuoteAction(
     if (quote.status === "approved") {
       return { ok: false, error: "Este orçamento já foi aprovado." };
     }
-    const organizationId = quote.organizationId;
-    await rejectQuote(organizationId, quote.id);
-    revalidatePath("/quotes");
-    return { ok: true };
+    if (quote.status !== "sent" && quote.status !== "viewed") {
+      return {
+        ok: false,
+        error: "Só propostas enviadas ou visualizadas podem ser recusadas.",
+      };
+    }
+    const result = await rejectQuote(quote.organizationId, quote.id);
+    if (result.ok) {
+      revalidatePath("/quotes");
+      revalidatePath(`/quotes/${quote.id}`);
+      revalidatePath(`/quotes/public/${token}`);
+      revalidatePath(`/portal/${token}`);
+    }
+    return result;
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao recusar o orçamento.",
+      error: quoteErrorMessage(e, "Erro ao recusar o orçamento."),
     };
   }
 }
@@ -187,32 +201,68 @@ export async function approveQuoteAction(
   quoteId: string,
   selectedOptionId?: string
 ): Promise<ApproveQuoteResult> {
-  const auth = await requireAuth();
-  const organizationId = auth.organizationId;
-  const result = await approveQuote(organizationId, quoteId, selectedOptionId);
-  if (result.ok) {
-    revalidatePath("/quotes");
-    revalidatePath("/production");
-    revalidatePath(`/quotes/${quoteId}`);
+  const auth = await requireRole(SCHEDULING_ROLES);
+  try {
+    const result = await approveQuote(
+      auth.organizationId,
+      quoteId,
+      selectedOptionId,
+      auth.name
+    );
+    if (result.ok) {
+      revalidatePath("/quotes");
+      revalidatePath("/production");
+      revalidatePath(`/quotes/${quoteId}`);
+    }
+    return result;
+  } catch (e) {
+    return {
+      ok: false,
+      error: quoteErrorMessage(e, "Erro ao aprovar o orçamento."),
+    };
   }
-  return result;
 }
 
 export async function approvePublicQuoteAction(
   token: string,
   selectedOptionId?: string,
-  approverName?: string
+  approverName?: string,
+  approvalNotes?: string
 ): Promise<ApproveQuoteResult> {
-  const quote = await getQuoteByToken(token);
-  if (!quote) return { ok: false, error: "Orçamento não encontrado ou link expirado." };
-  if (quote.status === "approved") {
-    return { ok: false, error: "Este orçamento já foi aprovado." };
-  }
+  try {
+    const quote = await getQuoteByToken(token);
+    if (!quote) {
+      return { ok: false, error: "Orçamento não encontrado ou link expirado." };
+    }
+    if (quote.status === "approved") {
+      return { ok: false, error: "Este orçamento já foi aprovado." };
+    }
+    if (quote.status !== "sent" && quote.status !== "viewed") {
+      return {
+        ok: false,
+        error: "Só propostas enviadas ou visualizadas podem ser aprovadas.",
+      };
+    }
 
-  const result = await approveQuote(quote.organizationId, quote.id, selectedOptionId, approverName);
-  if (result.ok) {
-    revalidatePath("/quotes");
-    revalidatePath("/production");
+    const result = await approveQuote(
+      quote.organizationId,
+      quote.id,
+      selectedOptionId,
+      approverName,
+      approvalNotes
+    );
+    if (result.ok) {
+      revalidatePath("/quotes");
+      revalidatePath("/production");
+      revalidatePath(`/quotes/${quote.id}`);
+      revalidatePath(`/quotes/public/${token}`);
+      revalidatePath(`/portal/${token}`);
+    }
+    return result;
+  } catch (e) {
+    return {
+      ok: false,
+      error: quoteErrorMessage(e, "Erro ao aprovar o orçamento."),
+    };
   }
-  return result;
 }

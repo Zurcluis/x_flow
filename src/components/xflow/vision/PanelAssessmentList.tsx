@@ -55,7 +55,7 @@ export function PanelAssessmentList({
                     </span>
                     <span>•</span>
                     <span className="font-mono">
-                      {Math.round(panel.confidence * 100)}% Confiança IA
+                      {Math.round(panel.confidence * 100)}% confiança (demo)
                     </span>
                   </div>
                 </div>

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { PhaseKey } from "@/domains/production/types";
 import { WorkOrder } from "@/domains/checkins/types";
-import { requireAuth } from "@/server/auth";
+import { requireAuth, type AuthContext } from "@/server/auth";
+import { hasRole, SCHEDULING_ROLES } from "@/lib/roles";
 import {
   addTimeEntry,
   completePhase,
@@ -12,11 +13,22 @@ import {
   updateWorkOrderStatus,
 } from "@/server/production";
 
+function assertSchedulingAccess(auth: AuthContext): void {
+  if (!hasRole(auth.role, SCHEDULING_ROLES)) {
+    throw new Error("Sem permissão para gerir a produção.");
+  }
+}
+
 export async function updateWorkOrderStatusAction(
   workOrderId: string,
   status: WorkOrder["status"]
 ) {
   const auth = await requireAuth();
+  try {
+    assertSchedulingAccess(auth);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Sem permissão." };
+  }
   const organizationId = auth.organizationId;
   const result = await updateWorkOrderStatus(organizationId, workOrderId, status);
   if (result.ok) {
@@ -27,8 +39,13 @@ export async function updateWorkOrderStatusAction(
 }
 
 export async function completePhaseAction(workOrderId: string, phaseId: string) {
-  await requireAuth();
-  const result = await completePhase(workOrderId, phaseId);
+  const auth = await requireAuth();
+  try {
+    assertSchedulingAccess(auth);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+  const result = await completePhase(auth.organizationId, workOrderId, phaseId);
   if (result.ok) {
     revalidatePath(`/production/${workOrderId}`);
     revalidatePath("/production");
@@ -37,8 +54,13 @@ export async function completePhaseAction(workOrderId: string, phaseId: string) 
 }
 
 export async function startPhaseAction(workOrderId: string, phaseId: string) {
-  await requireAuth();
-  const result = await startPhase(workOrderId, phaseId);
+  const auth = await requireAuth();
+  try {
+    assertSchedulingAccess(auth);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+  const result = await startPhase(auth.organizationId, workOrderId, phaseId);
   if (result.ok) {
     revalidatePath(`/production/${workOrderId}`);
     revalidatePath("/production");
@@ -51,23 +73,49 @@ export async function toggleChecklistItemAction(
   itemId: string,
   completed: boolean
 ) {
-  await requireAuth();
-  const result = await toggleChecklistItem(itemId, completed, "João Martins");
-  if (result.ok) revalidatePath(`/production/${workOrderId}`);
+  const auth = await requireAuth();
+  try {
+    assertSchedulingAccess(auth);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+  const result = await toggleChecklistItem(
+    auth.organizationId,
+    workOrderId,
+    itemId,
+    completed,
+    auth.name
+  );
+  if (result.ok) {
+    revalidatePath(`/production/${workOrderId}`);
+    revalidatePath("/production");
+  }
   return result;
 }
 
 export async function addTimeEntryAction(
   workOrderId: string,
   phaseKey: PhaseKey,
-  technicianName: string,
   hoursSpent: number,
   notes?: string
 ) {
-  await requireAuth();
-  const result = await addTimeEntry(workOrderId, phaseKey, technicianName, hoursSpent, notes);
+  const auth = await requireAuth();
+  try {
+    assertSchedulingAccess(auth);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+  const result = await addTimeEntry(
+    auth.organizationId,
+    workOrderId,
+    phaseKey,
+    auth.name,
+    hoursSpent,
+    notes
+  );
   if (result.ok) {
     revalidatePath(`/production/${workOrderId}`);
+    revalidatePath("/production");
     revalidatePath("/time-book");
   }
   return result;

@@ -1,11 +1,20 @@
 import { getDb } from "@/lib/db";
-import { getPrimaryOrganizationId } from "@/server/org";
 import { B2BAccount, B2BVehicleEntry } from "@/domains/timebook/types";
+import { workshopDateKey } from "@/domains/calendar/datetime";
 
 type Row = Record<string, unknown>;
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function num(value: unknown): number {
   return value === null || value === undefined ? 0 : Number(value);
+}
+
+function assertUuid(value: string, label: string): void {
+  if (typeof value !== "string" || !UUID_RE.test(value)) {
+    throw new Error(`${label} inválido.`);
+  }
 }
 
 function mapStatus(status: string | null): B2BVehicleEntry["status"] {
@@ -25,6 +34,7 @@ function mapStatus(status: string | null): B2BVehicleEntry["status"] {
 }
 
 export async function listB2BAccounts(organizationId: string): Promise<B2BAccount[]> {
+  assertUuid(organizationId, "Organização");
   const db = getDb();
   const { rows } = await db.query<Row>(
     `SELECT c.id, c.name, c.legal_name, c.nif, b.discount_rate, b.payment_terms_days,
@@ -45,21 +55,39 @@ export async function listB2BAccounts(organizationId: string): Promise<B2BAccoun
     const { rows: vehicleRows } = await db.query<Row>(
       `SELECT v.id, v.plate_display, v.make, v.model,
               w.status, w.service_title, w.completed_at, w.estimated_hours,
-              p.name AS technician
+              p.name AS technician, inv.total_amount
        FROM vehicle_customer_links l
-       JOIN vehicles v ON v.id = l.vehicle_id
-       LEFT JOIN work_orders w ON w.vehicle_id = v.id
+       JOIN vehicles v ON v.id = l.vehicle_id AND v.organization_id = l.organization_id
+       LEFT JOIN LATERAL (
+         SELECT w.*
+         FROM work_orders w
+         WHERE w.organization_id = $2 AND w.vehicle_id = v.id
+         ORDER BY w.started_at DESC NULLS LAST, w.created_at DESC
+         LIMIT 1
+       ) w ON TRUE
        LEFT JOIN profiles p ON p.id = w.primary_technician_id
-       WHERE l.customer_id = $1 AND l.is_current
-       ORDER BY w.started_at DESC`,
-      [customerId]
+       LEFT JOIN LATERAL (
+         SELECT i.total_amount
+         FROM invoices i
+         WHERE i.organization_id = $2
+           AND i.work_order_id = w.id
+           AND i.payment_status <> 'cancelled'
+         ORDER BY i.issued_at DESC
+         LIMIT 1
+       ) inv ON TRUE
+       WHERE l.organization_id = $2
+         AND l.customer_id = $1
+         AND l.is_current
+       ORDER BY w.started_at DESC NULLS LAST`,
+      [customerId, organizationId]
     );
 
     const { rows: billedRows } = await db.query<Row>(
       `SELECT COALESCE(SUM(total_amount),0) AS total,
-              COALESCE(SUM(CASE WHEN payment_status = 'pending' THEN total_amount ELSE 0 END),0) AS pending
-       FROM invoices WHERE customer_id = $1`,
-      [customerId]
+              COALESCE(SUM(CASE WHEN payment_status IN ('pending','overdue') THEN total_amount ELSE 0 END),0) AS pending
+       FROM invoices
+       WHERE organization_id = $1 AND customer_id = $2 AND payment_status <> 'cancelled'`,
+      [organizationId, customerId]
     );
 
     const fleetVehicles: B2BVehicleEntry[] = vehicleRows.map((v) => ({
@@ -67,13 +95,13 @@ export async function listB2BAccounts(organizationId: string): Promise<B2BAccoun
       plate: String(v.plate_display ?? ""),
       make: String(v.make),
       model: String(v.model),
-      service: (v.service_title as string) ?? "—",
+      service: (v.service_title as string) ?? "",
       status: mapStatus((v.status as string) ?? null),
       deliveryDueDate: v.completed_at
-        ? new Date(v.completed_at as string).toISOString().slice(0, 10)
-        : "—",
-      assignedTechnician: (v.technician as string) ?? "—",
-      amountCents: Math.round(num(v.estimated_hours) * 33 * 100),
+        ? workshopDateKey(new Date(v.completed_at as string))
+        : "",
+      assignedTechnician: (v.technician as string) ?? "",
+      amountCents: Math.round(num(v.total_amount) * 100),
     }));
 
     accounts.push({
@@ -81,7 +109,7 @@ export async function listB2BAccounts(organizationId: string): Promise<B2BAccoun
       companyName: String(r.name),
       tradeName: (r.legal_name as string) ?? String(r.name),
       nif: (r.nif as string) ?? "",
-      contactPerson: (r.contact_person as string) ?? "—",
+      contactPerson: (r.contact_person as string) ?? "",
       contactEmail: (r.contact_email as string) ?? "",
       contactPhone: (r.contact_phone as string) ?? "",
       discountRate: num(r.discount_rate),
@@ -94,4 +122,12 @@ export async function listB2BAccounts(organizationId: string): Promise<B2BAccoun
   return accounts;
 }
 
-export { getPrimaryOrganizationId };
+export async function getB2BAccountById(
+  organizationId: string,
+  accountId: string
+): Promise<B2BAccount | null> {
+  assertUuid(organizationId, "Organização");
+  if (typeof accountId !== "string" || !UUID_RE.test(accountId)) return null;
+  const accounts = await listB2BAccounts(organizationId);
+  return accounts.find((account) => account.id === accountId) ?? null;
+}

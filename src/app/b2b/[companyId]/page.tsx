@@ -1,10 +1,8 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { notFound } from "next/navigation";
 import { B2BCompanyDetailView } from "./B2BCompanyDetailView";
-import { listB2BAccounts } from "@/server/b2b";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { getB2BAccountById } from "@/server/b2b";
+import { requireRole } from "@/server/auth";
+import { MANAGEMENT_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -13,25 +11,10 @@ export default async function B2BCompanyDetailPage({
 }: {
   params: Promise<{ companyId: string }>;
 }) {
-  await requireAuth();
+  const auth = await requireRole(MANAGEMENT_ROLES);
   const { companyId } = await params;
-  const organizationId = await getPrimaryOrganizationId();
-  const accounts = await listB2BAccounts(organizationId);
-  const account = accounts.find((a) => a.id === companyId);
-
-  if (!account) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-        <h2 className="text-2xl font-bold text-[#f1ede5]">Parceiro B2B não encontrado</h2>
-        <Link href="/b2b">
-          <Button variant="outline">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Voltar ao portal B2B</span>
-          </Button>
-        </Link>
-      </div>
-    );
-  }
+  const account = await getB2BAccountById(auth.organizationId, companyId);
+  if (!account) notFound();
 
   return <B2BCompanyDetailView account={account} />;
 }

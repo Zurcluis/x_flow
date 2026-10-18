@@ -4,13 +4,15 @@ import React, { useState } from "react";
 import { X, Building2, User, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DuplicateWarningAlert } from "./DuplicateWarningAlert";
-import { Customer, CustomerType, PreferredChannel } from "@/domains/crm/types";
+import { Customer, CustomerDraft, CustomerType, PreferredChannel } from "@/domains/crm/types";
 import { detectDuplicateCustomer, DuplicateMatch } from "@/domains/crm/duplicate-detector";
+
+export type CustomerSaveResult = { ok: true } | { ok: false; error: string };
 
 interface CustomerFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (customer: Partial<Customer>) => void | Promise<void>;
+  onSave: (customer: CustomerDraft) => Promise<CustomerSaveResult>;
   existingCustomers: Customer[];
   initialData?: Customer;
 }
@@ -40,8 +42,8 @@ export function CustomerFormModal({
   );
 
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  // Live duplicate detection
   const duplicateMatches: DuplicateMatch[] = detectDuplicateCustomer(
     { email, phone, nif, excludeId: initialData?.id },
     existingCustomers
@@ -49,8 +51,9 @@ export function CustomerFormModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pending) return;
     if (!name.trim()) {
       setError("O nome do cliente é obrigatório.");
       return;
@@ -60,36 +63,40 @@ export function CustomerFormModal({
       return;
     }
 
-    onSave({
-      id: initialData?.id || `c-cust-${Date.now()}`,
-      organizationId: "org-xmotion-1",
-      type,
-      name: name.trim(),
-      legalName: type === "business" ? legalName.trim() : undefined,
-      nif: nif.trim() || undefined,
-      email: email.trim(),
-      phone: phone.trim(),
-      phoneNormalized: phone.replace(/\D/g, ""),
-      preferredChannel,
-      notes: notes.trim() || undefined,
-      status: initialData?.status || "active",
-      vehicleCount: initialData?.vehicleCount || 0,
-      totalSpent: initialData?.totalSpent || 0,
-      createdAt: initialData?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      b2bDetails:
-        type === "business"
-          ? {
-              id: `b2b-${Date.now()}`,
-              customerId: initialData?.id || `c-cust-${Date.now()}`,
-              discountRate: parseFloat(discountRate) || 0,
-              paymentTermsDays: parseInt(paymentTerms, 10) || 30,
-              priorityLevel: "high",
-            }
-          : undefined,
-    });
+    setPending(true);
+    setError(null);
+    try {
+      const result = await onSave({
+        type,
+        name: name.trim(),
+        legalName: type === "business" ? legalName.trim() || undefined : undefined,
+        nif: nif.trim() || undefined,
+        email: email.trim(),
+        phone: phone.trim(),
+        phoneNormalized: phone.replace(/\D/g, ""),
+        preferredChannel,
+        notes: notes.trim() || undefined,
+        status: initialData?.status || "active",
+        b2bDetails:
+          type === "business"
+            ? {
+                discountRate: Number(discountRate) || 0,
+                paymentTermsDays: Number(paymentTerms) || 30,
+                priorityLevel: "standard",
+              }
+            : undefined,
+      });
 
-    onClose();
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      onClose();
+    } catch {
+      setError("Não foi possível guardar o cliente. Tenta novamente.");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -100,14 +107,14 @@ export function CustomerFormModal({
         aria-modal="true"
         aria-labelledby="modal-title"
       >
-        {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
           <h2 id="modal-title" className="text-lg font-bold text-[#f1ede5]">
             {initialData ? "Editar Cliente" : "Novo Cliente"}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#8a9092] hover:text-[#f1ede5] hover:bg-white/[0.05] cursor-pointer"
+            disabled={pending}
+            className="p-1.5 rounded-lg text-[#8a9092] hover:text-[#f1ede5] hover:bg-white/[0.05] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Fechar"
           >
             <X className="h-5 w-5" />
@@ -115,11 +122,11 @@ export function CustomerFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-5">
-          {/* Customer Type Selector */}
           <div className="flex rounded-sm p-1 bg-[#080a0b] border border-white/[0.06]">
             <button
               type="button"
               onClick={() => setType("individual")}
+              aria-pressed={type === "individual"}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-sm text-xs font-semibold transition-all cursor-pointer ${
                 type === "individual"
                   ? "bg-[#1b2021] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
@@ -132,6 +139,7 @@ export function CustomerFormModal({
             <button
               type="button"
               onClick={() => setType("business")}
+              aria-pressed={type === "business"}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-sm text-xs font-semibold transition-all cursor-pointer ${
                 type === "business"
                   ? "bg-[#1b2021] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
@@ -143,18 +151,18 @@ export function CustomerFormModal({
             </button>
           </div>
 
-          {/* Duplicate warning alert */}
           <DuplicateWarningAlert matches={duplicateMatches} />
 
-          {/* Error display */}
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-sm bg-[#f05a50]/15 border border-[#f05a50]/30 text-xs text-[#f05a50]">
+            <div
+              role="alert"
+              className="flex items-center gap-2 p-3 rounded-sm bg-[#f05a50]/15 border border-[#f05a50]/30 text-xs text-[#f05a50]"
+            >
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Name & Legal Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <label className="text-xs font-medium text-[#a9adae]">
@@ -196,7 +204,6 @@ export function CustomerFormModal({
             )}
           </div>
 
-          {/* Contacts */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-[#a9adae]">Telefone / Telemóvel</label>
@@ -220,7 +227,6 @@ export function CustomerFormModal({
             </div>
           </div>
 
-          {/* Preferred Channel */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-[#a9adae]">Canal de Contacto Preferido</label>
             <div className="flex gap-4 text-xs text-[#f1ede5]">
@@ -240,7 +246,6 @@ export function CustomerFormModal({
             </div>
           </div>
 
-          {/* B2B Commercial terms if business */}
           {type === "business" && (
             <div className="grid grid-cols-2 gap-3 p-3.5 rounded-md bg-[#080a0b] border border-white/[0.06]">
               <div className="flex flex-col gap-1.5">
@@ -248,7 +253,8 @@ export function CustomerFormModal({
                 <input
                   type="number"
                   min="0"
-                  max="50"
+                  max="100"
+                  step="0.01"
                   value={discountRate}
                   onChange={(e) => setDiscountRate(e.target.value)}
                   className="h-9 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
@@ -259,6 +265,7 @@ export function CustomerFormModal({
                 <input
                   type="number"
                   min="0"
+                  max="365"
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
                   className="h-9 px-3 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
@@ -267,7 +274,6 @@ export function CustomerFormModal({
             </div>
           )}
 
-          {/* Notes */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-[#a9adae]">Notas Internas</label>
             <textarea
@@ -279,14 +285,13 @@ export function CustomerFormModal({
             />
           </div>
 
-          {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/[0.08]">
-            <Button variant="ghost" type="button" onClick={onClose}>
+            <Button variant="ghost" type="button" onClick={onClose} disabled={pending}>
               Cancelar
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" disabled={pending}>
               <Check className="h-4 w-4" />
-              <span>{initialData ? "Atualizar Cliente" : "Criar Cliente"}</span>
+              <span>{pending ? "A guardar..." : initialData ? "Atualizar Cliente" : "Criar Cliente"}</span>
             </Button>
           </div>
         </form>

@@ -1,5 +1,4 @@
 import { getDb } from "@/lib/db";
-import { getPrimaryOrganizationId } from "@/server/org";
 import type { PoolClient } from "pg";
 import {
   OptionTier,
@@ -28,10 +27,18 @@ import {
 } from "@/domains/pricing/engine";
 import { loadPricingContext, type PricingFormulaSummary } from "@/server/pricing";
 import {
+  isPublicToken,
+  isUuid,
+  validateApproverName,
+  validateCreateQuoteInput,
+} from "@/domains/quotes/validation";
+import {
   buildPhasePlan,
+  insertPhaseChecklistItems,
   insertPlannedPhases,
   loadFlexibleOptionPhasePlanData,
 } from "@/server/production-phases-map";
+import type { PhaseKey } from "@/domains/production/types";
 import type {
   AdjustKind,
   ConsumableKit,
@@ -49,6 +56,28 @@ import type {
 export type { CreateQuoteInput, DraftQuoteData, DraftQuoteOption, QuoteOptionInput } from "@/domains/quotes/types";
 
 type Row = Record<string, unknown>;
+
+/**
+ * Erro de domínio: a mensagem é segura para mostrar ao utilizador. Qualquer
+ * erro que não seja QuoteError é tratado como falha interna e substituído por
+ * uma mensagem genérica.
+ */
+export class QuoteError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QuoteError";
+  }
+}
+
+export function quoteErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof QuoteError ? error.message : fallback;
+}
+
+function assertQuoteUuid(value: string, label: string): void {
+  if (!isUuid(value)) {
+    throw new QuoteError(`${label} inválido.`);
+  }
+}
 
 function iso(value: unknown): string {
   return value instanceof Date ? value.toISOString() : String(value);
@@ -114,10 +143,11 @@ function mapQuote(row: Row): Quote {
 
 const QUOTE_JOINS = `
   FROM quotes q
-  JOIN vehicles v ON v.id = q.vehicle_id
-  JOIN customers c ON c.id = q.customer_id`;
+  JOIN vehicles v ON v.id = q.vehicle_id AND v.organization_id = q.organization_id
+  JOIN customers c ON c.id = q.customer_id AND c.organization_id = q.organization_id`;
 
 export async function listQuotes(organizationId: string): Promise<Quote[]> {
+  if (!isUuid(organizationId)) return [];
   const db = getDb();
   const { rows } = await db.query<Row>(
     `SELECT q.*, v.plate_display AS vehicle_plate, v.make || ' ' || v.model AS vehicle_model,
@@ -155,6 +185,7 @@ export async function getQuoteById(
   organizationId: string,
   quoteId: string
 ): Promise<Quote | null> {
+  if (!isUuid(organizationId) || !isUuid(quoteId)) return null;
   const db = getDb();
   const { rows } = await db.query<Row>(
     `SELECT q.*, v.plate_display AS vehicle_plate, v.make || ' ' || v.model AS vehicle_model,
@@ -274,7 +305,7 @@ function normalizeCostLine(
     if (line.materialId && unitCost === 0) {
       const cost = materialCosts.get(line.materialId);
       if (cost === undefined) {
-        throw new Error(`Material não encontrado na linha "${line.name}".`);
+        throw new QuoteError(`Material não encontrado na linha "${line.name}".`);
       }
       unitCost = cost;
     }
@@ -299,7 +330,7 @@ function normalizeCostLine(
   if (line.lineType === "consumable_kit") {
     const kit = kits.find((k) => k.id === line.kitId);
     if (!kit || !kit.active) {
-      throw new Error(
+      throw new QuoteError(
         `Kit de consumíveis não encontrado ou inativo na linha "${line.name}".`
       );
     }
@@ -323,7 +354,7 @@ function normalizeCostLine(
   if (line.lineType === "sublet") {
     const service = supplierServices.find((s) => s.id === line.supplierServiceId);
     if (!service) {
-      throw new Error(
+      throw new QuoteError(
         `Serviço subcontratado não encontrado na linha "${line.name}".`
       );
     }
@@ -371,7 +402,7 @@ function prepareFlexibleOption(
 ): PreparedFlexibleOption {
   const serviceLines = (opt.serviceLines ?? []).map(mapServiceLine);
   if (serviceLines.length === 0) {
-    throw new Error(
+    throw new QuoteError(
       `A opção "${opt.name}" precisa de pelo menos uma linha de serviço.`
     );
   }
@@ -380,7 +411,7 @@ function prepareFlexibleOption(
   const code = hasSpot ? "spot" : "complete";
   const summary = formulas.find((f) => f.code === code && !f.isArchived);
   if (!summary || !summary.published) {
-    throw new Error(
+    throw new QuoteError(
       hasSpot
         ? "Não existe fórmula publicada para serviços pontuais. Publica a fórmula em Configurações → Orçamentos e preços."
         : "Não existe fórmula publicada para serviços completos. Publica a fórmula em Configurações → Orçamentos e preços."
@@ -404,7 +435,7 @@ function prepareFlexibleOption(
     adjustValue,
   });
   if (validationErrors.length > 0) {
-    throw new Error(validationErrors.map((e) => e.message).join(" "));
+    throw new QuoteError(validationErrors.map((e) => e.message).join(" "));
   }
 
   const suggestion = computeSuggestion({ rates, formula, serviceLines, costLines });
@@ -453,7 +484,7 @@ async function prepareQuoteOptions(
   let rates: PricingRates | null = null;
   if (hasFlexible) {
     if (!policy) {
-      throw new Error(PRICING_NOT_CONFIGURED_ERROR);
+      throw new QuoteError(PRICING_NOT_CONFIGURED_ERROR);
     }
     rates = resolvePricingContext({ policy, expenseItems: context.expenseItems });
   } else if (policy) {
@@ -490,7 +521,7 @@ async function prepareQuoteOptions(
   for (const opt of input.options) {
     if (opt.kind === "flexible") {
       if (!rates) {
-        throw new Error(PRICING_NOT_CONFIGURED_ERROR);
+        throw new QuoteError(PRICING_NOT_CONFIGURED_ERROR);
       }
       prepared.push(
         prepareFlexibleOption(opt, rates, context.formulas, kits, supplierServices, materialCosts)
@@ -503,19 +534,76 @@ async function prepareQuoteOptions(
   return { policy, rates, expenseItems: context.expenseItems, prepared };
 }
 
+async function assertQuoteRelations(
+  organizationId: string,
+  vehicleId: string,
+  customerId: string
+): Promise<void> {
+  assertQuoteUuid(organizationId, "Organização");
+  const [vehicle, customer] = await Promise.all([
+    getDb().query<{ id: string }>(
+      "SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2 LIMIT 1",
+      [vehicleId, organizationId]
+    ),
+    getDb().query<{ id: string }>(
+      "SELECT id FROM customers WHERE id = $1 AND organization_id = $2 LIMIT 1",
+      [customerId, organizationId]
+    ),
+  ]);
+  if (vehicle.rows.length === 0) {
+    throw new QuoteError("A viatura selecionada não pertence a esta organização.");
+  }
+  if (customer.rows.length === 0) {
+    throw new QuoteError("O cliente selecionado não pertence a esta organização.");
+  }
+}
+
+function validateQuoteInputOrThrow(input: CreateQuoteInput): void {
+  const errors = validateCreateQuoteInput(input);
+  if (errors.length > 0) {
+    throw new QuoteError(errors[0]);
+  }
+}
+
+async function nextSequentialNumber(
+  client: OptionClient,
+  table: "quotes" | "work_orders",
+  column: "quote_number" | "work_order_number",
+  organizationId: string,
+  prefix: string
+): Promise<string> {
+  const year = new Date().getFullYear();
+  await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+    `${table}:${organizationId}`,
+  ]);
+  const { rows } = await client.query<{ last: number | null }>(
+    `SELECT MAX(CAST(substring(${column} from '([0-9]+)$') AS INTEGER)) AS last
+     FROM ${table}
+     WHERE organization_id = $1 AND ${column} ~ $2`,
+    [organizationId, `^${prefix}-[0-9]{4}-[0-9]+$`]
+  );
+  const next = Number(rows[0]?.last ?? 0) + 1;
+  return `${prefix}-${year}-${String(next).padStart(3, "0")}`;
+}
+
 export async function createQuote(
   organizationId: string,
   input: CreateQuoteInput,
   profileId?: string
 ): Promise<Quote> {
-  if (input.options.length === 0) {
-    throw new Error("O orçamento precisa de pelo menos uma opção.");
-  }
+  validateQuoteInputOrThrow(input);
+  await assertQuoteRelations(organizationId, input.vehicleId, input.customerId);
 
-  const { policy, rates, expenseItems, prepared } = await prepareQuoteOptions(
-    organizationId,
-    input
-  );
+  let preparedContext: Awaited<ReturnType<typeof prepareQuoteOptions>>;
+  try {
+    preparedContext = await prepareQuoteOptions(organizationId, input);
+  } catch (error) {
+    if (error instanceof QuoteError) throw error;
+    throw new QuoteError(
+      "Não foi possível calcular o preço da proposta. Verifica a configuração de preços."
+    );
+  }
+  const { policy, rates, expenseItems, prepared } = preparedContext;
 
   const db = getDb();
   const client = await db.connect();
@@ -523,7 +611,13 @@ export async function createQuote(
   try {
     await client.query("BEGIN");
 
-    const quoteNumber = `ORC-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
+    const quoteNumber = await nextSequentialNumber(
+      client,
+      "quotes",
+      "quote_number",
+      organizationId,
+      "ORC"
+    );
     const publicToken = `qt_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
     const status = input.intent === "draft" ? "draft" : "sent";
 
@@ -567,14 +661,15 @@ export async function createQuote(
 
     await client.query("COMMIT");
   } catch (e) {
-    await client.query("ROLLBACK");
-    throw e;
+    await client.query("ROLLBACK").catch(() => {});
+    if (e instanceof QuoteError) throw e;
+    throw new QuoteError("Não foi possível guardar o orçamento.");
   } finally {
     client.release();
   }
 
   const quote = await getQuoteById(organizationId, quoteId);
-  if (!quote) throw new Error("Orçamento não encontrado após criação.");
+  if (!quote) throw new QuoteError("Orçamento não encontrado após criação.");
   return quote;
 }
 
@@ -609,7 +704,7 @@ async function insertPreparedOptions(
 
     if (preparedOption.kind === "flexible") {
       if (!rates || !policy) {
-        throw new Error(PRICING_NOT_CONFIGURED_ERROR);
+        throw new QuoteError(PRICING_NOT_CONFIGURED_ERROR);
       }
       const { suggestion, financials, formula } = preparedOption;
 
@@ -795,7 +890,7 @@ async function insertQuoteOption(
   let values: OptionValues;
   if (preparedOption.kind === "flexible") {
     if (!rates) {
-      throw new Error(PRICING_NOT_CONFIGURED_ERROR);
+      throw new QuoteError(PRICING_NOT_CONFIGURED_ERROR);
     }
     const { suggestion, financials } = preparedOption;
     const discountRate =
@@ -878,14 +973,20 @@ export async function updateDraftQuote(
   input: CreateQuoteInput,
   profileId?: string
 ): Promise<Quote> {
-  if (input.options.length === 0) {
-    throw new Error("O orçamento precisa de pelo menos uma opção.");
-  }
+  assertQuoteUuid(quoteId, "Orçamento");
+  validateQuoteInputOrThrow(input);
+  await assertQuoteRelations(organizationId, input.vehicleId, input.customerId);
 
-  const { policy, rates, expenseItems, prepared } = await prepareQuoteOptions(
-    organizationId,
-    input
-  );
+  let preparedContext: Awaited<ReturnType<typeof prepareQuoteOptions>>;
+  try {
+    preparedContext = await prepareQuoteOptions(organizationId, input);
+  } catch (error) {
+    if (error instanceof QuoteError) throw error;
+    throw new QuoteError(
+      "Não foi possível calcular o preço da proposta. Verifica a configuração de preços."
+    );
+  }
+  const { policy, rates, expenseItems, prepared } = preparedContext;
 
   const db = getDb();
   const client = await db.connect();
@@ -897,10 +998,10 @@ export async function updateDraftQuote(
       [quoteId, organizationId]
     );
     if (quoteRows.length === 0) {
-      throw new Error("Orçamento não encontrado.");
+      throw new QuoteError("Orçamento não encontrado.");
     }
     if (quoteRows[0].status !== "draft") {
-      throw new Error(
+      throw new QuoteError(
         "Só é possível editar rascunhos — este orçamento já foi enviado ou aprovado."
       );
     }
@@ -947,14 +1048,15 @@ export async function updateDraftQuote(
 
     await client.query("COMMIT");
   } catch (e) {
-    await client.query("ROLLBACK");
-    throw e;
+    await client.query("ROLLBACK").catch(() => {});
+    if (e instanceof QuoteError) throw e;
+    throw new QuoteError("Não foi possível atualizar o orçamento.");
   } finally {
     client.release();
   }
 
   const quote = await getQuoteById(organizationId, quoteId);
-  if (!quote) throw new Error("Orçamento não encontrado após atualização.");
+  if (!quote) throw new QuoteError("Orçamento não encontrado após atualização.");
   return quote;
 }
 
@@ -992,6 +1094,7 @@ export async function loadDraftQuote(
   organizationId: string,
   quoteId: string
 ): Promise<DraftQuoteData | null> {
+  if (!isUuid(organizationId) || !isUuid(quoteId)) return null;
   const db = getDb();
   const { rows } = await db.query<Row>(
     `SELECT id, status, quote_number, vehicle_id, customer_id, notes
@@ -1093,6 +1196,9 @@ export async function emitQuote(
   organizationId: string,
   quoteId: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isUuid(organizationId) || !isUuid(quoteId)) {
+    return { ok: false, error: "Orçamento inválido." };
+  }
   const db = getDb();
   const client = await db.connect();
   try {
@@ -1103,7 +1209,7 @@ export async function emitQuote(
       [quoteId, organizationId]
     );
     if (rows.length === 0) {
-      throw new Error("Orçamento não encontrado.");
+      throw new QuoteError("Orçamento não encontrado.");
     }
     if (rows[0].status !== "draft") {
       await client.query("ROLLBACK");
@@ -1127,32 +1233,74 @@ export async function emitQuote(
     await client.query("ROLLBACK").catch(() => {});
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Erro ao emitir o orçamento.",
+      error: quoteErrorMessage(e, "Erro ao emitir o orçamento."),
     };
   } finally {
     client.release();
   }
 }
 
-export async function rejectQuote(organizationId: string, quoteId: string): Promise<void> {
-  await getDb().query(
-    `UPDATE quotes SET status = 'rejected', updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
-    [quoteId, organizationId]
-  );
-  await getDb().query(
-    `INSERT INTO quote_events (quote_id, event_type, description, author_name)
-     VALUES ($1,'rejected','Proposta recusada pelo cliente.','Cliente')`,
-    [quoteId]
-  );
+export async function rejectQuote(
+  organizationId: string,
+  quoteId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isUuid(organizationId) || !isUuid(quoteId)) {
+    return { ok: false, error: "Orçamento inválido." };
+  }
+  const client = await getDb().connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<Row>(
+      `SELECT status FROM quotes WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+      [quoteId, organizationId]
+    );
+    if (rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { ok: false, error: "Orçamento não encontrado." };
+    }
+    const status = String(rows[0].status);
+    if (status !== "sent" && status !== "viewed") {
+      await client.query("ROLLBACK");
+      return {
+        ok: false,
+        error: "Só propostas enviadas ou visualizadas podem ser recusadas.",
+      };
+    }
+
+    await client.query(
+      `UPDATE quotes SET status = 'rejected', updated_at = NOW()
+       WHERE id = $1 AND organization_id = $2`,
+      [quoteId, organizationId]
+    );
+    await client.query(
+      `INSERT INTO quote_events (quote_id, event_type, description, author_name)
+       VALUES ($1,'rejected','Proposta recusada pelo cliente.','Cliente')`,
+      [quoteId]
+    );
+    await client.query("COMMIT");
+    return { ok: true };
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    return {
+      ok: false,
+      error: quoteErrorMessage(e, "Erro ao recusar o orçamento."),
+    };
+  } finally {
+    client.release();
+  }
 }
 
 export async function deleteQuote(
   organizationId: string,
   quoteId: string
 ): Promise<{ ok: boolean; error?: string }> {
+  if (!isUuid(organizationId) || !isUuid(quoteId)) {
+    return { ok: false, error: "Orçamento inválido." };
+  }
   const { rows } = await getDb().query<Row>(
-    `SELECT count(*)::int AS n FROM work_orders WHERE quote_id = $1`,
-    [quoteId]
+    `SELECT count(*)::int AS n FROM work_orders
+     WHERE quote_id = $1 AND organization_id = $2`,
+    [quoteId, organizationId]
   );
   if (Number(rows[0].n) > 0) {
     return {
@@ -1160,10 +1308,13 @@ export async function deleteQuote(
       error: "A proposta já gerou uma ordem de trabalho e não pode ser eliminada.",
     };
   }
-  await getDb().query(
+  const deleted = await getDb().query(
     `DELETE FROM quotes WHERE id = $1 AND organization_id = $2`,
     [quoteId, organizationId]
   );
+  if (deleted.rowCount === 0) {
+    return { ok: false, error: "Orçamento não encontrado." };
+  }
   return { ok: true };
 }
 
@@ -1171,32 +1322,59 @@ export async function approveQuote(
   organizationId: string,
   quoteId: string,
   selectedOptionId?: string,
-  approverName?: string
+  approverName?: string,
+  approvalNotes?: string
 ): Promise<{ ok: true; workOrderId: string } | { ok: false; error: string }> {
+  if (!isUuid(organizationId) || !isUuid(quoteId)) {
+    return { ok: false, error: "Orçamento inválido." };
+  }
+  if (selectedOptionId && !isUuid(selectedOptionId)) {
+    return { ok: false, error: "Opção selecionada inválida." };
+  }
+  const safeApproverName =
+    validateApproverName(approverName) ?? approverName?.trim().slice(0, 150);
+  const safeNotes =
+    typeof approvalNotes === "string"
+      ? approvalNotes.trim().slice(0, 2000) || null
+      : null;
+
   const db = getDb();
   const client = await db.connect();
   try {
     await client.query("BEGIN");
 
     const { rows: quoteRows } = await client.query<Row>(
-      `SELECT q.id, q.selected_option_id, q.vehicle_id, q.customer_id
+      `SELECT q.id, q.status, q.selected_option_id, q.vehicle_id, q.customer_id
        FROM quotes q
        WHERE q.id = $1 AND q.organization_id = $2
        FOR UPDATE OF q`,
       [quoteId, organizationId]
     );
     if (quoteRows.length === 0) {
-      throw new Error("Orçamento não encontrado.");
+      throw new QuoteError("Orçamento não encontrado.");
     }
     const quote = quoteRows[0];
 
     const { rows: existing } = await client.query<Row>(
-      `SELECT id FROM work_orders WHERE quote_id = $1 LIMIT 1`,
-      [quoteId]
+      `SELECT id FROM work_orders WHERE quote_id = $1 AND organization_id = $2 LIMIT 1`,
+      [quoteId, organizationId]
     );
     if (existing.length > 0) {
       await client.query("ROLLBACK");
       return { ok: true, workOrderId: String(existing[0].id) };
+    }
+
+    const status = String(quote.status);
+    if (status === "approved") {
+      await client.query("ROLLBACK");
+      return { ok: false, error: "Este orçamento já foi aprovado." };
+    }
+    if (status !== "sent" && status !== "viewed") {
+      await client.query("ROLLBACK");
+      return {
+        ok: false,
+        error: "Só propostas enviadas ou visualizadas podem ser aprovadas.",
+      };
     }
 
     let chosenOptionId: string | null = null;
@@ -1237,17 +1415,24 @@ export async function approveQuote(
     await client.query(
       `UPDATE quotes
        SET status = 'approved', approved_at = NOW(), approved_by_name = $2, updated_at = NOW()
-       WHERE id = $1`,
-      [quoteId, approverName ?? "Cliente"]
+       WHERE id = $1 AND organization_id = $3`,
+      [quoteId, safeApproverName ?? "Cliente", organizationId]
     );
     if (chosenOptionId) {
       await client.query(
-        `UPDATE quotes SET selected_option_id = $2 WHERE id = $1`,
-        [quoteId, chosenOptionId]
+        `UPDATE quotes SET selected_option_id = $2 WHERE id = $1 AND organization_id = $3`,
+        [quoteId, chosenOptionId, organizationId]
       );
     }
 
     const serviceTitle = chosenOptionName ? chosenOptionName : "Serviço aprovado";
+    const workOrderNumber = await nextSequentialNumber(
+      client,
+      "work_orders",
+      "work_order_number",
+      organizationId,
+      "WO"
+    );
     const { rows: woRows } = await client.query<Row>(
       `INSERT INTO work_orders
         (organization_id, work_order_number, vehicle_id, customer_id, quote_id, status,
@@ -1255,12 +1440,12 @@ export async function approveQuote(
        VALUES ($1,$2,$3,$4,$5,'draft',$6,0,$7,0) RETURNING id`,
       [
         organizationId,
-        `WO-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`,
+        workOrderNumber,
         quote.vehicle_id,
         quote.customer_id,
         quoteId,
         serviceTitle,
-        chosenEstimatedHours || 8,
+        chosenEstimatedHours ?? 0,
       ]
     );
     const workOrderId = String(woRows[0].id);
@@ -1290,31 +1475,44 @@ export async function approveQuote(
       ];
       for (let i = 0; i < STANDARD_PHASES.length; i++) {
         const [key, name, estHours] = STANDARD_PHASES[i];
-        await client.query(
+        const { rows: phaseRows } = await client.query<{ id: string }>(
           `INSERT INTO work_order_phases (work_order_id, phase_key, name, status, order_index, estimated_hours)
-           VALUES ($1,$2,$3,'pending',$4,$5)`,
+           VALUES ($1,$2,$3,'pending',$4,$5)
+           RETURNING id`,
           [workOrderId, key, name, i, estHours]
+        );
+        await insertPhaseChecklistItems(
+          client,
+          String(phaseRows[0].id),
+          key as PhaseKey
         );
       }
     }
 
+    const eventDescription = safeNotes
+      ? `Orçamento aprovado. Ordem de trabalho criada (${String(woRows[0].id).slice(0, 8)}). Observações: ${safeNotes}`
+      : `Orçamento aprovado. Ordem de trabalho criada (${String(woRows[0].id).slice(0, 8)}).`;
     await client.query(
       `INSERT INTO quote_events (quote_id, event_type, description, author_name)
-       VALUES ($1,'approved',$2,'Sistema')`,
-      [quoteId, `Orçamento aprovado. Ordem de trabalho criada (${String(woRows[0].id).slice(0, 8)}).`]
+       VALUES ($1,'approved',$2,$3)`,
+      [quoteId, eventDescription, safeApproverName ?? "Cliente"]
     );
 
     await client.query("COMMIT");
     return { ok: true, workOrderId };
   } catch (e) {
     await client.query("ROLLBACK").catch(() => {});
-    return { ok: false, error: e instanceof Error ? e.message : "Erro ao aprovar orçamento." };
+    return {
+      ok: false,
+      error: quoteErrorMessage(e, "Erro ao aprovar o orçamento."),
+    };
   } finally {
     client.release();
   }
 }
 
 export async function getQuoteByToken(token: string): Promise<Quote | null> {
+  if (!isPublicToken(token)) return null;
   const db = getDb();
   const { rows } = await db.query<{ id: string; organization_id: string }>(
     `SELECT id, organization_id FROM quotes WHERE public_token = $1 LIMIT 1`,
@@ -1331,7 +1529,11 @@ const UNIT_LABELS: Record<string, string> = {
   package: "pacote",
 };
 
-export async function getPublicQuoteByToken(token: string): Promise<PublicQuote | null> {
+export async function getPublicQuoteForOrganization(
+  organizationId: string,
+  token: string
+): Promise<PublicQuote | null> {
+  if (!isUuid(organizationId) || !isPublicToken(token)) return null;
   const db = getDb();
   const client = await db.connect();
   try {
@@ -1342,13 +1544,22 @@ export async function getPublicQuoteByToken(token: string): Promise<PublicQuote 
               q.expires_at, q.notes,
               c.name AS customer_name,
               v.plate_display AS vehicle_plate, v.make || ' ' || v.model AS vehicle_model,
-              v.generation_year AS vehicle_year, v.original_color_name AS vehicle_color
+              v.generation_year AS vehicle_year, v.original_color_name AS vehicle_color,
+              o.name AS organization_name, loc.phone AS organization_phone,
+              loc.email AS organization_email
        FROM quotes q
-       JOIN vehicles v ON v.id = q.vehicle_id
-       JOIN customers c ON c.id = q.customer_id
-       WHERE q.public_token = $1
+       JOIN vehicles v ON v.id = q.vehicle_id AND v.organization_id = q.organization_id
+       JOIN customers c ON c.id = q.customer_id AND c.organization_id = q.organization_id
+       JOIN organizations o ON o.id = q.organization_id
+       LEFT JOIN LATERAL (
+         SELECT l.phone, l.email FROM locations l
+         WHERE l.organization_id = q.organization_id
+         ORDER BY l.is_primary DESC, l.created_at ASC
+         LIMIT 1
+       ) loc ON TRUE
+       WHERE q.public_token = $1 AND q.organization_id = $2 AND q.status <> 'draft'
        LIMIT 1`,
-      [token]
+      [token, organizationId]
     );
     if (rows.length === 0) return null;
     const quoteRow = rows[0];
@@ -1456,6 +1667,9 @@ export async function getPublicQuoteByToken(token: string): Promise<PublicQuote 
         ? String(quoteRow.selected_option_id)
         : null,
       approvedByName: (quoteRow.approved_by_name as string) ?? null,
+      organizationName: String(quoteRow.organization_name ?? ""),
+      organizationPhone: (quoteRow.organization_phone as string) ?? null,
+      organizationEmail: (quoteRow.organization_email as string) ?? null,
       options,
     };
   } finally {
@@ -1464,4 +1678,23 @@ export async function getPublicQuoteByToken(token: string): Promise<PublicQuote 
   }
 }
 
-export { getPrimaryOrganizationId };
+export async function getPublicQuoteByToken(token: string): Promise<PublicQuote | null> {
+  if (!isPublicToken(token)) return null;
+  const { rows } = await getDb().query<{ organization_id: string }>(
+    `SELECT organization_id FROM quotes WHERE public_token = $1 LIMIT 1`,
+    [token]
+  );
+  if (rows.length === 0) return null;
+  return getPublicQuoteForOrganization(rows[0].organization_id, token);
+}
+
+export function countQuotesWaitingOverFourDays(quotes: Quote[]): number {
+  const cutoff = Date.now() - 4 * 24 * 60 * 60 * 1000;
+  return quotes.filter(
+    (quote) =>
+      (quote.status === "sent" || quote.status === "viewed") &&
+      new Date(quote.createdAt).getTime() < cutoff
+  ).length;
+}
+
+

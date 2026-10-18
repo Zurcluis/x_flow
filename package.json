@@ -9,7 +9,10 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:verify": "node scripts/verify-rls.mjs",
+    "check:env": "node scripts/check-env.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
@@ -17,7 +20,7 @@
     "@react-three/fiber": "^9.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.35.0",
-    "next": "16.3.3",
+    "next": "^16.4.2",
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -37,7 +40,7 @@
     "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "^16.4.2",
     "jsdom": "^29.1.1",
     "pdfjs-dist": "^6.3.289",
     "tailwindcss": "^4",

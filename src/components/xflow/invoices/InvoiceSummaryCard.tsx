@@ -1,6 +1,11 @@
 import React from "react";
 import { Invoice } from "@/domains/finance/types";
 import { formatCurrency } from "@/lib/formatting";
+import {
+  effectiveInvoiceStatus,
+  formatInvoiceDate,
+  invoiceTotalsIntegrity,
+} from "@/domains/finance/presentation";
 import { Logo } from "@/components/xflow/Logo";
 import { Badge } from "@/components/ui/badge";
 
@@ -23,13 +28,14 @@ const STATUS_LABELS: Record<Invoice["paymentStatus"], { label: string; variant: 
 };
 
 function formatDate(iso: string): string {
-  const [y, m, d] = iso.slice(0, 10).split("-");
-  return `${d}-${m}-${y}`;
+  return formatInvoiceDate(iso);
 }
 
 export function InvoiceSummaryCard({ invoice }: InvoiceSummaryCardProps) {
-  const status = STATUS_LABELS[invoice.paymentStatus];
+  const status = STATUS_LABELS[effectiveInvoiceStatus(invoice)];
   const isPaid = invoice.paymentStatus === "paid";
+  const isOverdue = effectiveInvoiceStatus(invoice) === "overdue";
+  const integrity = invoiceTotalsIntegrity(invoice);
 
   return (
     <div className="flex flex-col gap-6 p-8 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-2xl text-xs text-[#f1ede5]">
@@ -51,6 +57,9 @@ export function InvoiceSummaryCard({ invoice }: InvoiceSummaryCardProps) {
           </Badge>
           <span className="font-mono font-black text-xl text-[#f7d46d]">
             {invoice.invoiceNumber}
+          </span>
+          <span className="text-[11px] text-[#8a9092]">
+            Espelho do documento emitido no weoInvoice
           </span>
           <span className="text-[12px] text-[#a9adae]">
             Data de Emissão: {formatDate(invoice.issuedAt)}
@@ -125,15 +134,21 @@ export function InvoiceSummaryCard({ invoice }: InvoiceSummaryCardProps) {
               ? "Terminal Multibanco"
               : invoice.paymentMethod === "cash"
               ? "Dinheiro"
+              : invoice.paymentMethod === "credit_30_days"
+              ? "Crédito 30 dias"
               : invoice.paymentMethod}
           </span>
           {isPaid ? (
             <span className="text-[11px] text-[#68a46b]">
               Liquidado a {formatDate(invoice.paidAt || invoice.issuedAt)}
             </span>
-          ) : invoice.paymentStatus === "overdue" ? (
+          ) : invoice.paymentStatus === "overdue" || isOverdue ? (
             <span className="text-[11px] text-[#c96a6a]">
-              Vencida desde {formatDate(invoice.dueAt)} — juros de mora aplicáveis (DL 32/2003)
+              Vencida desde {formatDate(invoice.dueAt)} — cobrança em atraso.
+            </span>
+          ) : invoice.paymentStatus === "cancelled" ? (
+            <span className="text-[11px] text-[#c96a6a]">
+              Documento anulado — não é cobrado.
             </span>
           ) : (
             <span className="text-[11px] text-[#a9adae]">
@@ -164,6 +179,17 @@ export function InvoiceSummaryCard({ invoice }: InvoiceSummaryCardProps) {
           </div>
         </div>
       </div>
+
+      {!integrity.isConsistent && (
+        <div
+          role="alert"
+          className="rounded-md bg-[#2b1616] border border-[#c96a6a]/40 px-3 py-2 text-[11px] text-[#c96a6a]"
+        >
+          Os valores do documento espelhado não fecham: linhas {formatCurrency(integrity.linesNet)},
+          subtotal {formatCurrency(invoice.subtotal)}, IVA {formatCurrency(invoice.vatAmount)} e total{" "}
+          {formatCurrency(invoice.totalAmount)}. Confirma no weoInvoice antes de cobrar.
+        </div>
+      )}
     </div>
   );
 }

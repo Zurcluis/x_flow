@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,12 +16,17 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonStyles } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { QuoteOptionSelector } from "@/components/xflow/quotes/QuoteOptionSelector";
 import { QuoteFinancialSummary } from "@/components/xflow/quotes/QuoteFinancialSummary";
 import { Quote } from "@/domains/quotes/types";
+import {
+  formatQuoteDateTime,
+  quoteStatusBadgeVariant,
+  quoteStatusLabel,
+} from "@/domains/quotes/presentation";
 import {
   approveQuoteAction,
   deleteQuoteAction,
@@ -32,15 +37,24 @@ interface QuoteDetailViewProps {
   quote: Quote;
 }
 
+const subscribeToOrigin = () => () => {};
+
 export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
   const router = useRouter();
-  const [quote, setQuote] = useState<Quote>(initialQuote);
+  const quote = initialQuote;
   const [copied, setCopied] = useState(false);
   const [selectedOptionId, setSelectedOptionId] = useState<string>("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
   const [emitting, setEmitting] = useState(false);
   const [emitError, setEmitError] = useState<string | null>(null);
+  const appOrigin = useSyncExternalStore(
+    subscribeToOrigin,
+    () => window.location.origin,
+    () => ""
+  );
 
   const currentOptionId =
     selectedOptionId ||
@@ -51,37 +65,25 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
   const activeOption =
     quote.options.find((o) => o.id === currentOptionId) || quote.options[0];
 
+  const canDecide = quote.status === "sent" || quote.status === "viewed";
+
   const handleCopyPublicLink = () => {
-    const url = `${window.location.origin}/portal/${quote.publicToken}`;
+    const url = `${window.location.origin}/quotes/public/${quote.publicToken}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   };
 
   const handleManualApprove = async () => {
+    setApproving(true);
+    setApproveError(null);
     const result = await approveQuoteAction(quote.id, currentOptionId);
-    if (result.ok) {
-      setQuote({
-        ...quote,
-        status: "approved",
-        selectedOptionId: currentOptionId,
-        approvedAt: new Date().toISOString(),
-        approvedByName: "Aprovação Manual na Oficina",
-        events: [
-          {
-            id: `qe-${Date.now()}`,
-            quoteId: quote.id,
-            eventType: "approved",
-            description: `Proposta aprovada manualmente com a opção selecionada (${activeOption?.name}).`,
-            authorName: "Luís Gonçalves",
-            createdAt: new Date().toISOString(),
-          },
-          ...quote.events,
-        ],
-      });
-    } else {
-      console.error("Falha ao aprovar orçamento:", result.error);
+    setApproving(false);
+    if (!result.ok) {
+      setApproveError(result.error);
+      return;
     }
+    router.refresh();
   };
 
   const handleEmitQuote = async () => {
@@ -93,7 +95,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
       setEmitError(result.error ?? "Erro ao emitir a proposta.");
       return;
     }
-    setQuote({ ...quote, status: "sent" });
+    router.refresh();
   };
 
   const handleDelete = async () => {
@@ -107,12 +109,11 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
   };
 
   const whatsappMessage = encodeURIComponent(
-    `Olá ${quote.customerName}, segue a sua proposta comercial da X-Motion para o ${quote.vehicleModel} (${quote.vehiclePlate}):\n${typeof window !== "undefined" ? window.location.origin : ""}/portal/${quote.publicToken}`
+    `Olá ${quote.customerName}, segue a sua proposta comercial para o ${quote.vehicleModel} (${quote.vehiclePlate}):\n${appOrigin}/quotes/public/${quote.publicToken}`
   );
 
   return (
     <div className="flex flex-col gap-6 pb-12">
-      {/* Back Button */}
       <div>
         <Link
           href="/quotes"
@@ -123,45 +124,28 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
         </Link>
       </div>
 
-      {/* Copy Alert Toast */}
       {copied && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-md bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in">
+        <div
+          role="status"
+          className="fixed top-6 right-6 z-50 flex items-center gap-2 p-3.5 rounded-md bg-[#1b2021] border border-[#d3a548] text-xs font-semibold text-[#f7d46d] shadow-2xl animate-fade-in"
+        >
           <CheckCircle2 className="h-4 w-4 text-[#d3a548]" />
-          <span>Link público seguro copiado!</span>
+          <span>Link público seguro copiado.</span>
         </div>
       )}
 
-      {/* Hero Header Card */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-mono font-black text-2xl text-[#f7d46d]">
               {quote.quoteNumber}
             </span>
-            <Badge
-              variant={
-                quote.status === "approved"
-                  ? "success"
-                  : quote.status === "sent"
-                  ? "in_progress"
-                  : quote.status === "viewed"
-                  ? "gold"
-                  : "outline"
-              }
-              className="text-xs"
-            >
-              {quote.status === "approved"
-                ? "Aprovado pelo Cliente"
-                : quote.status === "sent"
-                ? "Enviado · Aguarda Resposta"
-                : quote.status === "viewed"
-                ? "Visualizado pelo Cliente"
-                : "Rascunho"}
+            <Badge variant={quoteStatusBadgeVariant(quote.status)} className="text-xs">
+              {quoteStatusLabel(quote.status)}
             </Badge>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-[#a9adae] mt-1">
-            {/* Plate */}
             <div className="inline-flex items-center rounded-[6px] border border-white/20 bg-[#080a0b] px-2 py-0.5 font-mono font-bold text-[#f1ede5]">
               <span className="text-[#6e93b5] mr-1 text-[11px] font-sans">P</span>
               <span>{quote.vehiclePlate}</span>
@@ -185,7 +169,6 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
           {quote.status === "draft" && (
             <>
@@ -204,7 +187,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
                 ) : (
                   <Check className="h-4 w-4" />
                 )}
-                <span>{emitting ? "A emitir…" : "Emitir e gerar link seguro"}</span>
+                <span>{emitting ? "A emitir..." : "Emitir e gerar link seguro"}</span>
               </Button>
             </>
           )}
@@ -213,37 +196,65 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
             href={`https://wa.me/?text=${whatsappMessage}`}
             target="_blank"
             rel="noopener noreferrer"
+            className={buttonStyles({
+              variant: "outline",
+              size: "sm",
+              className: "bg-[#15191a]",
+            })}
           >
-            <Button variant="outline" size="sm" className="bg-[#15191a]">
-              <MessageCircle className="h-4 w-4 text-[#68a46b]" />
-              <span>WhatsApp</span>
-            </Button>
+            <MessageCircle className="h-4 w-4 text-[#68a46b]" />
+            <span>WhatsApp</span>
           </a>
 
-          <Button variant="outline" size="sm" onClick={handleCopyPublicLink} className="bg-[#15191a]">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyPublicLink}
+            className="bg-[#15191a]"
+          >
             <Share2 className="h-4 w-4 text-[#d3a548]" />
             <span>Copiar Link</span>
           </Button>
 
-          <Link href={`/portal/${quote.publicToken}`} target="_blank">
-            <Button variant="outline" size="sm" className="bg-[#15191a]">
-              <ExternalLink className="h-4 w-4 text-[#d3a548]" />
-              <span>Ver como Cliente</span>
-            </Button>
+          <Link
+            href={`/quotes/public/${quote.publicToken}`}
+            target="_blank"
+            className={buttonStyles({
+              variant: "outline",
+              size: "sm",
+              className: "bg-[#15191a]",
+            })}
+          >
+            <ExternalLink className="h-4 w-4 text-[#d3a548]" />
+            <span>Ver como Cliente</span>
           </Link>
 
-          {quote.status !== "approved" && (
-            <Button variant="primary" size="sm" onClick={handleManualApprove}>
-              <Check className="h-4 w-4" />
-              <span>Aprovar Manualmente</span>
+          {canDecide && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleManualApprove}
+              disabled={approving}
+            >
+              {approving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              <span>{approving ? "A aprovar..." : "Aprovar Manualmente"}</span>
             </Button>
           )}
 
-          <Link href={`/quotes/new?vehicle=${quote.vehicleId}`}>
-            <Button variant="outline" size="sm" className="bg-[#15191a]">
-              <RefreshCw className="h-4 w-4 text-[#d3a548]" />
-              <span>Refazer Proposta</span>
-            </Button>
+          <Link
+            href={`/quotes/new?vehicle=${quote.vehicleId}`}
+            className={buttonStyles({
+              variant: "outline",
+              size: "sm",
+              className: "bg-[#15191a]",
+            })}
+          >
+            <RefreshCw className="h-4 w-4 text-[#d3a548]" />
+            <span>Refazer Proposta</span>
           </Link>
 
           {confirmDelete ? (
@@ -275,17 +286,25 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
         </div>
 
         {deleteError && (
-          <p className="text-xs font-semibold text-[#f05a50]">{deleteError}</p>
+          <p role="alert" className="text-xs font-semibold text-[#f05a50]">
+            {deleteError}
+          </p>
+        )}
+
+        {approveError && (
+          <p role="alert" className="text-xs font-semibold text-[#f05a50]">
+            {approveError}
+          </p>
         )}
 
         {emitError && (
-          <p className="text-xs font-semibold text-[#f05a50]">{emitError}</p>
+          <p role="alert" className="text-xs font-semibold text-[#f05a50]">
+            {emitError}
+          </p>
         )}
       </div>
 
-      {/* Main Grid: Options Comparer + Confidential Financials */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: 3-Tier Option Selector */}
         <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-[#f1ede5]">
@@ -303,45 +322,48 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
             isInteractive={true}
           />
 
-          {/* Timeline of events */}
           <Card className="p-5 flex flex-col gap-3">
             <h3 className="text-xl font-semibold text-[#f1ede5]">
-              Histórico & Auditoria de Eventos da Proposta
+              Histórico e Auditoria de Eventos da Proposta
             </h3>
 
-            <div className="flex flex-col gap-2 mt-2">
-              {quote.events.map((evt) => (
-                <div
-                  key={evt.id}
-                  className="flex items-center justify-between p-3 rounded-sm bg-[#15191a] border border-white/[0.04] text-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-2 w-2 rounded-full bg-[#d3a548]" />
-                    <span className="text-[#f1ede5] font-medium">{evt.description}</span>
+            {quote.events.length === 0 ? (
+              <p className="text-xs text-[#a9adae]">Sem eventos registados.</p>
+            ) : (
+              <div className="flex flex-col gap-2 mt-2">
+                {quote.events.map((evt) => (
+                  <div
+                    key={evt.id}
+                    className="flex items-center justify-between p-3 rounded-sm bg-[#15191a] border border-white/[0.04] text-xs"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-2 w-2 rounded-full bg-[#d3a548]" />
+                      <span className="text-[#f1ede5] font-medium">{evt.description}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[12px] text-[#8a9092]">
+                      {evt.authorName && <span>Por: {evt.authorName}</span>}
+                      <span className="tabular-nums font-mono">
+                        {formatQuoteDateTime(evt.createdAt)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[12px] text-[#8a9092]">
-                    {evt.authorName && <span>Por: {evt.authorName}</span>}
-                    <span className="tabular-nums font-mono">{evt.createdAt}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
-        {/* Right Column: Confidential Financials for the selected option */}
         <div className="lg:col-span-4 flex flex-col gap-4">
           <div className="sticky top-6 flex flex-col gap-4">
-            <QuoteFinancialSummary financials={activeOption} />
+            {activeOption && <QuoteFinancialSummary financials={activeOption} />}
 
             {quote.status === "draft" && (
               <div className="flex items-start gap-2 p-3 rounded-md bg-[#d3a548]/10 border border-[#d3a548]/30 text-[11px] text-[#f7d46d]">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                <span>Rascunho — o link só fica ativo depois de emitir.</span>
+                <span>Rascunho: o link só fica ativo depois de emitir.</span>
               </div>
             )}
 
-            {/* Public Link Box */}
             <Card className="p-4 flex flex-col gap-2 bg-[#15191a]">
               <span className="text-[11px] uppercase font-bold text-[#8a9092]">
                 Token Público de Aprovação
@@ -349,9 +371,11 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
               <div className="flex items-center justify-between p-2 rounded-sm bg-[#080a0b] font-mono text-xs text-[#d3a548]">
                 <span className="truncate pr-2">{quote.publicToken}</span>
                 <button
+                  type="button"
                   onClick={handleCopyPublicLink}
                   className="hover:text-[#f1ede5] cursor-pointer"
-                  title="Copiar"
+                  title="Copiar link público"
+                  aria-label="Copiar link público"
                 >
                   <Share2 className="h-3.5 w-3.5" />
                 </button>

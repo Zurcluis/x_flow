@@ -1,8 +1,8 @@
 import { NewQuoteView } from "./NewQuoteView";
 import { listVehicles } from "@/server/vehicles";
 import { listCustomers } from "@/server/customers";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 import { loadPricingContext } from "@/server/pricing";
 import { loadDraftQuote } from "@/server/quotes";
 
@@ -13,9 +13,9 @@ export default async function NewQuotePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   const sp = await searchParams;
-  const organizationId = await getPrimaryOrganizationId();
+  const organizationId = auth.organizationId;
   const draftParam = typeof sp.draft === "string" ? sp.draft : undefined;
   const [vehicles, customers, pricingContext, draftQuote] = await Promise.all([
     listVehicles(organizationId),

@@ -11,7 +11,7 @@ export default async function LoginPage({
 }) {
   const auth = await getOptionalAuth();
   if (auth) {
-    redirect("/");
+    redirect(auth.mustChangePassword ? "/change-password" : "/");
   }
   const { next } = await searchParams;
   return <LoginView next={next} />;

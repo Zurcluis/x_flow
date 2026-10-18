@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonStyles } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PhotoInspectionGrid } from "@/components/xflow/checkins/PhotoInspectionGrid";
@@ -40,13 +40,13 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
 
   // Step 1: Vehicle & Customer
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(
-    vehicles[3]?.id || vehicles[0]?.id || ""
+    vehicles.find((v) => v.currentOwner)?.id || vehicles[0]?.id || ""
   );
   const selectedVehicle =
     vehicles.find((v) => v.id === selectedVehicleId) || vehicles[0];
-  const selectedCustomer =
-    customers.find((c) => c.id === selectedVehicle?.currentOwner?.customerId) ||
-    customers[0];
+  const selectedCustomer = customers.find(
+    (c) => c.id === selectedVehicle?.currentOwner?.customerId
+  );
 
   // Step 2: Odometer, Fuel & Belongings
   const [mileage, setMileage] = useState<number>(45200);
@@ -81,7 +81,21 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
     );
   };
 
+  const handleVehicleChange = (vehicleId: string) => {
+    setSelectedVehicleId(vehicleId);
+    const vehicle = vehicles.find((v) => v.id === vehicleId);
+    const owner = customers.find((c) => c.id === vehicle?.currentOwner?.customerId);
+    setSignerName(owner?.name ?? "");
+  };
+
   const handleNextStep = () => {
+    if (currentStep === 1 && (!selectedVehicle || !selectedCustomer)) {
+      setValidationErrors([
+        "Seleciona uma viatura com proprietário associado antes de continuar.",
+      ]);
+      return;
+    }
+
     if (currentStep === 2) {
       if (!mileage || mileage <= 0) {
         setValidationErrors(["Indica a quilometragem do odómetro."]);
@@ -119,51 +133,106 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
       return;
     }
 
-    setSaving(true);
+    setValidationErrors([]);
     setSubmitError(null);
-    const result = await createCheckinAction({
-      vehicleId: selectedVehicleId,
-      customerId: selectedCustomer.id,
-      mileage,
-      fuelLevel,
-      cleanlinessStatus,
-      belongings,
-      photos: photos.map((p) => ({
-        id: p.id,
-        photoUrl: p.photoUrl,
-        angle: p.angle,
-        label: p.label,
-      })),
-      damages: damages.map((d) => ({
-        photoId: d.photoId ?? "",
-        posX: d.posX,
-        posY: d.posY,
-        type: d.type,
-        severity: d.severity,
-        notes: d.notes,
-      })),
-      signedByName: signerName,
-      signatureDataUrl: signatureDataUrl || undefined,
-    });
-    setSaving(false);
 
-    if (!result.ok) {
-      setSubmitError(result.error);
+    if (!selectedVehicle || !selectedCustomer) {
+      setSubmitError(
+        "A viatura não tem um proprietário associado. Liga o cliente à viatura antes de criar o check-in."
+      );
       return;
     }
 
-    router.push("/checkins");
+    if (damages.some((damage) => !damage.photoId)) {
+      setSubmitError("Existe um dano sem fotografia associada. Remove-o e marca novamente.");
+      return;
+    }
+
+    if (!signatureDataUrl) {
+      setSubmitError(
+        "Recolhe a assinatura de quem entrega a viatura antes de concluir o check-in."
+      );
+      return;
+    }
+
+    setSaving(true);
+    setSubmitError(null);
+    try {
+      const result = await createCheckinAction({
+        vehicleId: selectedVehicle.id,
+        customerId: selectedCustomer.id,
+        mileage,
+        fuelLevel,
+        cleanlinessStatus,
+        belongings,
+        photos: photos.map((p) => ({
+          id: p.id,
+          photoUrl: p.photoUrl,
+          angle: p.angle,
+          label: p.label,
+        })),
+        damages: damages.map((d) => ({
+          photoId: d.photoId ?? "",
+          posX: d.posX,
+          posY: d.posY,
+          type: d.type,
+          severity: d.severity,
+          notes: d.notes,
+        })),
+        signedByName: signerName,
+        signatureDataUrl: signatureDataUrl || undefined,
+      });
+
+      if (!result.ok) {
+        setSubmitError(result.error);
+        return;
+      }
+
+      router.push(`/checkins/${result.checkinId}`);
+    } catch {
+      setSubmitError("Não foi possível guardar o check-in. Verifica a ligação e tenta novamente.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (vehicles.length === 0 || customers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#15191a] text-[#8a9092]">
+          <Car className="h-6 w-6" />
+        </div>
+        <h1 className="text-xl font-bold text-[#f1ede5]">
+          Não é possível iniciar o check-in
+        </h1>
+        <p className="max-w-md text-xs text-[#a9adae]">
+          {vehicles.length === 0
+            ? "Ainda não existem viaturas registadas nesta organização."
+            : "Ainda não existem clientes registados nesta organização."}
+        </p>
+        <Button variant="outline" onClick={() => router.push("/checkins")}>
+          <ArrowLeft className="h-4 w-4" />
+          <span>Voltar a Check-ins</span>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 pb-4 border-b border-white/[0.04]">
         <div className="flex items-center gap-3">
-          <Link href="/checkins">
-            <Button variant="ghost" size="sm" className="p-2">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+          <Link
+            href="/checkins"
+            aria-label="Voltar a Check-ins"
+            className={buttonStyles({
+              variant: "ghost",
+              size: "sm",
+              className: "p-2",
+            })}
+          >
+            <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="flex flex-col">
             <span className="text-xs font-medium text-[#a9adae]">
@@ -196,7 +265,12 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
             <button
               key={step.num}
               type="button"
-              onClick={() => setCurrentStep(step.num)}
+              onClick={() => {
+                setCurrentStep(step.num);
+                setValidationErrors([]);
+                setSubmitError(null);
+              }}
+              aria-current={isActive ? "step" : undefined}
               className={`flex flex-col items-center justify-center p-2.5 rounded-md border text-center transition-all cursor-pointer ${
                 isActive
                   ? "bg-[#1f1b14] border-[#d3a548] text-[#f7d46d] shadow-sm"
@@ -216,7 +290,10 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
 
       {/* Validation Error Banner */}
       {(validationErrors.length > 0 || submitError) && (
-        <div className="p-4 rounded-md bg-[#2a1210] border border-[#f05a50] text-[#f05a50] flex flex-col gap-1.5 animate-shake">
+        <div
+          role="alert"
+          className="p-4 rounded-md bg-[#2a1210] border border-[#f05a50] text-[#f05a50] flex flex-col gap-1.5 animate-shake"
+        >
           <div className="flex items-center gap-2 font-bold text-sm">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span>{submitError ? "Erro ao guardar" : "Validação Pendente: Corrige os seguintes pontos"}</span>
@@ -248,12 +325,13 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
                 <label className="font-semibold text-[#a9adae]">Viatura para Check-in *</label>
                 <select
                   value={selectedVehicleId}
-                  onChange={(e) => setSelectedVehicleId(e.target.value)}
+                  onChange={(e) => handleVehicleChange(e.target.value)}
                   className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5] cursor-pointer"
                 >
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.plateDisplay} — {v.make} {v.model} ({v.generationYear})
+                      {!v.currentOwner ? " · sem proprietário" : ""}
                     </option>
                   ))}
                 </select>
@@ -261,12 +339,19 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
 
               <div className="flex flex-col gap-1.5">
                 <label className="font-semibold text-[#a9adae]">Proprietário / Contacto</label>
-                <div className="h-10 px-3.5 rounded-sm bg-[#080a0b] border border-white/[0.04] flex items-center justify-between text-sm text-[#f1ede5]">
-                  <span className="truncate">{selectedCustomer.name}</span>
-                  <span className="text-[11px] text-[#8a9092]">
-                    {selectedCustomer.phone}
-                  </span>
-                </div>
+                {selectedCustomer ? (
+                  <div className="h-10 px-3.5 rounded-sm bg-[#080a0b] border border-white/[0.04] flex items-center justify-between text-sm text-[#f1ede5]">
+                    <span className="truncate">{selectedCustomer.name}</span>
+                    <span className="text-[11px] text-[#8a9092]">
+                      {selectedCustomer.phone}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="min-h-10 px-3.5 py-2 rounded-sm bg-[#2a1714] border border-[#f05a50]/30 flex items-center text-xs text-[#f78e85]">
+                    Esta viatura não tem proprietário associado. Liga um cliente antes de
+                    continuar.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -493,7 +578,11 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
           )}
 
           {currentStep < 5 ? (
-            <Button variant="primary" onClick={handleNextStep}>
+            <Button
+              variant="primary"
+              onClick={handleNextStep}
+              disabled={currentStep === 1 && (!selectedVehicle || !selectedCustomer)}
+            >
               <span>Avançar para Passo {currentStep + 1}</span>
             </Button>
           ) : (
@@ -512,7 +601,7 @@ export function NewCheckinView({ vehicles: vehiclesProp, customers: customersPro
               ) : (
                 <>
                   <Check className="h-5 w-5" />
-                  <span>Concluir Check-in e Iniciar Ordem de Trabalho</span>
+                  <span>Concluir Check-in e Gerar Relatório</span>
                 </>
               )}
             </Button>

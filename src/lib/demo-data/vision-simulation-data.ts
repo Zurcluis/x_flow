@@ -17,9 +17,9 @@ export const initialVisionAnalyses: VisionAnalysis[] = [
     photoCompleteness: true,
     vehicleConfidence: 0.98,
     colorConfidence: 0.95,
-    createdAt: "2026-08-28 09:25",
+    createdAt: "2026-08-28T09:25:00+01:00",
     reviewedBy: "João Martins",
-    reviewedAt: "2026-08-28 09:30",
+    reviewedAt: "2026-08-28T09:30:00+01:00",
     damageSuggestions: [
       {
         id: "vdmg-1",
@@ -113,7 +113,7 @@ export const initialVisionAnalyses: VisionAnalysis[] = [
     photoCompleteness: true,
     vehicleConfidence: 0.97,
     colorConfidence: 0.94,
-    createdAt: "2026-08-28 10:18",
+    createdAt: "2026-08-28T10:18:00+01:00",
     reviewedBy: "João Martins",
     damageSuggestions: [
       {

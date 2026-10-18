@@ -11,7 +11,12 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { Sidebar, MAIN_NAV, NAV_SECTIONS, type NavItem } from "@/components/xflow/Sidebar";
+import {
+  Sidebar,
+  MAIN_NAV,
+  navSectionsForRole,
+  type NavItem,
+} from "@/components/xflow/Sidebar";
 import { Topbar } from "@/components/xflow/Topbar";
 import { Logo } from "@/components/xflow/Logo";
 import type { ShellUser } from "@/components/xflow/Topbar";
@@ -48,6 +53,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const sections = navSectionsForRole(user?.role);
 
   // If public standalone route (like client portal, quote approval, reception report, QC certificate, warranty certificate, or passport), don't render workshop shell
   if (
@@ -58,6 +64,7 @@ export function AppShell({
     pathname.startsWith("/warranties/certificate/") ||
     pathname.startsWith("/passport/") ||
     pathname === "/shop-floor" ||
+    pathname === "/change-password" ||
     pathname === "/login"
   ) {
     return <main className="min-h-screen bg-[#050606] text-[#f1ede5]">{children}</main>;
@@ -66,7 +73,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-[#050606] text-[#f1ede5] antialiased">
       {/* Desktop Sidebar */}
-      <Sidebar />
+      <Sidebar role={user?.role} />
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
@@ -101,7 +108,7 @@ export function AppShell({
               {MAIN_NAV.map((item) => (
                 <DrawerLink key={item.href} item={item} onNavigate={() => setMobileMenuOpen(false)} />
               ))}
-              {NAV_SECTIONS.map((section) => (
+              {sections.map((section) => (
                 <div key={section.label} className="flex flex-col gap-1 pt-5 mt-1 border-t border-white/[0.08]">
                   <span className="px-4 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wider text-[#8a9092]">
                     {section.label}

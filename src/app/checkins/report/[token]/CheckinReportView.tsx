@@ -5,16 +5,23 @@ import {
   ShieldCheck,
   Car,
   MessageCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/xflow/Logo";
 import { PhotoDamageMapper } from "@/components/xflow/checkins/PhotoDamageMapper";
 import { PhotoInspectionGrid } from "@/components/xflow/checkins/PhotoInspectionGrid";
 import { Checkin } from "@/domains/checkins/types";
+import {
+  checkinStatusLabel,
+  cleanlinessLabel,
+  formatCheckinDate,
+  fuelLevelLabel,
+  isCheckinSigned,
+} from "@/domains/checkins/presentation";
+import { MANDATORY_PHOTO_ANGLES } from "@/domains/checkins/roof-validator";
 
 export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
-
-
   if (!checkin) {
     return (
       <div className="min-h-screen bg-[#050606] text-[#f1ede5] flex flex-col items-center justify-center p-6 text-center">
@@ -27,6 +34,21 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
     );
   }
 
+  const hasCompleteInspection = MANDATORY_PHOTO_ANGLES.every((mandatory) =>
+    checkin.photos.some(
+      (photo) => photo.angle === mandatory.angle && Boolean(photo.photoUrl)
+    )
+  );
+  const isSigned = isCheckinSigned(checkin);
+  const documentTitle =
+    checkin.type === "entry"
+      ? isSigned
+        ? "Certificado de Receção Oficial"
+        : "Comprovativo de Receção"
+      : isSigned
+      ? "Certificado de Entrega Oficial"
+      : "Comprovativo de Entrega";
+
   return (
     <div className="min-h-screen bg-[#050606] text-[#f1ede5] flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-5xl flex flex-col gap-8">
@@ -34,7 +56,7 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/[0.08]">
           <Logo variant="full" />
           <div className="flex flex-col sm:items-end">
-            <span className="text-xs text-[#a9adae]">Certificado de Receção Oficial</span>
+            <span className="text-xs text-[#a9adae]">{documentTitle}</span>
             <span className="font-mono font-bold text-sm text-[#f7d46d]">
               CHK-{checkin.vehiclePlate.replace(/-/g, "")}
             </span>
@@ -66,12 +88,27 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
           </div>
 
           <div className="flex flex-col lg:items-end">
-            <div className="flex items-center gap-1.5 text-xs text-[#68a46b] font-bold bg-[#68a46b]/10 px-3 py-1 rounded-full border border-[#68a46b]/20">
-              <ShieldCheck className="h-4 w-4" />
-              <span>Receção Validada & Tejadilho Inspecionado</span>
+            <div
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border ${
+                hasCompleteInspection
+                  ? "text-[#68a46b] bg-[#68a46b]/10 border-[#68a46b]/20"
+                  : "text-[#f7d46d] bg-[#d3a548]/10 border-[#d3a548]/20"
+              }`}
+            >
+              {hasCompleteInspection ? (
+                <ShieldCheck className="h-4 w-4" />
+              ) : (
+                <AlertTriangle className="h-4 w-4" />
+              )}
+              <span>
+                {hasCompleteInspection
+                  ? "Inspeção Completa & Tejadilho Inspecionado"
+                  : "Check-in registado com inspeção parcial"}
+              </span>
             </div>
             <span className="text-[12px] text-[#8a9092] mt-2">
-              Entrada em: {checkin.createdAt} por {checkin.technicianName}
+              {checkinStatusLabel(checkin)} em {formatCheckinDate(checkin.createdAt)} por{" "}
+              {checkin.technicianName}
             </span>
           </div>
         </div>
@@ -88,11 +125,7 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
           <div className="p-4 rounded-lg bg-[#101314] border border-white/[0.08] flex flex-col gap-1">
             <span className="text-xs text-[#a9adae]">Nível de Combustível</span>
             <span className="text-2xl font-black text-[#f7d46d]">
-              {checkin.fuelLevel === "full"
-                ? "100% Cheio"
-                : checkin.fuelLevel === "three_quarters"
-                ? "3/4 Depósito"
-                : "1/2 Depósito"}
+              {fuelLevelLabel(checkin.fuelLevel)}
             </span>
           </div>
 
@@ -100,6 +133,35 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
             <span className="text-xs text-[#a9adae]">Danos Pré-existentes</span>
             <span className="text-2xl font-black text-[#f1ede5]">
               {checkin.damages.length} Identificados
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 rounded-lg bg-[#101314] border border-white/[0.08] flex flex-col gap-1">
+            <span className="text-xs text-[#a9adae]">Estado de Limpeza</span>
+            <span className="text-base font-bold text-[#f1ede5]">
+              {cleanlinessLabel(checkin.cleanlinessStatus)}
+            </span>
+          </div>
+          <div className="p-4 rounded-lg bg-[#101314] border border-white/[0.08] flex flex-col gap-1">
+            <span className="text-xs text-[#a9adae]">
+              Assinatura de {checkin.type === "entry" ? "Receção" : "Entrega"}
+            </span>
+            {checkin.signatureDataUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={checkin.signatureDataUrl}
+                alt={`Assinatura de ${checkin.signedByName || "receção"}`}
+                className="h-12 w-full object-contain object-left"
+              />
+            ) : (
+              <span className="text-base font-bold text-[#8a9092]">
+                Não recolhida
+              </span>
+            )}
+            <span className="text-[12px] text-[#8a9092]">
+              {checkin.signedByName || "Sem nome registado"}
             </span>
           </div>
         </div>
@@ -120,7 +182,7 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
         {/* High-res Photos Grid */}
         <div className="p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] flex flex-col gap-4">
           <h3 className="font-bold text-base text-[#f1ede5]">
-            Galeria Fotográfica de Entrada
+            Galeria Fotográfica de {checkin.type === "entry" ? "Entrada" : "Saída"}
           </h3>
           <PhotoInspectionGrid
             photos={checkin.photos}
@@ -131,7 +193,9 @@ export function CheckinReportView({ checkin }: { checkin: Checkin | null }) {
 
         {/* Footer */}
         <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-12 border-t border-white/[0.06] text-xs text-[#8a9092]">
-          <span>X-Motion Performance Detailing & PPF · Ficha Certificada de Entrada</span>
+          <span>
+            X-Motion Performance Detailing & PPF · {documentTitle}
+          </span>
           <a
             href="https://wa.me/351912345678"
             target="_blank"

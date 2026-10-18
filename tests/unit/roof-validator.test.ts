@@ -89,6 +89,17 @@ describe("Check-in Photo Inspection Validator (5 Standard Perspectives)", () => 
     expect(result.missingAngles).toHaveLength(0);
   });
 
+  it("requires the name of the person handing over the vehicle", () => {
+    const result = validateCheckinSubmission({
+      mileage: 28400,
+      photos: [],
+      signedByName: "   ",
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain("Indica o nome de quem entrega a viatura.");
+  });
+
   it("validates full checkin submission requirements", () => {
     const invalidSubmission = validateCheckinSubmission({
       mileage: 0,

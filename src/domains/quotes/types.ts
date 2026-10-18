@@ -224,5 +224,8 @@ export interface PublicQuote {
   notes?: string | null;
   selectedOptionId?: string | null;
   approvedByName?: string | null;
+  organizationName: string;
+  organizationPhone?: string | null;
+  organizationEmail?: string | null;
   options: PublicQuoteOption[];
 }

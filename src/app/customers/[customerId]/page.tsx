@@ -1,11 +1,9 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { notFound } from "next/navigation";
 import { CustomerDetailView } from "./CustomerDetailView";
 import { getCustomerById, listCustomers } from "@/server/customers";
 import { listVehicles } from "@/server/vehicles";
-import { getPrimaryOrganizationId } from "@/server/org";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { canSeeFinancials, SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -14,30 +12,24 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ customerId: string }>;
 }) {
-  await requireAuth();
+  const auth = await requireRole(SCHEDULING_ROLES);
   const { customerId } = await params;
-  const organizationId = await getPrimaryOrganizationId();
+  const showFinancials = canSeeFinancials(auth.role);
+  const options = { includeFinancials: showFinancials };
   const [customer, vehicles, allCustomers] = await Promise.all([
-    getCustomerById(organizationId, customerId),
-    listVehicles(organizationId),
-    listCustomers(organizationId),
+    getCustomerById(auth.organizationId, customerId, options),
+    listVehicles(auth.organizationId),
+    listCustomers(auth.organizationId, options),
   ]);
 
-  if (!customer) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-        <h2 className="text-2xl font-bold text-[#f1ede5]">Cliente não encontrado</h2>
-        <Link href="/customers">
-          <Button variant="outline">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Voltar à lista de clientes</span>
-          </Button>
-        </Link>
-      </div>
-    );
-  }
+  if (!customer) notFound();
 
   return (
-    <CustomerDetailView customer={customer} vehicles={vehicles} customers={allCustomers} />
+    <CustomerDetailView
+      customer={customer}
+      vehicles={vehicles}
+      customers={allCustomers}
+      showFinancials={showFinancials}
+    />
   );
 }

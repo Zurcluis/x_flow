@@ -1,15 +1,17 @@
 import { MyDayView } from "./MyDayView";
 import { getMyDayData } from "@/server/myday";
-import { requireAuth } from "@/server/auth";
+import { requireRole } from "@/server/auth";
+import { SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
-// MVP interno: técnico autenticado será resolvido por auth numa fase posterior
-const CURRENT_TECHNICIAN = "João Martins";
-
 export default async function MyDayPage() {
-  await requireAuth();
-  const data = await getMyDayData(CURRENT_TECHNICIAN);
+  const auth = await requireRole(SCHEDULING_ROLES);
+  const data = await getMyDayData(
+    auth.organizationId,
+    auth.profileId,
+    auth.name
+  );
 
   return <MyDayView data={data} />;
 }
