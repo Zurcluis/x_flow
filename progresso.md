@@ -5,7 +5,7 @@ _Última atualização: 18/10/2026. Ficheiro de continuação de sessão — diz
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
 - Health: typecheck OK, lint OK, **274/274 testes (40 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades
-- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); último commit `00f87f5`; P0.1/P0.2 prontos a commitar
+- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); último commit `e6cd845` (`feat: RBAC multi-org, auditoria global de paginas e datas de pricing`), já em `origin/main`; P0.1/P0.2 e a auditoria global commitados. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
@@ -52,6 +52,7 @@ _Última atualização: 18/10/2026. Ficheiro de continuação de sessão — diz
 - **Hydration mismatch corrigido**: `QuoteCard`/`QuoteDetailView` deixaram de ler `window.location.origin` durante o render; a origem é obtida com `useSyncExternalStore` (`getServerSnapshot` vazio), eliminando os erros de hidratação em `/quotes` e `/quotes/[id]`.
 - **Migração 28 aplicada**: `idx_qc_inspections_work_order` e `idx_qc_items_inspection`; deteção idempotente em `scripts/migrate.mjs`; reexecução diz "já aplicada". `certificate_number` mantém-se globalmente único por ser o token semi-público do certificado.
 - **Verificação**: typecheck OK, lint OK, **274/274 testes (40 ficheiros)**, build OK, `db:verify` OK (54 tabelas com RLS, 58 políticas, 0 clientes visíveis com GUC de outra org). Browser: 59 rotas internas e públicas visitadas (incluindo detalhes, tokens reais e `/settings/pricing`) com 0 erros de consola; `/login` com sessão ativa redireciona para `/`. `verify-rls.mjs` deixou de assumir "5 clientes" e passou a verificar o isolamento com uma org estrangeira.
+- **Git**: commit `e6cd845` com 207 ficheiros (+13 487/−4 763) e push para `origin/main`; o working tree ficou limpo exceto os documentos sensíveis não versionados em `docs/X-motion/`.
 - **Pendentes**: persistir QC (P0.3) e revisões Vision; fotos de check-in em data URL (P0.4); GUC de organização por pedido (`withOrganization`); coluna `source` nas time entries; seed `has_roof_photo=true` sem fotos; índices de `/time-book`.
 
 ## Sessão 17/10/2026 (2ª parte) — Estúdio 3D: BMW M4 real + PPF transparente
