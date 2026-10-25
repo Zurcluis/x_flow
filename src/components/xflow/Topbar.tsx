@@ -14,7 +14,6 @@ import {
   LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AiSidePanel } from "@/components/xflow/ai/AiSidePanel";
 import { CommandPaletteModal } from "@/components/xflow/search/CommandPaletteModal";
 import { initialDashboardData } from "@/lib/demo-data/dashboard-data";
 import { logoutAction } from "@/app/actions/auth";
@@ -45,13 +44,16 @@ function getInitials(name: string): string {
 interface TopbarProps {
   unreadCount?: number;
   user?: ShellUser | null;
+  assistantOpen?: boolean;
+  onOpenAssistant?: () => void;
 }
 
 export function Topbar({
   unreadCount = initialDashboardData.user.unreadNotifications,
   user = null,
+  assistantOpen = false,
+  onOpenAssistant,
 }: TopbarProps) {
-  const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -90,14 +92,18 @@ export function Topbar({
         {/* Actions & Profile */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Ask AI Button */}
-          <button
-            type="button"
-            onClick={() => setAiPanelOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-gradient-to-r from-[#d3a548]/20 to-[#f7d46d]/20 border border-[#d3a548]/40 hover:border-[#d3a548] text-xs font-bold text-[#f7d46d] hover:bg-[#d3a548]/30 transition-all cursor-pointer shadow-sm"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Pergunta ao X-Flow AI</span>
-          </button>
+          {onOpenAssistant ? (
+            <button
+              type="button"
+              onClick={onOpenAssistant}
+              aria-haspopup="dialog"
+              aria-expanded={assistantOpen}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-gradient-to-r from-[#d3a548]/20 to-[#f7d46d]/20 border border-[#d3a548]/40 hover:border-[#d3a548] text-xs font-bold text-[#f7d46d] hover:bg-[#d3a548]/30 transition-all cursor-pointer shadow-sm"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Pergunta ao X-Flow AI</span>
+            </button>
+          ) : null}
 
           {/* Quick Actions */}
           <div className="flex items-center gap-2.5">
@@ -223,9 +229,6 @@ export function Topbar({
           </div>
         </div>
       </header>
-
-      {/* Interactive AI Drawer */}
-      <AiSidePanel isOpen={aiPanelOpen} onClose={() => setAiPanelOpen(false)} />
 
       {/* Global Command Palette Modal */}
       <CommandPaletteModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />

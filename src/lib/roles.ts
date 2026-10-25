@@ -25,3 +25,7 @@ export function canSeeFinancials(role: OrganizationRole): boolean {
 export function canManageSettings(role: OrganizationRole): boolean {
   return role === "admin";
 }
+
+export function canUseAssistant(role: OrganizationRole): boolean {
+  return hasRole(role, ["admin", "workshop_manager", "technician"]);
+}

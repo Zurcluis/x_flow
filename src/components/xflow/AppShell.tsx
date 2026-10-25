@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,6 +9,7 @@ import {
   Camera,
   Layers,
   Menu,
+  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -19,7 +20,9 @@ import {
 } from "@/components/xflow/Sidebar";
 import { Topbar } from "@/components/xflow/Topbar";
 import { Logo } from "@/components/xflow/Logo";
+import { AssistantPanel } from "@/components/xflow/ai/AssistantPanel";
 import type { ShellUser } from "@/components/xflow/Topbar";
+import { canUseAssistant } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 function DrawerLink({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
@@ -53,6 +56,10 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const assistantEnabled = Boolean(user && canUseAssistant(user.role));
+  const openAssistant = useCallback(() => setAssistantOpen(true), []);
+  const closeAssistant = useCallback(() => setAssistantOpen(false), []);
   const sections = navSectionsForRole(user?.role);
 
   // If public standalone route (like client portal, quote approval, reception report, QC certificate, warranty certificate, or passport), don't render workshop shell
@@ -82,13 +89,27 @@ export function AppShell({
           <Link href="/" aria-label="X-Flow Início">
             <Logo variant="full" size="sm" />
           </Link>
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/[0.05] cursor-pointer"
-            aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-1">
+            {assistantEnabled ? (
+              <button
+                type="button"
+                onClick={openAssistant}
+                className="p-2.5 rounded-lg text-[#f7d46d] hover:bg-[#d3a548]/15 cursor-pointer"
+                aria-label="Pergunta ao X-Flow AI"
+                aria-haspopup="dialog"
+                aria-expanded={assistantOpen}
+              >
+                <Sparkles className="h-5 w-5" />
+              </button>
+            ) : null}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg text-[#a9adae] hover:text-[#f1ede5] hover:bg-white/[0.05] cursor-pointer"
+              aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </header>
 
         {/* Mobile Fullscreen Drawer */}
@@ -124,7 +145,11 @@ export function AppShell({
 
         {/* Global Topbar — pesquisa, IA, ações rápidas e perfil (desktop) */}
         <div className="hidden lg:block px-4 sm:px-6 lg:px-8 max-w-[1680px] w-full mx-auto">
-          <Topbar user={user} />
+          <Topbar
+            user={user}
+            assistantOpen={assistantOpen}
+            onOpenAssistant={assistantEnabled ? openAssistant : undefined}
+          />
         </div>
 
         {/* Page Inner Container */}
@@ -185,6 +210,10 @@ export function AppShell({
           </button>
         </nav>
       </div>
+
+      {assistantEnabled && assistantOpen ? (
+        <AssistantPanel onClose={closeAssistant} />
+      ) : null}
     </div>
   );
 }
