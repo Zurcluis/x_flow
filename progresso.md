@@ -1,14 +1,49 @@
 # Progresso — X-Flow
 
-_Última atualização: 18/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 24/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
-- Health: typecheck OK, lint OK, **274/274 testes (40 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades
-- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); último commit `e6cd845` (`feat: RBAC multi-org, auditoria global de paginas e datas de pricing`), já em `origin/main`; P0.1/P0.2 e a auditoria global commitados. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
+- Health: typecheck OK, lint OK, **300/300 testes (43 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) implementado e commitado
+- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `e6cd845` (`feat: RBAC multi-org, auditoria global de paginas e datas de pricing`); commits locais `52335c2` (docs: progresso) e `5746ae1` (`feat: assistente X-Flow AI (fases 1-3) com briefing real, esfera animada e voz`) por enviar. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 24/10/2026 — Assistente X-Flow AI (fases 1–3) + esfera
+
+- **Âmbito**: plano `X-Flow_Plano_Assistente_X-Motion.md`, fases 1–3 — briefing operacional real, esfera animada, leitura por voz (Web Speech API) e perguntas por texto/voz. Sem LLM, sem persistência, sem tabelas novas. Acesso a `admin`, `workshop_manager` e `technician`; `customer`/`b2b_user` não veem o botão.
+- **Servidor**: `src/domains/assistant/{types,priorities,narration,intents}.ts` + `src/server/assistant.ts` — quatro fontes em paralelo (marcações de hoje exceto canceladas, OTs em curso/à espera/QC e concluídas sem entrega, orçamentos enviados/vistos há mais de 4 dias, stock abaixo do mínimo), estados `available|empty|unavailable|not_applicable`, filtro por técnico, `quality` no briefing e formatação pt-PT (`formatQuantity`/`unitLabel`: bottle→un, kit→kit, resto→m). `src/app/actions/assistant.ts` autenticado, bloqueia `mustChangePassword`, pergunta ≤500 caracteres e não regista PII nos logs.
+- **UI**: `AssistantPanel.tsx` (dialog full-screen, focus trap, Esc, scroll lock, perguntas rápidas, fontes com links, secção “Controlo de qualidade”, leitura/pausa/retoma/paragem e ditado), `AssistantSphere.tsx` (canvas 2D), hooks `useSpeechSynthesis`/`useDictation`/`useMicLevel`; `AppShell` passou a ser dono de `assistantOpen` (painel só montado quando aberto) e ganhou botão mobile; `Topbar` recebe `onOpenAssistant`; `AiSidePanel` mock apagado; `next.config.ts` com `microphone=(self)`.
+- **Esfera**: 8 estados (`idle`, `requesting-mic`, `listening`, `transcribing`, `thinking`, `speaking`, `paused`, `error`) com interpolação de `energy/ring/orbit/glow/tempo/busy/waiting/error`; luneta de 120 ticks em 3 classes, disco, brilho volumétrico, órbita com satélite, 9 filamentos em `Path2D`, núcleo e reflexo; nível real do microfone (RMS) e eventos TTS (`onstart`, `onboundary`, `resume`); DPR limitado a 2, `ResizeObserver`, pausa com separador oculto e `prefers-reduced-motion` (desenho estático).
+- **Verificação**: typecheck OK, lint OK, build OK, **300/300 testes (43 ficheiros)**; browser em produção (`npm run build` + `npm run start`) em desktop e mobile — dados reais (7 orçamentos, 3 stock, 1 bloqueio), voz pt-PT fala/pausa/continua/para, perguntas por texto, Esc/foco, zero erros de consola; capturas idle/speaking confirmaram a reação. Servidor parado e capturas removidas no fim.
+- **Commitado**: `5746ae1` — assistente, esfera, actions, domínio, testes e plano; documentos sensíveis em `docs/X-motion/` mantêm-se fora do Git.
+
+### Revisão da esfera — o que está bem e o que falta
+
+- **Bem**: sem simulação de escuta (nível vem do mic/voz); interpolação evita saltos; ticks agrupados em 3 `Path2D`/3 strokes; `visibilitychange`, DPR, `ResizeObserver` e reduced-motion tratados; sem dependências externas.
+- **Riscos**: a fala é aproximada por `onboundary` (Safari pode não disparar; nível em dente de serra 0.6–0.96 e decaimento a 2.6/s); microfone com `rms*5` satura e `fftSize=512` é nervoso; custo por frame (9 filamentos × 96 pontos × 2 strokes, ~10 gradientes/frame e `drop-shadow` CSS sobre canvas animado); `levelRef` escrito por três sítios; estado sem `aria-live` e ponto com `animate-pulse` sem `motion-reduce`.
+
+### Plano de melhorias retido (P0/P1/P2)
+
+**P0 — próxima sessão**
+1. Envelope de fala com piso (~0.18), jitter suave e fallback quando não há `boundary` há mais de 400 ms.
+2. Microfone em dB (`20*log10(rms)` de -60..-10 dB), noise gate/calibração de 300 ms, `fftSize` 1024 e ataque rápido/libertação lenta.
+3. `role="status"` + `aria-live="polite"` no estado; `motion-reduce:animate-none` no ponto dourado.
+4. Decidir a direção visual: (a) fiel ao conceito — remover órbita/satélite, 5–6 filamentos e 96 ticks; ou (b) manter alta fidelidade e otimizar.
+
+**P1 — performance**
+5. Pré-renderizar luneta/ticks em canvas offscreen e rodar só a rotação; criar gradientes no `resize`, não no `draw`; evitar `Path2D` por filamento/frame.
+6. Remover o `drop-shadow` do canvas animado (o brilho já está desenhado dentro do canvas ou a sombra passa para um wrapper estático).
+7. Dono único do `levelRef` (`useAudioEnergy`, prioridade voz > mic); a esfera só lê.
+8. Reduzir filamentos e DPR por breakpoint; limitar o idle a 30 fps.
+
+**P2 — produto**
+9. Sincronização real com áudio via `AnalyserNode` sobre um TTS que devolva stream (requer fornecedor; a Web Speech API não expõe a saída).
+10. Testes dos pure helpers (`targetsFor`, `clamp`, envelope) e screenshots de regressão por estado.
+
+- **Limitações conhecidas**: ditado por voz ainda não testado com áudio real (só feature detection); sem rate limiting por conta; sem persistência/histórico; sem provider LLM (respostas determinísticas); GUC de organização por pool mantém-se (multi-org).
+- **Próximo passo**: executar P0.1–P0.3, fechar a decisão P0.4 e só depois P1.
 
 ## Sessão 17/10/2026 (3ª parte) — Auditoria de prontidão + P0.1/P0.2 (auth/RBAC + deploy)
 - **Auditoria de prontidão entregue**: inventário real vs. demo (páginas, actions, tabelas), P0.1–P0.5, P1 (faturação/tesouraria incompleta, certificados públicos demo, multi-tenant GUC por pool), P2 (observabilidade, backups, rate limit persistente) e checklist go-live; decisão de negócio em aberto: faturação certificada AT/SAF-T vs. integração weoInvoice
