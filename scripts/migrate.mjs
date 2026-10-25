@@ -293,6 +293,18 @@ if (qcIndexes.rows[0].n < 2) {
   console.log("20260828000028 já aplicada.");
 }
 
+// 000029 — histórico de conversas do assistente
+if (!(await hasTable("assistant_conversations"))) {
+  const migration29 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000029_assistant_conversations.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration29);
+  console.log("OK: 20260828000029");
+} else {
+  console.log("20260828000029 já aplicada.");
+}
+
 // Backfill de passwords demo (idempotente): só preenche password_hash IS NULL
 const teamEmails = [
   "luis@xmotion.pt",

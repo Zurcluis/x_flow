@@ -16,9 +16,19 @@ export async function restoreBootstrapOrg(client: PoolClient): Promise<void> {
 }
 
 let pool: Pool | null = null;
+const bootstrapReady = new WeakMap<PoolClient, Promise<void>>();
 
 function appConnectionString(): string | undefined {
   return process.env.DATABASE_URL_APP || process.env.DATABASE_URL;
+}
+
+/**
+ * Espera que o bootstrap da organização (feito no evento "connect" do pool)
+ * termine antes de reutilizar o cliente. Evita queries concorrentes no mesmo
+ * cliente quando uma operação precisa de abrir uma transação.
+ */
+export async function waitForBootstrap(client: PoolClient): Promise<void> {
+  await bootstrapReady.get(client);
 }
 
 export function getDb(): Db {
@@ -35,7 +45,10 @@ export function getDb(): Db {
     pool = new Pool({ connectionString, max: 8 });
     if (process.env.DATABASE_URL_APP) {
       pool.on("connect", (client) => {
-        restoreBootstrapOrg(client).catch(() => {});
+        bootstrapReady.set(
+          client,
+          restoreBootstrapOrg(client).catch(() => undefined)
+        );
       });
     }
   }

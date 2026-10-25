@@ -6,8 +6,10 @@ const envText = fs.existsSync(envFile) ? fs.readFileSync(envFile, "utf8") : "";
 function read(name) {
   const fromProcess = process.env[name];
   if (fromProcess) return fromProcess;
-  const match = envText.match(new RegExp(`${name}="([^"]+)"`));
-  return match?.[1] ?? "";
+  const match = envText.match(
+    new RegExp(`^\\s*${name}\\s*=\\s*"?([^"\\r\\n]+)"?\\s*$`, "m")
+  );
+  return match?.[1]?.trim() ?? "";
 }
 
 const problems = [];
@@ -37,6 +39,14 @@ if (appUrl) {
 }
 if (process.env.NODE_ENV === "production" && !publicUrl) {
   problems.push("NEXT_PUBLIC_APP_URL em falta em produção.");
+}
+
+const aiProvider = (read("AI_PROVIDER") || "gemini").toLowerCase();
+const geminiKey = read("GEMINI_API_KEY");
+if (aiProvider !== "none" && aiProvider !== "disabled" && !geminiKey) {
+  console.warn(
+    "AVISO: GEMINI_API_KEY em falta. O assistente usa respostas determinísticas e voz do navegador."
+  );
 }
 
 if (problems.length > 0) {

@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import {
+  assistantVoiceOrDefault,
+  DEFAULT_ASSISTANT_VOICE,
+  findAssistantVoice,
+  type AssistantVoiceGender,
+} from "@/domains/assistant/voices";
 
-export type VoiceGender = "female" | "male";
+export type VoiceGender = AssistantVoiceGender;
 
 export interface SpeechCallbacks {
   onStart?: () => void;
@@ -11,7 +17,7 @@ export interface SpeechCallbacks {
   onError?: (message: string) => void;
 }
 
-const STORAGE_GENDER_KEY = "xflow_assistant_voice_gender";
+const STORAGE_VOICE_KEY = "xflow_assistant_voice_v3";
 
 /**
  * Divide o texto em blocos naturais de fala, preservando pausas e pontuação
@@ -160,22 +166,24 @@ export function useSpeechSynthesis(levelRef: RefObject<number>) {
   );
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [gender, setGenderState] = useState<VoiceGender>(() => {
+  const [voiceId, setVoiceIdState] = useState<string>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_GENDER_KEY);
-      if (saved === "male" || saved === "female") return saved;
+      return assistantVoiceOrDefault(localStorage.getItem(STORAGE_VOICE_KEY)).id;
     }
-    return "female";
+    return DEFAULT_ASSISTANT_VOICE;
   });
   const [activeVoiceName, setActiveVoiceName] = useState<string>(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      const saved = localStorage.getItem(STORAGE_GENDER_KEY) as VoiceGender | null;
-      const initialGender = saved === "male" || saved === "female" ? saved : "female";
-      const voice = resolveBestVoice(initialGender);
-      return voice?.name ?? "";
+      const initial = assistantVoiceOrDefault(
+        localStorage.getItem(STORAGE_VOICE_KEY)
+      );
+      const browserVoice = resolveBestVoice(initial.gender);
+      return browserVoice?.name ?? "";
     }
     return "";
   });
+  const voice = assistantVoiceOrDefault(voiceId);
+  const gender = voice.gender;
   const sessionRef = useRef(0);
 
   // Subscreve a atualizações do catálogo de vozes do navegador
@@ -183,11 +191,11 @@ export function useSpeechSynthesis(levelRef: RefObject<number>) {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
     const updateVoiceInfo = () => {
-      const currentSaved =
-        (localStorage.getItem(STORAGE_GENDER_KEY) as VoiceGender | null) ?? "female";
-      const targetGender = currentSaved === "male" ? "male" : "female";
-      const voice = resolveBestVoice(targetGender);
-      if (voice) setActiveVoiceName(voice.name);
+      const current = assistantVoiceOrDefault(
+        localStorage.getItem(STORAGE_VOICE_KEY)
+      );
+      const browserVoice = resolveBestVoice(current.gender);
+      if (browserVoice) setActiveVoiceName(browserVoice.name);
     };
 
     window.speechSynthesis.addEventListener("voiceschanged", updateVoiceInfo);
@@ -196,13 +204,14 @@ export function useSpeechSynthesis(levelRef: RefObject<number>) {
     };
   }, []);
 
-  const setGender = useCallback((newGender: VoiceGender) => {
-    setGenderState(newGender);
+  const setVoice = useCallback((id: string) => {
+    const next = findAssistantVoice(id) ?? assistantVoiceOrDefault(null);
+    setVoiceIdState(next.id);
     if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_GENDER_KEY, newGender);
+      localStorage.setItem(STORAGE_VOICE_KEY, next.id);
     }
-    const voice = resolveBestVoice(newGender);
-    if (voice) setActiveVoiceName(voice.name);
+    const browserVoice = resolveBestVoice(next.gender);
+    if (browserVoice) setActiveVoiceName(browserVoice.name);
   }, []);
 
   const stop = useCallback(() => {
@@ -337,8 +346,10 @@ export function useSpeechSynthesis(levelRef: RefObject<number>) {
     speaking,
     paused,
     gender,
+    voice,
+    voiceId: voice.id,
     activeVoiceName,
-    setGender,
+    setVoice,
     speak,
     pause,
     resume,

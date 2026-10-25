@@ -5,9 +5,13 @@ import Link from "next/link";
 import {
   BadgeCheck,
   Calendar,
+  Check,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   FileText,
+  History,
+  Layers,
   ListChecks,
   Loader2,
   Mic,
@@ -15,27 +19,37 @@ import {
   Package,
   Pause,
   Play,
+  Plus,
   Send,
   Square,
+  Trash2,
   Truck,
+  User,
   Volume2,
   VolumeX,
   Waves,
   Wrench,
   X,
-  Layers,
-  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AssistantSphere, type AssistantVisualState } from "./AssistantSphere";
-import { useSpeechSynthesis, type VoiceGender } from "./useSpeechSynthesis";
+import { useAssistantSpeech } from "./useAssistantSpeech";
 import { useDictation } from "./useDictation";
 import { useMicLevel } from "./useMicLevel";
+import { useVoiceRecorder } from "./useVoiceRecorder";
 import {
-  askAssistantAction,
-  getAssistantBriefingAction,
-} from "@/app/actions/assistant";
+  ASSISTANT_SAMPLE_SPEECH,
+  ASSISTANT_VOICES,
+} from "@/domains/assistant/voices";
+import { getAssistantBriefingAction } from "@/app/actions/assistant";
+import {
+  clearAssistantHistoryAction,
+  deleteAssistantConversationAction,
+  getAssistantConversationAction,
+  listAssistantConversationsAction,
+} from "@/app/actions/assistant-history";
 import type {
+  AssistantAnswer,
   AssistantBriefing,
   AssistantItem,
   AssistantReference,
@@ -52,6 +66,40 @@ interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   references: AssistantReference[];
+}
+
+interface ConversationSummary {
+  id: string;
+  title: string;
+  updatedAt: string;
+  messageCount: number;
+}
+
+type AssistantApiResult =
+  | {
+      ok: true;
+      engine: "gemini" | "rules";
+      answer: AssistantAnswer;
+      transcript: string | null;
+      speechToken: string;
+      conversationId?: string | null;
+    }
+  | {
+      ok: false;
+      error: string;
+      code?: string;
+      fallback?: string;
+    };
+
+async function readAssistantResponse(response: Response): Promise<AssistantApiResult> {
+  try {
+    return (await response.json()) as AssistantApiResult;
+  } catch {
+    return {
+      ok: false,
+      error: "Não consegui responder agora. Tenta novamente.",
+    };
+  }
 }
 
 const QUICK_QUESTIONS = [
@@ -75,12 +123,12 @@ const SOURCE_DOT: Record<AssistantSource["status"], string> = {
 };
 
 const STATUS_TEXT: Record<AssistantVisualState, string> = {
-  idle: "A apresentar o teu dia",
+  idle: "Pronto para ajudar",
   "requesting-mic": "Falta a tua autorização no navegador",
   listening: "A ouvir · microfone ativo",
   transcribing: "A processar a tua fala...",
   thinking: "A consultar os dados da oficina...",
-  speaking: "A apresentar o teu dia",
+  speaking: "A falar",
   paused: "Leitura em pausa",
   error: "Não consegui concluir o pedido",
 };
@@ -97,6 +145,19 @@ function formatConsultedAt(iso: string | null): string {
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat("pt-PT", {
     timeZone: "Europe/Lisbon",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function formatHistoryDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-PT", {
+    timeZone: "Europe/Lisbon",
+    day: "2-digit",
+    month: "short",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -246,7 +307,7 @@ function MessageBubble({
 
 export function AssistantPanel({ onClose }: AssistantPanelProps) {
   const [briefing, setBriefing] = useState<AssistantBriefing | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -256,10 +317,16 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
   const [soundOn, setSoundOn] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [requestingMic, setRequestingMic] = useState(false);
+  const [voiceFallback, setVoiceFallback] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [voiceMenuOpen, setVoiceMenuOpen] = useState(false);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const voiceMenuRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const levelRef = useRef(0);
@@ -268,51 +335,99 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
   const mountedRef = useRef(true);
   const stopAllRef = useRef<() => void>(() => undefined);
 
-  const speech = useSpeechSynthesis(levelRef);
+  const speech = useAssistantSpeech(levelRef);
   const dictation = useDictation();
   const micLevel = useMicLevel(levelRef);
+  const recorder = useVoiceRecorder(levelRef);
 
   const stopAll = useCallback(() => {
     speech.stop();
     dictation.abort();
+    recorder.cancel();
     micLevel.stop();
     levelRef.current = 0;
     setRequestingMic(false);
-  }, [speech, dictation, micLevel]);
+  }, [speech, dictation, recorder, micLevel]);
 
-  const loadBriefing = useCallback(async () => {
+  const loadBriefing = useCallback(async (): Promise<AssistantBriefing | null> => {
     requestIdRef.current += 1;
     const requestId = requestIdRef.current;
+    setLoading(true);
+    setError(null);
     try {
       const result = await getAssistantBriefingAction();
-      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      if (!mountedRef.current || requestId !== requestIdRef.current) return null;
       if (result.ok) {
         setBriefing(result.briefing);
-      } else {
-        setError(result.error);
+        return result.briefing;
       }
+      setError(result.error);
+      return null;
     } catch {
       if (mountedRef.current && requestId === requestIdRef.current) {
         setError(
           "Não consegui ligar ao assistente. Verifica a ligação e tenta novamente."
         );
       }
+      return null;
     } finally {
       if (mountedRef.current && requestId === requestIdRef.current)
         setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadBriefing();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [loadBriefing]);
+  const refreshHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const result = await listAssistantConversationsAction();
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setConversations(result.conversations);
+      } else {
+        setNotice(result.error);
+      }
+    } catch {
+      if (mountedRef.current) {
+        setNotice("Não consegui carregar o histórico.");
+      }
+    } finally {
+      if (mountedRef.current) setHistoryLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     stopAllRef.current = stopAll;
   }, [stopAll]);
+
+  useEffect(() => {
+    if (!showDetails) return;
+    const timer = window.setTimeout(() => {
+      void refreshHistory();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [showDetails, refreshHistory]);
+
+  useEffect(() => {
+    if (!voiceMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (!voiceMenuRef.current?.contains(event.target as Node)) {
+        setVoiceMenuOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      setVoiceMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape, true);
+    };
+  }, [voiceMenuOpen]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -367,18 +482,21 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
   }, [onClose]);
 
   const visualState = useMemo<AssistantVisualState>(() => {
-    if (loading || asking) return "thinking";
-    if (requestingMic) return "requesting-mic";
+    if (loading || asking || speech.preparing) return "thinking";
+    if (requestingMic || recorder.requesting) return "requesting-mic";
     if (dictation.transcribing) return "transcribing";
-    if (dictation.listening) return "listening";
+    if (recorder.recording || dictation.listening) return "listening";
     if (speech.speaking) return speech.paused ? "paused" : "speaking";
     if (error || notice) return "error";
     return "idle";
   }, [
     loading,
     asking,
+    speech.preparing,
     requestingMic,
+    recorder.requesting,
     dictation.transcribing,
+    recorder.recording,
     dictation.listening,
     speech.speaking,
     speech.paused,
@@ -387,15 +505,17 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
   ]);
 
   const handleSpeak = useCallback(
-    (text: string) => {
-      if (!speech.supported) {
-        setNotice(
-          "Este navegador não suporta leitura por voz. O resumo está no ecrã."
-        );
-        return;
-      }
+    (
+      text: string,
+      options: {
+        kind?: "briefing" | "answer" | "sample";
+        token?: string;
+        voice?: string;
+      } = {}
+    ) => {
       setNotice(null);
-      speech.speak(text, {
+      void speech.speak(text, {
+        ...options,
         onError: (message) => setNotice(message),
       });
     },
@@ -403,11 +523,26 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
   );
 
   const handleStartDay = useCallback(() => {
-    if (!briefing) return;
+    if (loading) return;
     dictation.abort();
+    recorder.cancel();
     micLevel.stop();
-    handleSpeak(briefing.narration);
-  }, [briefing, dictation, micLevel, handleSpeak]);
+    speech.stop();
+    void (async () => {
+      const current = briefing ?? (await loadBriefing());
+      if (!current) return;
+      handleSpeak(current.narration, { kind: "briefing" });
+    })();
+  }, [
+    briefing,
+    loading,
+    loadBriefing,
+    dictation,
+    recorder,
+    micLevel,
+    speech,
+    handleSpeak,
+  ]);
 
   const handleAsk = useCallback(
     async (rawQuestion: string) => {
@@ -415,6 +550,7 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
       if (!question || asking) return;
 
       dictation.abort();
+      recorder.cancel();
       micLevel.stop();
       speech.stop();
       setNotice(null);
@@ -432,10 +568,21 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
       setMessages((current) => [...current, userMessage]);
 
       try {
-        const result = await askAssistantAction(question);
+        const response = await fetch("/api/assistant/ask", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ question, conversationId }),
+          cache: "no-store",
+        });
+        const result = await readAssistantResponse(response);
         if (!mountedRef.current) return;
+
         if (result.ok) {
           setError(null);
+          if (result.conversationId) {
+            setConversationId(result.conversationId);
+            void refreshHistory();
+          }
           setMessages((current) => [
             ...current,
             {
@@ -445,8 +592,14 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
               references: result.answer.references,
             },
           ]);
-          if (soundOn) handleSpeak(result.answer.text);
+          if (soundOn) {
+            handleSpeak(result.answer.text, {
+              kind: "answer",
+              token: result.speechToken,
+            });
+          }
         } else {
+          setError(result.error);
           setMessages((current) => [
             ...current,
             {
@@ -458,6 +611,7 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
           ]);
         }
       } catch {
+        setError("Não consegui responder agora. Tenta novamente.");
         setMessages((current) => [
           ...current,
           {
@@ -471,14 +625,142 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
         if (mountedRef.current) setAsking(false);
       }
     },
-    [asking, dictation, micLevel, speech, soundOn, handleSpeak]
+    [
+      asking,
+      conversationId,
+      dictation,
+      recorder,
+      micLevel,
+      speech,
+      soundOn,
+      handleSpeak,
+      refreshHistory,
+    ]
   );
 
-  const toggleDictation = useCallback(async () => {
+  const askWithAudio = useCallback(
+    async (blob: Blob) => {
+      if (asking) return;
+
+      speech.stop();
+      setNotice(null);
+      setDictationText("");
+      setAsking(true);
+      setShowDetails(true);
+
+      try {
+        const form = new FormData();
+        form.append("audio", blob, "pergunta.wav");
+        if (conversationId) form.append("conversationId", conversationId);
+        const response = await fetch("/api/assistant/ask", {
+          method: "POST",
+          body: form,
+          cache: "no-store",
+        });
+        const result = await readAssistantResponse(response);
+        if (!mountedRef.current) return;
+
+        if (result.ok) {
+          const transcript = result.transcript?.trim();
+          setError(null);
+          if (result.conversationId) {
+            setConversationId(result.conversationId);
+            void refreshHistory();
+          }
+          setMessages((current) => [
+            ...current,
+            {
+              id: `user-${(messageIdRef.current += 1)}`,
+              role: "user",
+              text: transcript || "Pergunta por voz",
+              references: [],
+            },
+            {
+              id: `assistant-${(messageIdRef.current += 1)}`,
+              role: "assistant",
+              text: result.answer.text,
+              references: result.answer.references,
+            },
+          ]);
+          if (soundOn) {
+            handleSpeak(result.answer.text, {
+              kind: "answer",
+              token: result.speechToken,
+            });
+          }
+          return;
+        }
+
+        if (result.code === "ai_unavailable" || result.code === "ai_failed") {
+          setVoiceFallback(true);
+          setNotice(
+            "A transcrição por IA não está disponível. Toca no microfone para usar o ditado do navegador."
+          );
+          return;
+        }
+
+        setError(result.error);
+        setMessages((current) => [
+          ...current,
+          {
+            id: `assistant-${(messageIdRef.current += 1)}`,
+            role: "assistant",
+            text: result.error,
+            references: [],
+          },
+        ]);
+      } catch {
+        setError("Não consegui enviar o áudio. Verifica a ligação e tenta novamente.");
+      } finally {
+        if (mountedRef.current) setAsking(false);
+      }
+    },
+    [asking, conversationId, handleSpeak, soundOn, speech, refreshHistory]
+  );
+
+  const toggleVoice = useCallback(async () => {
+    if (recorder.recording) {
+      const blob = recorder.stop();
+      if (blob) void askWithAudio(blob);
+      return;
+    }
     if (dictation.listening) {
       dictation.stop();
       return;
     }
+
+    speech.stop();
+    setNotice(null);
+    setDictationText("");
+
+    if (!voiceFallback && recorder.supported) {
+      setRequestingMic(true);
+      const level = await recorder.start({
+        onAutoStop: (blob) => {
+          void askWithAudio(blob);
+        },
+      });
+      setRequestingMic(false);
+
+      if (!mountedRef.current) {
+        recorder.cancel();
+        return;
+      }
+      if (level === "ok") return;
+      if (level === "denied") {
+        setNotice(
+          "O microfone está bloqueado. Autoriza o microfone no navegador ou escreve a pergunta."
+        );
+        return;
+      }
+      if (level === "unsupported") {
+        setVoiceFallback(true);
+      } else {
+        setNotice("Não consegui iniciar o microfone. Tenta novamente ou escreve a pergunta.");
+        return;
+      }
+    }
+
     if (!dictation.supported) {
       setNotice(
         "Este navegador não suporta ditado. Escreve a pergunta em vez de falar."
@@ -486,11 +768,7 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
       return;
     }
 
-    speech.stop();
-    setNotice(null);
-    setDictationText("");
     setRequestingMic(true);
-
     const level = await micLevel.start();
     setRequestingMic(false);
 
@@ -524,17 +802,95 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
     });
 
     if (!started) micLevel.stop();
-  }, [dictation, micLevel, speech]);
+  }, [recorder, dictation, micLevel, speech, voiceFallback, askWithAudio]);
 
   const toggleSound = useCallback(() => {
     if (soundOn) speech.stop();
     setSoundOn(!soundOn);
   }, [soundOn, speech]);
 
-  const handleGenderToggle = useCallback(() => {
-    const next: VoiceGender = speech.gender === "female" ? "male" : "female";
-    speech.setGender(next);
+  const handleVoiceSelect = useCallback(
+    (id: string, label: string) => {
+      speech.setVoice(id);
+      setVoiceMenuOpen(false);
+      setNotice(null);
+      if (soundOn) {
+        handleSpeak(ASSISTANT_SAMPLE_SPEECH, { kind: "sample", voice: id });
+      } else {
+        setNotice(`Voz ${label} selecionada.`);
+      }
+    },
+    [handleSpeak, soundOn, speech]
+  );
+
+  const startNewConversation = useCallback(() => {
+    speech.stop();
+    setConversationId(null);
+    setMessages([]);
+    setError(null);
+    setNotice(null);
+    setInput("");
+    setDictationText("");
   }, [speech]);
+
+  const openConversation = useCallback(
+    async (id: string) => {
+      speech.stop();
+      setHistoryLoading(true);
+      setError(null);
+      setNotice(null);
+      try {
+        const result = await getAssistantConversationAction(id);
+        if (!mountedRef.current) return;
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setConversationId(result.conversation.id);
+        setMessages(
+          result.conversation.messages.map((message) => ({
+            id: `history-${message.id}`,
+            role: message.role,
+            text: message.text,
+            references: message.references,
+          }))
+        );
+        setShowDetails(true);
+      } catch {
+        if (mountedRef.current) {
+          setError("Não consegui abrir a conversa.");
+        }
+      } finally {
+        if (mountedRef.current) setHistoryLoading(false);
+      }
+    },
+    [speech]
+  );
+
+  const removeConversation = useCallback(
+    async (id: string) => {
+      if (!window.confirm("Apagar esta conversa do histórico?")) return;
+      const result = await deleteAssistantConversationAction(id);
+      if (!result.ok) {
+        setNotice(result.error);
+        return;
+      }
+      if (conversationId === id) startNewConversation();
+      void refreshHistory();
+    },
+    [conversationId, refreshHistory, startNewConversation]
+  );
+
+  const clearHistory = useCallback(async () => {
+    if (!window.confirm("Apagar todas as conversas guardadas?")) return;
+    const result = await clearAssistantHistoryAction();
+    if (!result.ok) {
+      setNotice(result.error);
+      return;
+    }
+    startNewConversation();
+    setConversations([]);
+  }, [startNewConversation]);
 
   const statusText = notice ?? STATUS_TEXT[visualState];
   const hasMessages = messages.length > 0;
@@ -584,16 +940,73 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Seletor de Voz Feminina / Masculina com voz neural */}
-            <button
-              type="button"
-              onClick={handleGenderToggle}
-              title={`Voz atual: ${speech.gender === "female" ? "Feminina" : "Masculina"} (${speech.activeVoiceName || "Sistema"})`}
-              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#121516]/80 px-3 py-1 text-[11px] font-medium text-[#f1ede5] transition-colors hover:border-[#d3a548]/50 hover:text-[#f7d46d]"
-            >
-              <User className="h-3 w-3 text-[#d3a548]" />
-              <span>Voz {speech.gender === "female" ? "Feminina" : "Masculina"}</span>
-            </button>
+            {/* Seletor de voz neural com amostra imediata */}
+            <div ref={voiceMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setVoiceMenuOpen((current) => !current)}
+                aria-haspopup="menu"
+                aria-expanded={voiceMenuOpen}
+                title={`Voz atual: ${speech.voice.label} (${speech.voice.description})`}
+                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-full border border-white/[0.1] bg-[#121516]/80 px-3 py-1 text-[11px] font-medium text-[#f1ede5] transition-colors hover:border-[#d3a548]/50 hover:text-[#f7d46d]"
+              >
+                <User className="h-3 w-3 text-[#d3a548]" />
+                <span>
+                  <span className="hidden sm:inline">Voz · </span>
+                  {speech.voice.label}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-3 w-3 text-[#8a9092] transition-transform",
+                    voiceMenuOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {voiceMenuOpen ? (
+                <div
+                  role="menu"
+                  aria-label="Escolher voz do assistente"
+                  className="absolute right-0 top-full z-30 mt-2 w-[268px] overflow-hidden rounded-lg border border-white/[0.1] bg-[#0d1011]/98 p-1.5 shadow-2xl backdrop-blur-xl"
+                >
+                  <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#8a9092]">
+                    Voz do assistente
+                  </p>
+                  {ASSISTANT_VOICES.map((voice) => {
+                    const active = voice.id === speech.voiceId;
+                    return (
+                      <button
+                        key={voice.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={active}
+                        onClick={() => handleVoiceSelect(voice.id, voice.label)}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors",
+                          active
+                            ? "bg-[#d3a548]/15 text-[#f7d46d]"
+                            : "text-[#eae6dd] hover:bg-white/[0.06]"
+                        )}
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#15191a] text-[10px] font-semibold uppercase text-[#d3a548]">
+                          {voice.gender === "female" ? "F" : "M"}
+                        </span>
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="text-[12px] font-medium">{voice.label}</span>
+                          <span className="truncate text-[10px] text-[#8a9092]">
+                            {voice.description}
+                          </span>
+                        </span>
+                        {active ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
+                      </button>
+                    );
+                  })}
+                  <p className="border-t border-white/[0.06] px-2 pb-1 pt-2 text-[10px] leading-relaxed text-[#63686a]">
+                    A escolha fica guardada neste dispositivo.
+                  </p>
+                </div>
+              ) : null}
+            </div>
 
             {/* Mudo / Som */}
             <button
@@ -724,7 +1137,12 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
                 </button>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <p className="mt-4 max-w-xl text-center text-xs text-[#8a9092]">
+              Pede o resumo do dia ou faz uma pergunta. A voz só começa quando a
+              pedires.
+            </p>
+          )}
 
           {/* Mensagem de fala/transcrição instantânea */}
           {dictationText ? (
@@ -777,28 +1195,48 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
                 variant="primary"
                 size="md"
                 onClick={handleStartDay}
-                disabled={loading || !briefing}
+                disabled={loading}
                 className="min-h-[44px] rounded-full px-6 text-xs font-semibold shadow-lg shadow-[#d3a548]/20"
               >
-                <Play className="mr-1.5 h-4 w-4" />
-                {hasMessages ? "Ouvir o resumo" : "Começar o meu dia"}
+                {loading ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <Play className="mr-1.5 h-4 w-4" />
+                )}
+                {loading ? "A preparar..." : "Ouvir resumo do dia"}
               </Button>
             )}
 
             {/* Botão de Microfone com feedback ativo */}
             <button
               type="button"
-              onClick={() => void toggleDictation()}
-              aria-label={dictation.listening ? "Parar de ouvir" : "Falar com o assistente"}
-              aria-pressed={dictation.listening}
+              onClick={() => void toggleVoice()}
+              disabled={asking}
+              aria-label={
+                recorder.recording || dictation.listening
+                  ? "Parar de ouvir"
+                  : "Falar com o assistente"
+              }
+              aria-pressed={recorder.recording || dictation.listening}
+              title={
+                recorder.recording
+                  ? "A gravar. Toca para enviar."
+                  : voiceFallback
+                    ? "Ditado do navegador"
+                    : "Pergunta por voz com Gemini"
+              }
               className={cn(
-                "flex h-11 w-11 items-center justify-center rounded-full border transition-all",
-                dictation.listening
+                "flex h-11 w-11 items-center justify-center rounded-full border transition-all disabled:cursor-not-allowed disabled:opacity-50",
+                recorder.recording || dictation.listening
                   ? "border-[#d3a548] bg-[#d3a548]/25 text-[#f7d46d] shadow-[0_0_15px_rgba(211,165,72,0.4)]"
                   : "border-white/[0.08] bg-[#15191a] text-[#a9adae] hover:border-[#d3a548]/50 hover:text-[#f1ede5]"
               )}
             >
-              {dictation.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              {recorder.recording || dictation.listening ? (
+                <MicOff className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
             </button>
 
             {/* Alternar detalhes em ecrãs móveis */}
@@ -822,7 +1260,7 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  void handleAsk(input);
+                  void handleAsk(inputRef.current?.value ?? input);
                 }
               }}
               maxLength={500}
@@ -881,6 +1319,95 @@ export function AssistantPanel({ onClose }: AssistantPanelProps) {
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+              {/* Histórico de conversas guardadas */}
+              <section className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#8a9092]">
+                    <History className="h-3.5 w-3.5 text-[#d3a548]" />
+                    Histórico
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={startNewConversation}
+                      className="inline-flex h-7 items-center gap-1 rounded-full border border-white/[0.08] bg-[#15191a] px-2.5 text-[10px] font-medium text-[#a9adae] transition-colors hover:border-[#d3a548]/40 hover:text-[#f7d46d]"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Nova
+                    </button>
+                    {conversations.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => void clearHistory()}
+                        aria-label="Limpar histórico"
+                        title="Limpar histórico"
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.08] bg-[#15191a] text-[#8a9092] transition-colors hover:border-[#f05a50]/40 hover:text-[#f0a9a3]"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                {historyLoading ? (
+                  <div className="flex items-center gap-2 rounded-md border border-white/[0.06] bg-[#121516] px-3 py-2 text-[11px] text-[#8a9092]">
+                    <Loader2 className="h-3 w-3 animate-spin text-[#d3a548]" />
+                    A carregar conversas...
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <p className="rounded-md border border-dashed border-white/[0.08] px-3 py-2 text-[11px] text-[#8a9092]">
+                    As conversas ficam guardadas nesta conta. Faz a primeira pergunta
+                    para começar.
+                  </p>
+                ) : (
+                  <div className="flex max-h-[176px] flex-col gap-1 overflow-y-auto pr-0.5">
+                    {conversations.map((conversation) => {
+                      const active = conversation.id === conversationId;
+                      return (
+                        <div
+                          key={conversation.id}
+                          className={cn(
+                            "group flex items-center gap-1 rounded-md border transition-colors",
+                            active
+                              ? "border-[#d3a548]/40 bg-[#d3a548]/10"
+                              : "border-white/[0.06] bg-[#121516] hover:border-white/[0.12]"
+                          )}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => void openConversation(conversation.id)}
+                            className="flex min-w-0 flex-1 flex-col items-start px-2.5 py-2 text-left"
+                          >
+                            <span
+                              className={cn(
+                                "w-full truncate text-[11px] font-medium",
+                                active ? "text-[#f7d46d]" : "text-[#eae6dd]"
+                              )}
+                            >
+                              {conversation.title}
+                            </span>
+                            <span className="text-[10px] text-[#8a9092]">
+                              {formatHistoryDate(conversation.updatedAt)} ·{" "}
+                              {conversation.messageCount}{" "}
+                              {conversation.messageCount === 1 ? "mensagem" : "mensagens"}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void removeConversation(conversation.id)}
+                            aria-label={`Apagar conversa ${conversation.title}`}
+                            title="Apagar conversa"
+                            className="mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#63686a] opacity-70 transition-colors hover:bg-[#f05a50]/10 hover:text-[#f0a9a3] group-hover:opacity-100"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
               {/* Mensagens de Conversa / Perguntas */}
               {hasMessages ? (
                 <div className="flex flex-col gap-3 border-b border-white/[0.06] pb-4">

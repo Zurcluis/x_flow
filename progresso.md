@@ -1,14 +1,24 @@
 # Progresso — X-Flow
 
-_Última atualização: 24/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 25/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
-- Health: typecheck OK, lint OK, **300/300 testes (43 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) implementado e commitado
-- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `e6cd845` (`feat: RBAC multi-org, auditoria global de paginas e datas de pricing`); commits locais `52335c2` (docs: progresso) e `5746ae1` (`feat: assistente X-Flow AI (fases 1-3) com briefing real, esfera animada e voz`) por enviar. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
+- Health: typecheck OK, lint OK, **324/324 testes (47 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada (por commitar)
+- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `5dbe04c` (`fix: sincronizar package-lock com @emnapi runtime/core para npm ci`), com `5746ae1` e `a47136f` já enviados; integração Gemini ainda local. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 25/10/2026 — Assistente com Gemini (texto, voz e TTS)
+
+- **CI**: `npm ci` falhava no GitHub Actions (`EUSAGE` por `@emnapi/runtime@1.11.3`/`@emnapi/core@1.11.3` ausentes do lock); entradas adicionadas ao `package-lock.json`, validado com `npm ci --dry-run` e commitado/pushed em `5dbe04c`.
+- **Provider**: `AI_PROVIDER=gemini` (default), `GEMINI_TEXT_MODEL=gemini-3.1-flash-lite`, `GEMINI_TTS_MODEL=gemini-3.8-flash-lite-tts`, vozes `GEMINI_TTS_VOICE_FEMALE=Kore`/`GEMINI_TTS_VOICE_MALE=Puck`; chave só em `.env.local` (server-only, nunca no Git). `AI_PROVIDER=none|disabled` desliga a IA e mantém o fallback determinístico.
+- **Servidor**: `src/server/ai/{gemini,audio,speech-token,rate-limit,route-helpers}.ts` — contexto real do briefing + fontes, JSON estruturado validado, áudio WAV inline, TTS `audio/wav`; token HMAC de fala (10 min, chave derivada da sessão) impede TTS de texto arbitrário; same-origin, RBAC do assistente, bloqueio de `mustChangePassword` e rate limit por perfil (texto 12/min, fala 20/min, notas em memória — não durável entre instâncias Vercel).
+- **Rotas**: `POST /api/assistant/ask` (JSON texto ou multipart WAV; 500 caracteres, 6 MB, 32 s; fallback determinístico em texto) e `POST /api/assistant/speech` (briefing ou resposta assinada; fallback para voz do navegador quando a IA falha).
+- **Cliente**: `useAssistantSpeech` (TTS servidor + `AnalyserNode`, fallback Web Speech), `useVoiceRecorder` (WAV 16 kHz mono 16-bit, máx. 30 s, auto-envio), `AssistantPanel` com microfone Gemini, estados, pausa/continuar/terminar e envio por Enter robusto (`inputRef`); helpers WAV puros em `src/lib/wav.ts` (`downsamplePcm`, `encodeWavBlob`).
+- **Verificação**: typecheck/lint/build OK, **324/324 testes (47 ficheiros)**; browser em produção — pergunta textual com resposta Gemini e referências clicáveis, pergunta por WAV real (transcrição “Qual é a prioridade de hoje?” → WO-2026-103), TTS servidor a tocar/pausar/terminar e zero erros de consola. Microfone do browser não acionado (privacidade); a rota de áudio foi validada com WAV gerado por TTS e autenticado. Chave exposta em conversa deve ser rodada em Google AI Studio.
+- **Ajuste de voz e abertura (25/10)**: TTS passou de `gemini-3.8-flash-lite-tts` para `gemini-3.8-flash-tts` e voz masculina default `Charon` (feminina `Kore`); prompt de estilo removido para evitar fala lenta/artificial. O assistente abre neutro (“Pronto para ajudar”) e **não carrega nem lê o resumo automaticamente**; só o faz no botão “Ouvir resumo do dia” ou quando o resumo é pedido por pergunta. Preferência de voz em `xflow_assistant_voice_gender_v2` com default masculino.
 
 ## Sessão 24/10/2026 — Assistente X-Flow AI (fases 1–3) + esfera
 
@@ -42,7 +52,7 @@ _Última atualização: 24/10/2026. Ficheiro de continuação de sessão — diz
 9. Sincronização real com áudio via `AnalyserNode` sobre um TTS que devolva stream (requer fornecedor; a Web Speech API não expõe a saída).
 10. Testes dos pure helpers (`targetsFor`, `clamp`, envelope) e screenshots de regressão por estado.
 
-- **Limitações conhecidas**: ditado por voz ainda não testado com áudio real (só feature detection); sem rate limiting por conta; sem persistência/histórico; sem provider LLM (respostas determinísticas); GUC de organização por pool mantém-se (multi-org).
+- **Limitações conhecidas**: microfone do browser ainda não testado com fala real (a rota de áudio foi testada com WAV); rate limiting em memória (não durável entre instâncias Vercel); sem persistência/histórico de conversas; GUC de organização por pool mantém-se (multi-org). _Atualizado em 25/10: provider Gemini já integrado; esta nota refere-se à sessão de 24/10._
 - **Próximo passo**: executar P0.1–P0.3, fechar a decisão P0.4 e só depois P1.
 
 ## Sessão 17/10/2026 (3ª parte) — Auditoria de prontidão + P0.1/P0.2 (auth/RBAC + deploy)
@@ -282,3 +292,10 @@ _Última atualização: 24/10/2026. Ficheiro de continuação de sessão — diz
 
 ## Retomar
 Dizer ao agente: "Lê `progresso.md` e continua pelos pendentes."
+## Sessão 25/10/2026 — Assistente: vozes, histórico e esfera mobile
+- **Voz**: catálogo de 7 vozes Gemini (src/domains/assistant/voices.ts), seletor no cabeçalho com pré-visualização (kind sample), escolha guardada em localStorage (xflow_assistant_voice_v3). Padrão masculino Charon; femininas Kore, Aoede, Sulafat.
+- **Histórico**: migração 29 (assistant_conversations e assistant_messages, RLS por organização/perfil); server module assistant-history.ts; actions e UI (lista, abrir, nova, apagar, limpar; máximo 40 conversas por perfil). O conversationId é devolvido pelo /api/assistant/ask e reutilizado nas perguntas seguintes.
+- **Contexto**: o Gemini recebe as últimas 8 mensagens da conversa para resolver perguntas de seguimento; o briefing continua a ser a única fonte de verdade.
+- **Voz robusta**: 429 do TTS devolve tts_rate_limited e faz fallback para a voz do dispositivo com cooldown de 60s (sem desativar Gemini para a sessão); 502/erros de rede usam cooldown de 30s.
+- **Esfera**: deixou de ficar estática por prefers-reduced-motion do sistema; anima a 390px e o toggle "Reduzir movimento" continua a pará-la.
+- Validação: typecheck, lint, build e 330/330 testes; E2E no browser (menu de voz/preview Orus, histórico guardado com 6 mensagens, apagar/limpar, esfera a animar em viewport mobile).

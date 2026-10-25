@@ -151,10 +151,9 @@ export function AssistantSphere({
     const canvas: HTMLCanvasElement = canvasElement;
     const ctx: CanvasRenderingContext2D = context;
 
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    let shouldReduce = reducedMotion || media.matches;
+    const shouldReduce = reducedMotion;
     let width = 0;
     let height = 0;
     let frame = 0;
@@ -521,12 +520,6 @@ export function AssistantSphere({
       else start();
     }
 
-    function handleMotionPreference(): void {
-      shouldReduce = reducedMotion || media.matches;
-      stop();
-      start();
-    }
-
     redrawRef.current = () => {
       if (shouldReduce) renderStatic();
     };
@@ -537,7 +530,6 @@ export function AssistantSphere({
     start();
 
     document.addEventListener("visibilitychange", handleVisibility);
-    media.addEventListener("change", handleMotionPreference);
 
     return () => {
       stopped = true;
@@ -545,7 +537,6 @@ export function AssistantSphere({
       redrawRef.current = () => undefined;
       observer.disconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
-      media.removeEventListener("change", handleMotionPreference);
     };
   }, [reducedMotion, levelRef]);
 
