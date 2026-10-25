@@ -101,6 +101,99 @@ export const CAR_MODELS: CarModelDef[] = [
     },
   },
   {
+    id: "audi-r8",
+    label: "Audi R8",
+    brand: "Audi",
+    category: "Desportivo",
+    url: "/models/cars/audi-r8/audi-r8.web.glb",
+    length: 4.43,
+    paintBy: "material",
+    paint: {
+      body: ["r8Vehicle_Exterior_mm_ext1"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Sultan-Sovetov (Draxler)",
+      sourceUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/audi/2019_audi_r8_coupe.glb",
+      license: "Sem licença declarada — uso pessoal",
+      licenseUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/audi/2019_audi_r8_coupe.glb",
+      modifications:
+        "Derivado web: simplificação de geometria (40% dos vértices), texturas WebP até 1024 px e nomes de materiais preservados. Sem compressão de geometria.",
+    },
+  },
+  {
+    id: "porsche-carrera-gt",
+    label: "Porsche Carrera GT",
+    brand: "Porsche",
+    category: "Supercarro",
+    url: "/models/cars/porsche-carrera-gt/porsche-carrera-gt.web.glb",
+    length: 4.61,
+    paintBy: "material",
+    paint: {
+      body: ["C1_Paint"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Ddiaz Design",
+      sourceUrl:
+        "https://sketchfab.com/3d-models/2004-porsche-carrera-gt-a43be10ac0174dc0a35984c2d41d4058",
+      license: "CC BY 4.0",
+      licenseUrl: "http://creativecommons.org/licenses/by/4.0/",
+      modifications:
+        "Derivado web: simplificação de geometria (30% dos vértices), texturas WebP até 1024 px e nomes de materiais preservados. Sem compressão de geometria.",
+    },
+  },
+  {
+    id: "mercedes-g63",
+    label: "Mercedes-AMG G63",
+    brand: "Mercedes-AMG",
+    category: "SUV",
+    url: "/models/cars/mercedes-g63/mercedes-g63.web.glb",
+    length: 4.87,
+    paintBy: "material",
+    paint: {
+      body: ["MMercedesAMG_G63SUVRewardRecycled_2020Paint_Material1"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Ddiaz Design",
+      sourceUrl:
+        "https://sketchfab.com/3d-models/2020-mercedes-benz-g-class-amg-g-63-64db1862be754722bbf4f23695bf06a5",
+      license: "CC BY-NC 4.0 — uso pessoal",
+      licenseUrl: "http://creativecommons.org/licenses/by-nc/4.0/",
+      modifications:
+        "Derivado web: simplificação de geometria (30% dos vértices), texturas WebP até 1024 px e nomes de materiais preservados. Proibida a utilização comercial.",
+    },
+  },
+  {
+    id: "vw-golf-gti-mk7",
+    label: "Golf GTI Clubsport",
+    brand: "Volkswagen",
+    category: "Hot Hatch",
+    url: "/models/cars/vw-golf-gti-mk7/vw-golf-gti-mk7.web.glb",
+    length: 4.27,
+    paintBy: "material",
+    paint: {
+      body: ["vwphong2SG1"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Ddiaz Design",
+      sourceUrl:
+        "https://sketchfab.com/3d-models/2016-volkswagen-golf-gti-clubsport-mk7-492301d401ea4fb7bb1cb63e980051d0",
+      license: "CC BY-NC-SA 4.0 — uso pessoal",
+      licenseUrl: "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+      modifications:
+        "Derivado web: simplificação de geometria (40% dos vértices), texturas WebP até 1024 px e nomes de materiais preservados. Proibida a utilização comercial; o derivado mantém a mesma licença.",
+    },
+  },
+  {
     id: "desportivo",
     label: "458 Desportivo",
     brand: "Genérico",

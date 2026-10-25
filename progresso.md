@@ -306,3 +306,13 @@ Dizer ao agente: "Lê `progresso.md` e continua pelos pendentes."
 - **Validação E2E** (produção, `next start`): render horizontal e à escala, pintura integral (Gloss Black), cobertura parcial por zona (Capô), viewport mobile 390 px, GLB servido com 200 e 0 erros de consola.
 - **Modelos rejeitados**: Teslas e pack Datsun/Porsche/Lamborghini sem licença comercial verificável (Lamborghini CC-BY-NC-4.0) e Kenney Car Kit (CC0, mas material único `colormap`, incompatível com wrap seletivo de vidros/faróis).
 - Validação: typecheck, lint e build OK.
+
+## Sessão 25/10/2026 — Simulador 3D: marcas Audi, Porsche, Mercedes e Volkswagen
+- **Modelos novos**: `audi-r8`, `porsche-carrera-gt`, `mercedes-g63` e `vw-golf-gti-mk7`, registados em `src/lib/car-models.ts` com pintura por material, `preserveMaterials` e cobertura parcial.
+- **Audi R8 (2019)** — origem `Sultan-Sovetov/Draxler`; sem licença declarada. Derivado web de 2,37 MB, 47,6k triângulos; material de carroçaria `r8Vehicle_Exterior_mm_ext1`.
+- **Porsche Carrera GT (2004)** — Ddiaz Design, CC BY 4.0, via `kostazikovski/BabylonRacing`; derivado web de 5,65 MB, 94,6k triângulos; material `C1_Paint`.
+- **Mercedes-AMG G63 (2020)** — Ddiaz Design, CC BY-NC 4.0 (uso pessoal), via `BabylonRacing`; derivado web de 4,23 MB, 83,3k triângulos; material `MMercedesAMG_G63SUVRewardRecycled_2020Paint_Material1`.
+- **VW Golf GTI Clubsport Mk7 (2016)** — Ddiaz Design, CC BY-NC-SA 4.0 (uso pessoal), via `BabylonRacing`; derivado web de 2,83 MB, 53,2k triângulos; material `vwphong2SG1`.
+- **Pipeline**: glTF Transform com simplificação de geometria, texturas WebP até 1024 px, nomes de materiais/nós preservados e sem compressão de geometria. Créditos em `public/models/cars/*/ATTRIBUTION.md` e `public/models/CREDITS.md`.
+- **Validação**: orientação e escala corretas, pintura integral (Gloss Black e Brushed Aluminium), cobertura parcial no capô do Porsche, viewport mobile 390 px, GLBs com 200 e 0 erros de consola; typecheck, lint e build OK.
+- **Decisão**: commit local sem push. O repositório é público e os assets do Audi (sem licença) e Mercedes/VW (NC) não são redistribuídos; uso previsto é pessoal/não comercial.
