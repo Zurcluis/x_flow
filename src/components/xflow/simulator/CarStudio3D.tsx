@@ -405,6 +405,8 @@ function Car({
   const car = useMemo(() => {
     const root = scene.clone(true);
 
+    if (def.rotation) root.rotation.set(...def.rotation);
+
     if (coverage === "full") {
       applyModelMaterials(root, def, film, "full");
     }

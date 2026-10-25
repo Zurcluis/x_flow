@@ -28,6 +28,8 @@ export interface CarModelDef {
   url: string;
   /** Comprimento alvo da viatura em unidades de cena (≈ metros) */
   length: number;
+  /** Correção de eixos do GLB (radianos), antes da normalização de escala */
+  rotation?: [number, number, number];
   /** Estratégia de pintura: "mesh" usa nomes de mesh, "material" nomes de material */
   paintBy: "mesh" | "material";
   paint: CarModelPaint;
@@ -73,6 +75,29 @@ export const CAR_MODELS: CarModelDef[] = [
       licenseUrl: "http://creativecommons.org/licenses/by/4.0/",
       modifications:
         "Derivado web do GLB original: geometria Meshopt, texturas WebP até 512 px, remoção de meshes de cabine/motor e de três texturas substituídas em runtime.",
+    },
+  },
+  {
+    id: "car-concept",
+    label: "Car Concept",
+    brand: "Khronos",
+    category: "Concept",
+    url: "/models/cars/car-concept/car-concept.web.glb",
+    length: 4.56,
+    paintBy: "material",
+    paint: {
+      body: ["Paint 1 Carmine", "Paint 2 Carmine"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Unity Fan / Khronos Group",
+      sourceUrl:
+        "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept",
+      license: "CC BY 4.0",
+      licenseUrl: "http://creativecommons.org/licenses/by/4.0/",
+      modifications:
+        "Derivado web do glTF-WEBP oficial: geometria em precisão simples e texturas WebP até 1024 px; sem simplificação de geometria e com nomes de nós/materiais preservados.",
     },
   },
   {

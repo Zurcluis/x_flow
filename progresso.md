@@ -299,3 +299,10 @@ Dizer ao agente: "Lê `progresso.md` e continua pelos pendentes."
 - **Voz robusta**: 429 do TTS devolve tts_rate_limited e faz fallback para a voz do dispositivo com cooldown de 60s (sem desativar Gemini para a sessão); 502/erros de rede usam cooldown de 30s.
 - **Esfera**: deixou de ficar estática por prefers-reduced-motion do sistema; anima a 390px e o toggle "Reduzir movimento" continua a pará-la.
 - Validação: typecheck, lint, build e 330/330 testes; E2E no browser (menu de voz/preview Orus, histórico guardado com 6 mensagens, apagar/limpar, esfera a animar em viewport mobile).
+
+## Sessão 25/10/2026 — Simulador 3D: novo modelo Car Concept (Khronos)
+- **Modelo `car-concept`** em `src/lib/car-models.ts`: Khronos CarConcept (CC BY 4.0), derivado web do glTF-WEBP oficial com posições em precisão simples, texturas WebP até 1024 px e sem simplificação de geometria (9,09 MB). Preserva nomes de nós/materiais, pinta por material (`Paint 1 Carmine` / `Paint 2 Carmine`) e suporta cobertura parcial. Créditos em `public/models/cars/car-concept/ATTRIBUTION.md` e `public/models/CREDITS.md`.
+- **Campo opcional `rotation`** em `CarModelDef`, aplicado antes da normalização de escala em `CarStudio3D.tsx`; o CarConcept não o usa porque o GLB já traz a correção de eixos (-90° X) na raiz.
+- **Validação E2E** (produção, `next start`): render horizontal e à escala, pintura integral (Gloss Black), cobertura parcial por zona (Capô), viewport mobile 390 px, GLB servido com 200 e 0 erros de consola.
+- **Modelos rejeitados**: Teslas e pack Datsun/Porsche/Lamborghini sem licença comercial verificável (Lamborghini CC-BY-NC-4.0) e Kenney Car Kit (CC0, mas material único `colormap`, incompatível com wrap seletivo de vidros/faróis).
+- Validação: typecheck, lint e build OK.
