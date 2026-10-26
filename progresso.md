@@ -1,14 +1,49 @@
 # Progresso — X-Flow
 
-_Última atualização: 25/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 26/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
 - Health: typecheck OK, lint OK, **324/324 testes (47 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada (por commitar)
 - **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `5dbe04c` (`fix: sincronizar package-lock com @emnapi runtime/core para npm ci`), com `5746ae1` e `a47136f` já enviados; integração Gemini ainda local. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
+- **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas e produção local atualizada em `:3000`; alterações por commitar
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 25/10/2026 — Decisão B1 do site público (Fase 0)
+
+- **Decisão registada**: B1 — duas apps no mesmo repo (`site/` público + ERP atual), hosts `www`/`app` separados; token unificado de passaporte. A fica apenas como fallback; B1b/B2 rejeitadas no MVP.
+- **Documentos**: `X-Flow_Plano_Website_Portfolio_Social_Studio.md` v1.2 e `Plano_Site_X-Motion.md` v1.2 atualizados; o plano do site passa a referência de conteúdo/UX e o plano X-Flow prevalece para arquitetura.
+- **Auditoria Fase 0**: repo GitHub `Zurcluis/x_flow` em `main`; Vercel `x-flow` ligado em `.vercel/project.json`; Neon `ep-bold-waterfall-za7l5eoz` (eu-west-2, `neondb`) com pooler + direto; CI cobre typecheck/lint/test/build; sem storage configurado.
+- **Bloqueios**: código do site público não está no repo/workspace; domínio/hosts, contactos/legal, consentimento, backups e fontes de afirmações pendentes. Storage recomendado: Vercel Blob (confirmar originais privados), com R2/S3 como alternativa.
+- **Próximo passo original**: exportar/clonar o site atual (ou autorizar reconstrução), confirmar domínio e Vercel Blob; só depois criar `site/`, separar hosts e avançar para a migração 30. **Executado na sessão seguinte (ver abaixo).**
+
+## Sessão 25/10/2026 — Site público X-Motion reconstruído (`site/`)
+
+- **Âmbito**: clone visual da referência para uma app Next.js independente em `site/` — homepage e rotas `/portfolio`, `/portfolio/[slug]`, `/estudio`, `/contactos`, `/privacidade`, `/passaporte/[token]` e 404, com header/footer, carrossel, filtros, dialog de serviços, estúdio de cor e formulário.
+- **Arquitetura**: Next.js 16.4.3 + React 19.2.8, sem imports do ERP; `turbopack.root` fixado para evitar aviso de lockfiles; headers de segurança, `poweredByHeader: false`, imagens AVIF/WebP. Deploy futuro separado em `www` (site) e `app` (ERP).
+- **Conteúdo inicial**: 6 projetos com assets provisórios (`porsche-911-gt3`, `lamborghini-huracan`, `porsche-911-cabriolet`, `mercedes-benz-coupe`, `porsche-macan`, `ford-mustang`); sem inventar contactos, morada, NIF, garantias ou afirmações comerciais. Contacto público apenas Instagram; localização Barcelos.
+- **Assets/estilo inicial**: imagens WebP provisórias em `site/public/images`; CSS custom da referência preservado, com overrides em `site.css`; grelha de portfólio em 4 colunas (2 featured + 4 normais) e 2 colunas com featured full-width em mobile. Substituídos na sessão seguinte por trabalhos reais.
+- **Interações**: carrossel com autoplay, pausa, setas e timeline; filtros de portfólio com `aria-pressed`; dialog nativo de serviços (Esc, fecho, CTA); estúdio de cor com comparação antes/depois, 4 vistas, 5 cores e 3 acabamentos; menu mobile com fecho ao navegar.
+- **Formulário**: `POST /api/proposals` com validação partilhada, honeypot, rate limit em memória (8/10 min), `x-idempotency-key` e proxy autenticado para `XFLOW_PROPOSALS_URL`; sem env responde `503` com mensagem transparente na UI (sem simular sucesso).
+- **SEO/privacidade**: metadata por página, canonical, Open Graph/Twitter, JSON-LD `AutoBodyShop`, `sitemap.xml`, `robots.txt`, passaporte `noindex` e página de privacidade preliminar marcada como tal. `NEXT_PUBLIC_SITE_URL` com fallback para `VERCEL_PROJECT_PRODUCTION_URL`.
+- **Verificação**: `npm run typecheck`, `npm run lint` e `npm run build` OK (17 rotas/páginas); produção local em `:3000`; screenshots a 390, 1024 e 1440 px; console sem erros/avisos em produção; API validada (`422` inválido, `503` sem env); menu, filtros, dialog, estúdio, formulário, 404 e passaporte testados.
+- **Bloqueios mantidos**: domínio/hosts finais, contactos e dados legais, texto de privacidade revisto, endpoint real do ERP, storage de imagens (Vercel Blob a confirmar), backups/PITR do Neon e migração 30 do passaporte unificado.
+- **Skills/agentes**: `design-de-interfaces` e `vercel-react-best-practices`; exploração do repo, comparação visual com o browser e revisão de estados interativos.
+
+## Sessão 25/10/2026 — Fotografias reais no site (`site/`)
+
+- **Fonte**: `D:\Fabio\X-Motion\trabalhos-2025` — 60 JPG em 7 trabalhos (BMW M3, Ferrari 458 Speciale PPF, BMW M4, Lamborghini Huracán, Mercedes-Maybach, BMW S1000RR e Mercedes CLE 300). Os originais ficam fora do repo; só os WebP finais entram em `site/public/images`.
+- **Portfólio**: 7 projetos reais, com capas 4:5 e galerias de 3–4 fotos; grelha de 3 colunas no desktop, 2 no tablet e 1 no mobile. O CLE 300 fecha a grelha num card wide 2.8:1. Removidas as categorias/projetos provisórios; filtros passam a `Todos`, `PPF`, `Car Wrap`, `Personalização` e `Mota`.
+- **Hero e serviços**: hero com BMW M3, BMW M4, Ferrari 458 Speciale e Lamborghini Huracán (imagens 3:2, eager, `unoptimized` e só o slide inicial com prioridade alta); serviço PPF com aplicação real na Ferrari; serviço Car Wrap com o M3; atelier com o CLE 300.
+- **Privacidade**: matrícula real da Ferrari (`FE-201-LG`) substituída por uma placa gráfica X-MOTION na capa e no hero; removidas das galerias as fotos com rostos identificáveis, mantendo apenas mãos/superfícies no processo PPF.
+- **Técnica**: assets WebP gerados com `ffmpeg` (`-noautorotate`, dimensões pares, crop 1000×1250 para retrato, 1600×1067 para hero, 1200×630 para OG); detalhe de projeto com capa 4:5 e galeria de 2 colunas; texto do hero com sombra para contraste sobre pinturas claras.
+- **Verificação**: `npm run typecheck`, `npm run lint` e `npm run build` OK (18 páginas estáticas); produção local em `:3000`; screenshots a 1440 e 390 px; consola sem erros/avisos na homepage e detalhe; formulário/API mantêm o comportamento anterior. Verificação final: as 7 rotas de projeto respondem `200`, o `sitemap.xml` inclui os 7 slugs, as 31 imagens WebP de projeto respondem `200` e a consola em `/portfolio` está limpa.
+- **Confirmado (25/10)**: categorias/serviços por trabalho e os 7 projetos no portfólio. O site não será publicado agora; fica em produção local até decisão de lançamento.
+- **Fecho (26/10)**: site validado e mantido local; nada foi publicado. Próxima frente: endpoint público de propostas na X-Flow, seguido do token unificado de passaporte e das variáveis de ambiente do site.
+- **Bloqueios**: publicação do site adiada; domínio/hosts, contactos/legal, endpoint de propostas, storage, backups/PITR do Neon e migração 30 do passaporte continuam pendentes.
+- **Skills/agentes**: `design-de-interfaces`; execução direta com validação no browser, sem subagentes.
 
 ## Sessão 25/10/2026 — Assistente com Gemini (texto, voz e TTS)
 
@@ -291,7 +326,23 @@ _Última atualização: 25/10/2026. Ficheiro de continuação de sessão — diz
 - Git: commitar + push no fim de cada sessão (a pedido de Luís). docs/X-motion/ com 130 ficheiros de negócio fica SEM commit por decisão do Luís.
 
 ## Retomar
-Dizer ao agente: "Lê `progresso.md` e continua pelos pendentes."
+Dizer ao agente: "Lê `progresso.md` e continua pelo endpoint público de propostas na X-Flow." O site em `site/` fica local até nova decisão de publicação.
+
+## Sessão 25/10/2026 — Simulador 3D: catálogo limpo e seis modelos novos
+- **Catálogo**: removidos `sedan`, `buggy`, `furgao` e `miniatura` do registry, dos GLBs e do `CREDITS.md`; mantidos `458 Desportivo` e `Car Concept`. O seletor ficou com 13 modelos: BMW M4 Competition, Car Concept, Audi R8, Porsche Carrera GT, Mercedes-AMG G63, Golf GTI Clubsport, Lamborghini Huracán EVO, McLaren 720S Spider, Corvette C8 Stingray, Ford Mustang RTR, RAM 1500 TRX, Rolls-Royce Ghost e 458 Desportivo.
+- **Lamborghini Huracán EVO** — 4,52 m, material `EVOLamborghini_HuracanEVOTNR0_2021PaintTNR_Material1`, GLB 3,70 MB (simplificação 35%).
+- **McLaren 720S Spider** — 4,54 m, material `Primary_Paint`, GLB 0,84 MB (40%).
+- **Corvette C8 Stingray** — 4,63 m, material `Body_Color`, GLB 3,23 MB (40%); eixo invertido corrigido com `rotation: [0, Math.PI, 0]`.
+- **Ford Mustang RTR** — 4,79 m, material `FordM_CarPaint_Max_016`, GLB 1,54 MB (50%).
+- **RAM 1500 TRX** — 5,92 m, materiais `RAM_1500TRX_2021Paint_Material` + `RAM_1500TRX_2021Coloured_Material`, GLB 3,79 MB (40%).
+- **Rolls-Royce Ghost** — 5,55 m, materiais `rrghost_paint` + `rrghost_paint_b`, GLB 1,89 MB (30%).
+- **Pipeline**: glTF Transform 4.2.1 com Meshopt, simplificação de 30–50% e nomes de materiais preservados; texturas originais mantidas porque a compressão WebP falha no libvips do Windows (`VipsInterpretation`/`space=32`). Créditos em `public/models/cars/*/ATTRIBUTION.md` e `public/models/CREDITS.md`.
+- **Orientação**: `458 Desportivo` também passou a `rotation: [0, Math.PI, 0]` (vista “Frente” mostrava a traseira). O `Car Concept` **não** leva rotação: o GLB já traz a correção de eixos na raiz; uma rotação adicional de -90° foi testada e revertida.
+- **Seletor de modelos (correção)**: o `flex-wrap` fazia as opções sobreporem-se/ficarem inacessíveis entre 1024 e 1536 px. `CarStudio3D.tsx` passou a usar um carril horizontal de uma só linha, com setas “Modelos anteriores/seguintes”, estados `disabled` nos extremos e `ResizeObserver`; o carril ocupa a largura toda abaixo de `xl`, e a barra “Zona” subiu em `sm` para não colidir. Testado em 390, 1024, 1280 e 1536 px, com o último modelo (458) selecionável.
+- **Servidor**: o processo em `:3000` estava a servir uma build antiga (ainda com Sedão/Buggy/Furgão/Miniatura). Rebuild e restart feitos; a produção local em `http://localhost:3000` está ativa com o catálogo atual e o novo seletor. O dev server em `:3001` foi parado para o build.
+- **Validação**: no dev e em produção (`next start`), os seis modelos novos renderizam à escala, com pintura integral; cobertura parcial testada no capô do Huracán; Car Concept e 458 com frente correta; mobile 390 px sem overflow horizontal; 0 erros de consola. `npm run typecheck`, `npm run lint` e `npm run build` OK.
+- **Licenças / Git**: os seis modelos vêm de `Sultan-Sovetov/Draxler`, sem licença declarada — uso pessoal/protótipo. Alterações por commitar; manter a decisão de commit local sem push e não redistribuir os assets.
+
 ## Sessão 25/10/2026 — Assistente: vozes, histórico e esfera mobile
 - **Voz**: catálogo de 7 vozes Gemini (src/domains/assistant/voices.ts), seletor no cabeçalho com pré-visualização (kind sample), escolha guardada em localStorage (xflow_assistant_voice_v3). Padrão masculino Charon; femininas Kore, Aoede, Sulafat.
 - **Histórico**: migração 29 (assistant_conversations e assistant_messages, RLS por organização/perfil); server module assistant-history.ts; actions e UI (lista, abrir, nova, apagar, limpar; máximo 40 conversas por perfil). O conversationId é devolvido pelo /api/assistant/ask e reutilizado nas perguntas seguintes.
