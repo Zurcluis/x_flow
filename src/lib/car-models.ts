@@ -194,12 +194,161 @@ export const CAR_MODELS: CarModelDef[] = [
     },
   },
   {
+    id: "lamborghini-huracan-evo",
+    label: "Lamborghini Huracán EVO",
+    brand: "Lamborghini",
+    category: "Supercarro",
+    url: "/models/cars/lamborghini-huracan-evo/lamborghini-huracan-evo.web.glb",
+    length: 4.52,
+    paintBy: "material",
+    paint: {
+      body: ["EVOLamborghini_HuracanEVOTNR0_2021PaintTNR_Material1"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Sultan-Sovetov (Draxler)",
+      sourceUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/lamborghini/2019_lamborghini_huracan_evo.glb",
+      license: "Sem licença declarada — uso pessoal",
+      licenseUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/lamborghini/2019_lamborghini_huracan_evo.glb",
+      modifications:
+        "Derivado web: simplificação de geometria (35% dos vértices), compressão de geometria Meshopt e nomes de materiais preservados. Texturas originais mantidas.",
+    },
+  },
+  {
+    id: "mclaren-720s-spider",
+    label: "McLaren 720S Spider",
+    brand: "McLaren",
+    category: "Supercarro",
+    url: "/models/cars/mclaren-720s-spider/mclaren-720s-spider.web.glb",
+    length: 4.54,
+    paintBy: "material",
+    paint: {
+      body: ["Primary_Paint"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Sultan-Sovetov (Draxler)",
+      sourceUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/mclaren/mclaren_720S_spider.glb",
+      license: "Sem licença declarada — uso pessoal",
+      licenseUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/mclaren/mclaren_720S_spider.glb",
+      modifications:
+        "Derivado web: simplificação de geometria (40% dos vértices), compressão de geometria Meshopt e nomes de materiais preservados. Texturas originais mantidas.",
+    },
+  },
+  {
+    id: "chevrolet-corvette-c8",
+    label: "Corvette C8 Stingray",
+    brand: "Chevrolet",
+    category: "Desportivo",
+    url: "/models/cars/chevrolet-corvette-c8/chevrolet-corvette-c8.web.glb",
+    length: 4.63,
+    rotation: [0, Math.PI, 0],
+    paintBy: "material",
+    paint: {
+      body: ["Body_Color"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Sultan-Sovetov (Draxler)",
+      sourceUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/chevrolet/2019_chevrolet_corvette_c8_stingray.glb",
+      license: "Sem licença declarada — uso pessoal",
+      licenseUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/chevrolet/2019_chevrolet_corvette_c8_stingray.glb",
+      modifications:
+        "Derivado web: simplificação de geometria (40% dos vértices), compressão de geometria Meshopt e nomes de materiais preservados. Texturas originais mantidas.",
+    },
+  },
+  {
+    id: "ford-mustang-rtr",
+    label: "Ford Mustang RTR",
+    brand: "Ford",
+    category: "Muscle",
+    url: "/models/cars/ford-mustang-rtr/ford-mustang-rtr.web.glb",
+    length: 4.79,
+    paintBy: "material",
+    paint: {
+      body: ["FordM_CarPaint_Max_016"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Sultan-Sovetov (Draxler)",
+      sourceUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/ford/2015_ford_mustang_rtr.glb",
+      license: "Sem licença declarada — uso pessoal",
+      licenseUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/ford/2015_ford_mustang_rtr.glb",
+      modifications:
+        "Derivado web: simplificação de geometria (50% dos vértices), compressão de geometria Meshopt e nomes de materiais preservados. Texturas originais mantidas.",
+    },
+  },
+  {
+    id: "ram-1500-trx",
+    label: "RAM 1500 TRX",
+    brand: "RAM",
+    category: "Pickup",
+    url: "/models/cars/ram-1500-trx/ram-1500-trx.web.glb",
+    length: 5.92,
+    paintBy: "material",
+    paint: {
+      body: [
+        "RAM_1500TRX_2021Paint_Material",
+        "RAM_1500TRX_2021Coloured_Material",
+      ],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Sultan-Sovetov (Draxler)",
+      sourceUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/dodge/2021_ram_1500_trx.glb",
+      license: "Sem licença declarada — uso pessoal",
+      licenseUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/dodge/2021_ram_1500_trx.glb",
+      modifications:
+        "Derivado web: simplificação de geometria (40% dos vértices), compressão de geometria Meshopt e nomes de materiais preservados. Texturas originais mantidas.",
+    },
+  },
+  {
+    id: "rolls-royce-ghost",
+    label: "Rolls-Royce Ghost",
+    brand: "Rolls-Royce",
+    category: "Luxo",
+    url: "/models/cars/rolls-royce-ghost/rolls-royce-ghost.web.glb",
+    length: 5.55,
+    paintBy: "material",
+    paint: {
+      body: ["rrghost_paint", "rrghost_paint_b"],
+    },
+    preserveMaterials: true,
+    supportsPartialWrap: true,
+    credit: {
+      author: "Sultan-Sovetov (Draxler)",
+      sourceUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/rr/rolls_royce_ghost_new.glb",
+      license: "Sem licença declarada — uso pessoal",
+      licenseUrl:
+        "https://github.com/Sultan-Sovetov/Draxler/blob/main/public/car-models/rr/rolls_royce_ghost_new.glb",
+      modifications:
+        "Derivado web: simplificação de geometria (30% dos vértices), compressão de geometria Meshopt e nomes de materiais preservados. Texturas originais mantidas.",
+    },
+  },
+  {
     id: "desportivo",
     label: "458 Desportivo",
     brand: "Genérico",
     category: "Desportivo",
     url: "/models/ferrari.glb",
     length: 4.6,
+    rotation: [0, Math.PI, 0],
     paintBy: "mesh",
     paint: {
       body: ["body"],
@@ -213,65 +362,6 @@ export const CAR_MODELS: CarModelDef[] = [
         "https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf",
       license: "CC BY 4.0",
       licenseUrl: "http://creativecommons.org/licenses/by/4.0/",
-    },
-  },
-  {
-    id: "sedan",
-    label: "Sedão",
-    brand: "Genérico",
-    category: "Urbano",
-    url: "/models/sedan.glb",
-    length: 4.4,
-    paintBy: "material",
-    paint: {
-      body: ["carMat"],
-      metal: ["wheelMat"],
-    },
-  },
-  {
-    id: "buggy",
-    label: "Buggy Technic",
-    brand: "Genérico",
-    category: "Buggy",
-    url: "/models/buggy.gltf",
-    length: 3.4,
-    paintBy: "mesh",
-    paint: {
-      body: ["body_"],
-    },
-  },
-  {
-    id: "furgao",
-    label: "Furgão Comercial",
-    brand: "Genérico",
-    category: "Comercial",
-    url: "/models/furgao.glb",
-    length: 5.2,
-    paintBy: "material",
-    paint: {
-      body: ["truck"],
-      glass: ["glass"],
-      metal: ["wheels", "window_trim"],
-    },
-    credit: {
-      author: "Cesium",
-      sourceUrl:
-        "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CesiumMilkTruck",
-      license: "CC BY 4.0",
-      licenseUrl: "http://creativecommons.org/licenses/by/4.0/",
-    },
-  },
-  {
-    id: "miniatura",
-    label: "Miniatura",
-    brand: "Genérico",
-    category: "Showroom",
-    url: "/models/miniatura.glb",
-    length: 2.6,
-    paintBy: "material",
-    paint: {
-      body: ["ToyCar"],
-      glass: ["Glass"],
     },
   },
 ];

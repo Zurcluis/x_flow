@@ -4,12 +4,51 @@ _Última atualização: 26/10/2026. Ficheiro de continuação de sessão — diz
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
-- Health: typecheck OK, lint OK, **324/324 testes (47 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada (por commitar)
+- Health: typecheck OK, lint OK, **348/348 testes (51 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada; endpoint público de propostas do site e Fases 1–2 dos cenários 3D criados (por commitar)
 - **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `5dbe04c` (`fix: sincronizar package-lock com @emnapi runtime/core para npm ci`), com `5746ae1` e `a47136f` já enviados; integração Gemini ainda local. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
-- **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas e produção local atualizada em `:3000`; alterações por commitar
+- **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas; Fases 1–2 dos cenários 3D implementadas (Estúdio Dark + Oficina X-Motion, seletor compacto, oclusão e captura com cenário); alterações por commitar
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 26/10/2026 — Simulador 3D: Fase 2 (oficina X-Motion)
+
+- **Âmbito**: cenário `xmotion-workshop` completo e calibrado, mantendo `dark-studio` como default; sem postprocessing, HDRI externo ou dependências novas.
+- **Cena**: `XMotionWorkshopEnv.tsx` com parede preta mate, piso de betão com textura procedural, seis calhas LED, néon X-Motion (tubos a partir dos chevrons oficiais + lettering “x”/“motion” em `CanvasTexture`), glow, `pointLight` laranja/branco, luz ambiente/direcional e seis `Lightformer` de teto, néon e preenchimento; `ContactShadows` com `opacity 0.45`, `scale 14`, `blur 2.8`, `far 2.2`.
+- **Oclusão**: helpers puros em `workshop-scene.ts`; parede oculta quando `camera.z < -3.9`, calhas de teto ocultas quando `camera.y > 4.6`, atualizadas em `useFrame` e cobertas por `tests/unit/workshop-scene.test.ts`.
+- **Preset**: `car-environments.ts` passa a ter `xmotion-workshop` disponível (`exposure 1`, `dprMax 1.75`, `shadows false`, fundo de captura próprio); apenas `outdoor-sun` e `golden-hour` continuam `planned`.
+- **UI**: controlos de câmara e cenário em dropdowns compactos no canto superior esquerdo (para não taparem o néon no 3/4), carril de modelos com setas, disclaimer movido para fora/abaixo do palco e badge de filme escondido em mobile; `MOBILE_CAMERA_FIT` 1.36 com referência de 360 px e limite 1.9 no `CarStudio3D`.
+- **Calibração**: néon baixado para `neonMarkY 2.64`/`neonTextY 1.58` para dar margem no topo; validado com películas `Gloss Black` e `Gloss Dragon Fire Red` (reflexos e oclusão do carro).
+- **Verificação**: `npm run typecheck`, `npm run lint`, `npm test` **348/348 (51 ficheiros)** e `npm run build` OK; screenshots desktop/mobile das câmaras front, 3/4, right, left, rear e top; rear esconde parede e top esconde calhas; consola sem erros. Captura PNG verificada (864×414, 100% opaca, canto `#0b0d0e`, laranja do néon presente, nome `xflow-3d-xmotion-workshop-…png`).
+- **Limite conhecido**: a 320 px, na câmara 3/4, a extremidade direita do lettering “xmotion” fica ligeiramente cortada; a 390 px e desktop fica completa. Aceite como limite de ecrã muito estreito (ou abrir em frente nesses casos).
+- **Pendentes**: substituir a geometria provisória do néon quando houver vetor oficial; decidir tratamento específico para 320 px; revisão Fusion indisponível (`Fusion is not enabled for this account.`).
+- **Skills/agentes**: mantidas `design-de-interfaces` e `vercel-react-best-practices`; execução direta, sem subagentes.
+
+## Sessão 26/10/2026 — Simulador 3D: Fase 1 (presets, seletor e captura)
+
+- **Âmbito**: aprovar o `X-Flow_Plano_Cenarios_Simulador_3D.md` com correções e executar apenas a Fase 1; oficina, luz do dia e pôr do sol ficam para as fases seguintes.
+- **Presets**: `src/lib/car-environments.ts` com quatro cenários tipados e configuráveis (exposição, fundo, exposição/contact shadow, sombras, DPR e fundo de captura); `dark-studio` disponível, os outros três `planned`; helpers `findEnvironment` e `availableEnvironments`.
+- **Extração**: `environments/StudioDarkEnv.tsx` mantém os cinco `Lightformer` atuais; `environments/EnvironmentStage.tsx` aplica exposição/fundo com helpers fora do componente (regra `react-hooks/immutability`) e mantém `ContactShadows`.
+- **UI**: `EnvironmentSelector.tsx` com chips em desktop/tablet (`aria-pressed`, teclado, foco visível, dourado `#d3a548`) e dropdown compacto em mobile; planeados desativados com “em breve” no nome acessível/título, sem repetir o rótulo visual. Badge de acabamento e disclaimer reposicionados para não colidir com a barra de cenário; badge escondido em mobile; carril de modelos e barra “Zona” intactos.
+- **Captura**: fundo opaco `#080b0c`, duas linhas com viatura/película/cobertura e cenário/atribuição (cobertura sempre incluída, sem duplicar a marca), truncagem com `fitText`; nome do ficheiro inclui o cenário.
+- **Verificação**: `npm run typecheck`, `npm run lint`, `npm test` **344/344 (50 ficheiros)** e `npm run build` OK; validação visual a 320, 390, 640 e 1536 px com consola sem erros; export PNG verificado (864×414, fundo opaco, cenário, cobertura e atribuição); produção local reiniciada em `:3000`.
+- **Ficheiros**: `src/lib/car-environments.ts`, `src/components/xflow/simulator/environments/{StudioDarkEnv,EnvironmentStage}.tsx`, `src/components/xflow/simulator/EnvironmentSelector.tsx`, `CarStudio3D.tsx`, `src/app/simulator/SimulatorView.tsx`, `tests/unit/car-environments.test.ts`.
+- **Pendentes**: Fase 2 (oficina X-Motion: parede, piso, néon, reflexos), Fase 3 (luz do dia/pôr do sol), decidir sombras `ContactShadows` vs direcionais e orçamento de performance; captura visual dos quatro cenários.
+- **Skills/agentes**: `design-de-interfaces` e `vercel-react-best-practices`; execução direta, sem subagentes.
+
+## Sessão 26/10/2026 — Endpoint público de propostas (`/api/proposals`)
+
+- **Âmbito**: fechar o formulário do site público com um endpoint real no ERP, sem criar cliente, viatura ou orçamento automaticamente. O site passa a gravar apenas leads.
+- **Migração 30** (`20260828000030_public_site.sql`, aplicada na Neon): `website_leads` com `reference`, `idempotency_key`, serviço normalizado, contacto, mensagem, `status`, `source`, `utm`, `privacy_notice_version`, `consent_at`, `consent_text_hash`, `marketing_opt_in` e colunas de conversão futura; unique `(organization_id, idempotency_key)`; RLS por organização e grants para `xflow_app`. Nova `api_rate_limits` com RLS para contadores duráveis.
+- **Servidor**: `src/domains/proposals/validation.ts` (validação pura, mapeamento `PPF → ppf`, `Car Wrap → car_wrap`, etc., honeypot e chaves de idempotência) e `src/server/website-leads.ts` (transação com `set_config` local, rate limit 8/10 min por IP hasheado, `INSERT … ON CONFLICT DO NOTHING`, reenvio devolve a mesma referência).
+- **Rota**: `src/app/api/proposals/route.ts` — segredo `XFLOW_SITE_SECRET` em tempo constante, `Origin` opcional via `XFLOW_SITE_ORIGIN`, content-type JSON, limite de 20 KB, `x-idempotency-key`, respostas `202`/`200`, `400`, `401`, `403`, `413`, `415`, `422`, `429` e `503`; referência `WEB-YYYY-XXXXXXXX`; sem cookies nem PII nos logs.
+- **Proxy**: `/api/proposals` passou a estar na allowlist de `src/proxy.ts`; sem isto o pedido era redirecionado para `/login` e o site podia reportar falso sucesso.
+- **Site**: o proxy em `site/src/app/api/proposals/route.ts` envia `Origin` e `x-forwarded-for` ao ERP, propaga erros 4xx/429/503 em vez de os achatar em `502` e devolve a referência; o formulário mostra “Referência do pedido”. `.env.example` documenta `XFLOW_SITE_SECRET`, `XFLOW_SITE_ORIGIN` e `XFLOW_PRIVACY_NOTICE_VERSION`.
+- **Repositório/CI**: `tsconfig.json` exclui `site` (tem tsconfig próprio), ESLint ignora `site/**` e a CI ganhou um job `site` com `npm ci`, typecheck, lint e build.
+- **Verificação**: migração 30 aplicada; `db:verify` OK (58 tabelas com RLS, 62 políticas; `website_leads` isolada com GUC estrangeiro e sem GUC); `npm run typecheck`, `npm run lint`, `npm test` **339/339 (49 ficheiros)** e `npm run build` OK; site com typecheck, lint e build OK.
+- **E2E real** (produção local, ERP `:3000` + site `:3001`): lead criado (`202`), reenvio idempotente (`200`, mesma referência), segredo inválido (`401`), origem inválida (`403`), honeypot (`400`), validação (`422`), rate limit durável na 9.ª (`429`) e lead persistido com `source=website`, `consent_at` e serviço normalizado; repetido através do site com referência visível. Dados de teste eliminados e servidores parados.
+- **Pendentes**: caixa interna de leads no ERP (ainda não há ecrã para os ver), notificação interna (email/Slack), UTMs e `marketing_opt_in` no formulário, HMAC/replay do segredo, env de produção (Vercel `www`/`app`) e revisão do texto de privacidade.
+- **Skills/agentes**: `supabase-postgres-best-practices` e `seguranca-owasp`; dois agentes `explore` (site/contrato e padrões ERP/BD) antes da implementação.
 
 ## Sessão 25/10/2026 — Decisão B1 do site público (Fase 0)
 
@@ -326,7 +365,7 @@ _Última atualização: 26/10/2026. Ficheiro de continuação de sessão — diz
 - Git: commitar + push no fim de cada sessão (a pedido de Luís). docs/X-motion/ com 130 ficheiros de negócio fica SEM commit por decisão do Luís.
 
 ## Retomar
-Dizer ao agente: "Lê `progresso.md` e continua pelo endpoint público de propostas na X-Flow." O site em `site/` fica local até nova decisão de publicação.
+Dizer ao agente: "Lê `progresso.md` e continua pela caixa interna de leads do site." O endpoint já grava os pedidos; falta o ecrã no ERP para os ver, a notificação interna e só depois o token unificado de passaporte. O site em `site/` fica local até nova decisão de publicação.
 
 ## Sessão 25/10/2026 — Simulador 3D: catálogo limpo e seis modelos novos
 - **Catálogo**: removidos `sedan`, `buggy`, `furgao` e `miniatura` do registry, dos GLBs e do `CREDITS.md`; mantidos `458 Desportivo` e `Car Concept`. O seletor ficou com 13 modelos: BMW M4 Competition, Car Concept, Audi R8, Porsche Carrera GT, Mercedes-AMG G63, Golf GTI Clubsport, Lamborghini Huracán EVO, McLaren 720S Spider, Corvette C8 Stingray, Ford Mustang RTR, RAM 1500 TRX, Rolls-Royce Ghost e 458 Desportivo.

@@ -8,16 +8,12 @@
 import React, { Suspense, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import {
-  ContactShadows,
-  Environment,
-  Html,
-  Lightformer,
-  OrbitControls,
-  useGLTF,
-} from "@react-three/drei";
+import { Html, OrbitControls, useGLTF } from "@react-three/drei";
 import {
   Camera,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   RotateCw,
   Download,
   ZoomIn,
@@ -29,6 +25,12 @@ import {
   CarModelDef,
   DEFAULT_CAR_MODEL_ID,
 } from "@/lib/car-models";
+import {
+  DEFAULT_ENVIRONMENT_ID,
+  findEnvironment,
+} from "@/lib/car-environments";
+import { EnvironmentSelector } from "@/components/xflow/simulator/EnvironmentSelector";
+import { EnvironmentStage } from "@/components/xflow/simulator/environments/EnvironmentStage";
 import {
   CarCoverage,
   CarCoverageZone,
@@ -85,6 +87,23 @@ const CAMERA_LABELS: { key: CameraPreset; label: string }[] = [
 ];
 
 const ORBIT_TARGET = new THREE.Vector3(0, 0.5, 0);
+const MOBILE_CAMERA_FIT = 1.36;
+const MOBILE_CAMERA_REFERENCE_WIDTH = 360;
+const MOBILE_CAMERA_MAX_FIT = 1.9;
+
+function fitText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+
+  let end = text.length;
+  while (end > 1 && ctx.measureText(`${text.slice(0, end)}…`).width > maxWidth) {
+    end -= 1;
+  }
+  return `${text.slice(0, end)}…`;
+}
 
 /** Material de pintura da película a partir dos parâmetros físicos do catálogo */
 function filmPaintMaterial(film: CarStudioFilm) {
@@ -459,19 +478,30 @@ function CameraRig({
   autoRotate: boolean;
   zoom: number;
 }) {
-  const { camera, controls } = useThree();
+  const { camera, controls, size } = useThree();
+  const fit =
+    size.width < 640
+      ? Math.min(
+          MOBILE_CAMERA_MAX_FIT,
+          Math.max(
+            MOBILE_CAMERA_FIT,
+            (MOBILE_CAMERA_FIT * MOBILE_CAMERA_REFERENCE_WIDTH) /
+              Math.max(size.width, 1)
+          )
+        )
+      : 1;
   const desired = useMemo(() => {
     const [x, y, z] = CAMERA_POSITIONS[preset];
     return new THREE.Vector3(x, y, z)
       .sub(ORBIT_TARGET)
-      .multiplyScalar(zoom)
+      .multiplyScalar(zoom * fit)
       .add(ORBIT_TARGET);
-  }, [preset, zoom]);
+  }, [preset, zoom, fit]);
   const wants = useRef(false);
 
   React.useEffect(() => {
     wants.current = true;
-  }, [preset, zoom]);
+  }, [preset, zoom, fit]);
 
   useFrame(() => {
     if (autoRotate) {
@@ -496,7 +526,18 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
   const [zoom, setZoom] = useState(1);
   const [autoRotate, setAutoRotate] = useState(true);
   const [coverage, setCoverage] = useState<CarCoverage>("full");
+  const [environmentId, setEnvironmentId] = useState(DEFAULT_ENVIRONMENT_ID);
+  const environment = findEnvironment(environmentId);
+  const dprRange = useMemo<[number, number]>(
+    () => [1, environment.quality.dprMax],
+    [environment.quality.dprMax]
+  );
   const glRef = useRef<THREE.WebGLRenderer | null>(null);
+  const modelRailRef = useRef<HTMLDivElement | null>(null);
+  const [modelRailEdges, setModelRailEdges] = useState({
+    start: true,
+    end: false,
+  });
   const def = useMemo(
     () => CAR_MODELS.find((m) => m.id === modelId) ?? CAR_MODELS[0],
     [modelId]
@@ -509,6 +550,38 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
     ? CAR_FINISH_OPTIONS.find((f) => f.id === film.finishOverride)?.label
     : "Película";
 
+  const updateModelRailEdges = React.useCallback(() => {
+    const rail = modelRailRef.current;
+    if (!rail) return;
+    const max = Math.max(0, rail.scrollWidth - rail.clientWidth);
+    setModelRailEdges({
+      start: rail.scrollLeft <= 2,
+      end: rail.scrollLeft >= max - 2,
+    });
+  }, []);
+
+  React.useEffect(() => {
+    const rail = modelRailRef.current;
+    if (!rail) return;
+    updateModelRailEdges();
+    const observer = new ResizeObserver(updateModelRailEdges);
+    observer.observe(rail);
+    return () => observer.disconnect();
+  }, [updateModelRailEdges]);
+
+  React.useEffect(() => {
+    updateModelRailEdges();
+  }, [modelId, updateModelRailEdges]);
+
+  const scrollModels = (direction: -1 | 1) => {
+    const rail = modelRailRef.current;
+    if (!rail) return;
+    rail.scrollBy({
+      left: direction * Math.max(140, rail.clientWidth * 0.8),
+    });
+    updateModelRailEdges();
+  };
+
   const capture = () => {
     const gl = glRef.current;
     if (!gl) return;
@@ -518,31 +591,45 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
     out.height = source.height;
     const ctx = out.getContext("2d");
     if (!ctx) return;
+    ctx.fillStyle = environment.captureBackground;
+    ctx.fillRect(0, 0, out.width, out.height);
     ctx.drawImage(source, 0, 0);
 
     // CC BY: a imagem exportada leva a atribuição do modelo e da película.
     const pad = Math.round(out.width * 0.012);
     const fontSize = Math.max(12, Math.round(out.width * 0.012));
-    const barHeight = Math.round(fontSize * 2.2);
-    ctx.fillStyle = "rgba(5,6,6,0.82)";
+    const lineHeight = Math.round(fontSize * 1.35);
+    const barHeight = Math.round(fontSize * 2.2 + lineHeight);
+    ctx.fillStyle = "rgba(5,6,6,0.88)";
     ctx.fillRect(0, out.height - barHeight, out.width, barHeight);
-    ctx.fillStyle = "#a9adae";
     ctx.font = `${fontSize}px ui-monospace, monospace`;
     ctx.textBaseline = "middle";
+    const maxWidth = out.width - pad * 2;
     const attribution = def.credit
       ? `${def.brand} · ${def.credit.author} · ${def.credit.license}`
       : `${def.brand} · ${def.label}`;
-    const coverageText =
-      coverageLabel && effectiveCoverage !== "full" ? ` · ${coverageLabel}` : "";
+    const coverageText = coverageLabel ? ` · ${coverageLabel}` : "";
+    const vehicleName = def.label.startsWith(def.brand)
+      ? def.label
+      : `${def.brand} ${def.label}`;
+    const vehicleLine = `${vehicleName} · ${film.name}${coverageText}`;
+    const contextLine = `${environment.name} · ${attribution}`;
+    const firstBaseline = out.height - barHeight + fontSize * 1.1;
+
+    ctx.fillStyle = "#d7dbdc";
+    ctx.fillText(fitText(ctx, vehicleLine, maxWidth), pad, firstBaseline);
+    ctx.fillStyle = "#a9adae";
     ctx.fillText(
-      `${film.name}${coverageText} · ${attribution}`,
+      fitText(ctx, contextLine, maxWidth),
       pad,
-      out.height - barHeight / 2
+      firstBaseline + lineHeight
     );
 
     const a = document.createElement("a");
     a.href = out.toDataURL("image/png");
-    a.download = `xflow-3d-${film.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+    a.download = `xflow-3d-${environment.id}-${film.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")}.png`;
     a.click();
   };
 
@@ -554,8 +641,8 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
   return (
     <div className="relative w-full h-full">
       <Canvas
-        shadows={false}
-        dpr={[1, 2]}
+        shadows={environment.quality.shadows}
+        dpr={dprRange}
         camera={{ position: CAMERA_POSITIONS.threeQuarter, fov: 38, near: 0.1, far: 100 }}
         gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }}
         onCreated={({ gl }) => {
@@ -572,24 +659,7 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
         >
           <Car key={def.id} def={def} film={film} coverage={effectiveCoverage} />
 
-          <ContactShadows
-            position={[0, 0, 0]}
-            opacity={0.55}
-            scale={16}
-            blur={2.4}
-            far={2.4}
-            resolution={512}
-            color="#000000"
-          />
-
-          {/* Luz de estúdio: softboxes via Lightformers (sem HDR externo) */}
-          <Environment resolution={256}>
-            <Lightformer intensity={2.2} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[9, 9, 1]} color="#ffffff" />
-            <Lightformer intensity={1.4} position={[4, 2.2, 2]} rotation-y={-Math.PI / 3} scale={[6, 2.4, 1]} color="#ffffff" />
-            <Lightformer intensity={1.1} position={[-4.5, 2, -1.5]} rotation-y={Math.PI / 2.4} scale={[7, 2.2, 1]} color="#e8f0ff" />
-            <Lightformer intensity={0.9} position={[0, 1.6, -6]} scale={[8, 2, 1]} color="#fff4e0" />
-            <Lightformer intensity={0.7} position={[0, 1.4, 6]} rotation-y={Math.PI} scale={[8, 2, 1]} color="#dfe8ff" />
-          </Environment>
+          <EnvironmentStage key={environment.id} environment={environment} />
 
           <CameraRig preset={preset} autoRotate={autoRotate} zoom={zoom} />
           <OrbitControls
@@ -606,34 +676,45 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
         </Suspense>
       </Canvas>
 
-      {/* Presets de câmara */}
-      <div className="absolute top-2 inset-x-0 flex items-center justify-center gap-1 sm:gap-1.5 z-20 px-2">
-        <Camera className="hidden sm:block h-3.5 w-3.5 text-[#8a9092] mr-1" />
-        {CAMERA_LABELS.map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => {
+      <div className="absolute top-2 left-2 z-20 flex w-[10.5rem] flex-col gap-1.5">
+        <label className="relative flex w-full items-center gap-1.5 rounded-md border border-white/[0.08] bg-[#050606]/85 py-1.5 pl-2.5 pr-7 backdrop-blur-md">
+          <Camera
+            className="h-3 w-3 shrink-0 text-[#d3a548]"
+            aria-hidden="true"
+          />
+          <span className="sr-only">Câmara</span>
+          <select
+            value={preset}
+            onChange={(event) => {
               setAutoRotate(false);
               setZoom(1);
-              setPreset(key);
+              setPreset(event.target.value as CameraPreset);
             }}
-            aria-pressed={preset === key && !autoRotate}
-            className={`px-1.5 sm:px-2 py-1.5 rounded text-[10px] font-bold uppercase tracking-wide whitespace-nowrap transition-all cursor-pointer ${
-              preset === key && !autoRotate
-                ? "bg-[#d3a548] text-[#050606]"
-                : "bg-[#050606]/80 text-[#a9adae] border border-white/[0.08] hover:border-white/25"
-            }`}
+            aria-label="Câmara"
+            title={
+              CAMERA_LABELS.find(({ key }) => key === preset)?.label ?? "Câmara"
+            }
+            className="min-w-0 flex-1 appearance-none truncate bg-transparent text-[10px] font-bold uppercase tracking-wide text-[#d7dbdc] outline-none focus-visible:ring-2 focus-visible:ring-[#d3a548]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050606]"
           >
-            {label}
-          </button>
-        ))}
+            {CAMERA_LABELS.map(({ key, label }) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute right-2 h-3 w-3 text-[#8a9092]"
+            aria-hidden="true"
+          />
+        </label>
+
+        <EnvironmentSelector value={environmentId} onChange={setEnvironmentId} />
       </div>
 
       {/* Zona de aplicação — só nos modelos com wrap parcial */}
       {def.supportsPartialWrap && (
         <div
-          className="absolute bottom-[6.1rem] sm:bottom-[4.15rem] xl:bottom-[5.5rem] left-2 sm:left-3 right-2 sm:right-40 xl:right-auto flex items-center gap-1 z-10 overflow-x-auto [mask-image:linear-gradient(to_right,black_82%,transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="absolute bottom-[6.1rem] sm:bottom-[6.5rem] xl:bottom-[5.5rem] left-2 sm:left-3 right-2 sm:right-40 xl:right-auto flex items-center gap-1 z-10 overflow-x-auto [mask-image:linear-gradient(to_right,black_82%,transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="group"
           aria-label="Zona de aplicação"
         >
@@ -658,27 +739,55 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
         </div>
       )}
 
-      {/* Seletor de modelo */}
-      <div className="absolute bottom-16 sm:bottom-7 left-2 sm:left-3 right-2 sm:right-40 xl:right-auto flex flex-nowrap xl:flex-wrap gap-1.5 sm:max-w-none xl:max-w-[62%] z-10 overflow-x-auto xl:overflow-visible [mask-image:linear-gradient(to_right,black_82%,transparent)] xl:[mask-image:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {CAR_MODELS.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => {
-              setModelId(m.id);
-              setZoom(1);
-            }}
-            title={`${m.brand} · ${m.label}`}
-            aria-pressed={modelId === m.id}
-            className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide whitespace-nowrap transition-all cursor-pointer border ${
-              modelId === m.id
-                ? "bg-[#d3a548] text-[#050606] border-[#d3a548]"
-                : "bg-[#050606]/80 text-[#a9adae] border-white/[0.08] hover:border-white/25"
-            }`}
-          >
-            {m.label}
-          </button>
-        ))}
+      {/* Seletor de modelo — carril horizontal com setas para não sobrepor nem esconder opções */}
+      <div className="absolute bottom-[4.25rem] left-2 right-2 sm:left-3 xl:bottom-7 xl:right-40 flex items-center gap-1 z-10">
+        <button
+          type="button"
+          onClick={() => scrollModels(-1)}
+          disabled={modelRailEdges.start}
+          className="shrink-0 rounded-full border border-white/[0.08] bg-[#050606]/85 p-1.5 text-[#a9adae] transition-all cursor-pointer hover:border-white/25 disabled:opacity-30 disabled:cursor-default"
+          title="Modelos anteriores"
+          aria-label="Modelos anteriores"
+        >
+          <ChevronLeft className="h-3 w-3" />
+        </button>
+        <div
+          ref={modelRailRef}
+          onScroll={updateModelRailEdges}
+          className="flex min-w-0 flex-1 flex-nowrap gap-1.5 overflow-x-auto [mask-image:linear-gradient(to_right,black_88%,transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="group"
+          aria-label="Modelos de viatura"
+        >
+          {CAR_MODELS.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => {
+                setModelId(m.id);
+                setZoom(1);
+              }}
+              title={`${m.brand} · ${m.label}`}
+              aria-pressed={modelId === m.id}
+              className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide whitespace-nowrap transition-all cursor-pointer border ${
+                modelId === m.id
+                  ? "bg-[#d3a548] text-[#050606] border-[#d3a548]"
+                  : "bg-[#050606]/80 text-[#a9adae] border-white/[0.08] hover:border-white/25"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => scrollModels(1)}
+          disabled={modelRailEdges.end}
+          className="shrink-0 rounded-full border border-white/[0.08] bg-[#050606]/85 p-1.5 text-[#a9adae] transition-all cursor-pointer hover:border-white/25 disabled:opacity-30 disabled:cursor-default"
+          title="Modelos seguintes"
+          aria-label="Modelos seguintes"
+        >
+          <ChevronRight className="h-3 w-3" />
+        </button>
       </div>
 
       {/* Zoom + rotação automática + captura */}

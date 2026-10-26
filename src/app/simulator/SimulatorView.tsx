@@ -617,7 +617,7 @@ function SimulatorStudio({
         )}
 
         {/* Floating Finish Badge on Stage */}
-        <div className="absolute top-10 left-2 sm:left-4 p-2 sm:p-3 rounded-md bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] flex items-center gap-2 sm:gap-3">
+        <div className="hidden sm:flex absolute z-20 top-10 sm:top-[5.25rem] left-2 sm:left-4 p-2 sm:p-3 rounded-md bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] items-center gap-2 sm:gap-3">
           <div
             style={{ backgroundColor: selectedPreset.colorHex }}
             className="h-5 w-5 sm:h-6 sm:w-6 rounded-full border border-white/30"
@@ -635,16 +635,10 @@ function SimulatorStudio({
           </div>
         </div>
 
-        {/* Representation disclaimer (requisito blueprint: simulação com aviso) */}
-        <div className="hidden xl:flex absolute top-10 right-4 max-w-[180px] p-2.5 rounded-sm bg-[#050606]/85 backdrop-blur-md border border-white/[0.1] items-start gap-1.5 text-[10px] text-[#a9adae]">
-          <Info className="h-3.5 w-3.5 text-[#d3a548] shrink-0 mt-0.5" />
-          <span>Simulação meramente representativa. A cor final pode variar face ao material real.</span>
-        </div>
-
       </div>
 
-      {/* Aviso legal compacto em mobile, fora do palco para não colidir com os controlos */}
-      <div className="xl:hidden flex items-start gap-1.5 -mt-2 px-1 text-[10px] text-[#a9adae]">
+      {/* Aviso legal do simulador */}
+      <div className="flex items-start gap-1.5 -mt-2 px-1 text-[10px] text-[#a9adae]">
         <Info className="h-3.5 w-3.5 text-[#d3a548] shrink-0 mt-0.5" />
         <span>Simulação meramente representativa. A cor final pode variar face ao material real.</span>
       </div>
