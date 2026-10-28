@@ -58,16 +58,31 @@ describe("car environments presets", () => {
     });
   });
 
-  it("marks the remaining scenarios as planned until their phases land", () => {
+  it("makes all four scenarios available after phase 3", () => {
     expect(availableEnvironments().map((environment) => environment.id)).toEqual([
       "dark-studio",
       "xmotion-workshop",
+      "outdoor-sun",
+      "golden-hour",
     ]);
     expect(
       CAR_ENVIRONMENTS.filter(
         (environment) => environment.availability === "planned"
-      ).map((environment) => environment.id)
-    ).toEqual(["outdoor-sun", "golden-hour"]);
+      )
+    ).toEqual([]);
+  });
+
+  it("enables real sun shadows for both outdoor scenarios", () => {
+    for (const id of ["outdoor-sun", "golden-hour"] as const) {
+      const environment = findEnvironment(id);
+
+      expect(environment.availability).toBe("available");
+      expect(environment.quality.shadows).toBe(true);
+      expect(environment.quality.shadowMapSize).toBe(1024);
+      expect(environment.quality.dprMax).toBe(1.75);
+      expect(environment.contactShadows.enabled).toBe(false);
+      expect(environment.captureBackground).toMatch(/^#[0-9a-f]{6}$/i);
+    }
   });
 
   it("provides an opaque capture background for every scenario", () => {

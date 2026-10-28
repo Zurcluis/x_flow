@@ -28,7 +28,9 @@ import {
 import {
   DEFAULT_ENVIRONMENT_ID,
   findEnvironment,
+  type EnvironmentId,
 } from "@/lib/car-environments";
+import { COMPACT_VIEWPORT_WIDTH } from "@/lib/outdoor-scene";
 import { EnvironmentSelector } from "@/components/xflow/simulator/EnvironmentSelector";
 import { EnvironmentStage } from "@/components/xflow/simulator/environments/EnvironmentStage";
 import {
@@ -312,6 +314,7 @@ function applyModelMaterials(
       return;
     }
     mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     const matNames = mats.map((m) => (m && "name" in m ? m.name : ""));
@@ -480,7 +483,7 @@ function CameraRig({
 }) {
   const { camera, controls, size } = useThree();
   const fit =
-    size.width < 640
+    size.width < COMPACT_VIEWPORT_WIDTH
       ? Math.min(
           MOBILE_CAMERA_MAX_FIT,
           Math.max(
@@ -527,7 +530,11 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
   const [autoRotate, setAutoRotate] = useState(true);
   const [coverage, setCoverage] = useState<CarCoverage>("full");
   const [environmentId, setEnvironmentId] = useState(DEFAULT_ENVIRONMENT_ID);
-  const environment = findEnvironment(environmentId);
+  const [renderedEnvironmentId, setRenderedEnvironmentId] =
+    useState<EnvironmentId>(DEFAULT_ENVIRONMENT_ID);
+  const [environmentChanging, setEnvironmentChanging] = useState(false);
+  const environmentTimer = useRef<number | null>(null);
+  const environment = findEnvironment(renderedEnvironmentId);
   const dprRange = useMemo<[number, number]>(
     () => [1, environment.quality.dprMax],
     [environment.quality.dprMax]
@@ -572,6 +579,53 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
   React.useEffect(() => {
     updateModelRailEdges();
   }, [modelId, updateModelRailEdges]);
+
+  React.useEffect(() => {
+    return () => {
+      if (environmentTimer.current !== null) {
+        window.clearTimeout(environmentTimer.current);
+      }
+    };
+  }, []);
+
+  const changeEnvironment = (id: EnvironmentId) => {
+    if (id === environmentId) return;
+
+    // Voltar ao cenário já renderizado enquanto outro bake está pendente não
+    // deve escurecer o palco sem qualquer mudança visual.
+    if (id === renderedEnvironmentId) {
+      if (environmentTimer.current !== null) {
+        window.clearTimeout(environmentTimer.current);
+        environmentTimer.current = null;
+      }
+      setEnvironmentId(id);
+      setEnvironmentChanging(false);
+      return;
+    }
+
+    setEnvironmentId(id);
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (environmentTimer.current !== null) {
+        window.clearTimeout(environmentTimer.current);
+        environmentTimer.current = null;
+      }
+      setRenderedEnvironmentId(id);
+      setEnvironmentChanging(false);
+      return;
+    }
+
+    setEnvironmentChanging(true);
+    if (environmentTimer.current !== null) {
+      window.clearTimeout(environmentTimer.current);
+    }
+    // O bake do novo environment map acontece sob o overlay para não haver flash.
+    environmentTimer.current = window.setTimeout(() => {
+      setRenderedEnvironmentId(id);
+      setEnvironmentChanging(false);
+      environmentTimer.current = null;
+    }, 150);
+  };
 
   const scrollModels = (direction: -1 | 1) => {
     const rail = modelRailRef.current;
@@ -641,7 +695,7 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
   return (
     <div className="relative w-full h-full">
       <Canvas
-        shadows={environment.quality.shadows}
+        shadows={environment.quality.shadows ? "percentage" : false}
         dpr={dprRange}
         camera={{ position: CAMERA_POSITIONS.threeQuarter, fov: 38, near: 0.1, far: 100 }}
         gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }}
@@ -676,6 +730,16 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
         </Suspense>
       </Canvas>
 
+      <div
+        aria-hidden="true"
+        style={{
+          backgroundColor: findEnvironment(environmentId).captureBackground,
+        }}
+        className={`pointer-events-none absolute inset-0 z-30 transition-opacity duration-150 motion-reduce:transition-none ${
+          environmentChanging ? "opacity-100" : "opacity-0"
+        }`}
+      />
+
       <div className="absolute top-2 left-2 z-20 flex w-[10.5rem] flex-col gap-1.5">
         <label className="relative flex w-full items-center gap-1.5 rounded-md border border-white/[0.08] bg-[#050606]/85 py-1.5 pl-2.5 pr-7 backdrop-blur-md">
           <Camera
@@ -708,7 +772,11 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
           />
         </label>
 
-        <EnvironmentSelector value={environmentId} onChange={setEnvironmentId} />
+        <EnvironmentSelector
+          value={environmentId}
+          onChange={changeEnvironment}
+          busy={environmentChanging}
+        />
       </div>
 
       {/* Zona de aplicação — só nos modelos com wrap parcial */}

@@ -1,15 +1,29 @@
 # Progresso — X-Flow
 
-_Última atualização: 26/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 28/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
-- Health: typecheck OK, lint OK, **348/348 testes (51 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada; endpoint público de propostas do site e Fases 1–2 dos cenários 3D criados (por commitar)
+- Health: typecheck OK, lint OK, **354/354 testes (52 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada; endpoint público de propostas do site e Fases 1–3 dos cenários 3D criados (por commitar)
 - **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `5dbe04c` (`fix: sincronizar package-lock com @emnapi runtime/core para npm ci`), com `5746ae1` e `a47136f` já enviados; integração Gemini ainda local. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
-- **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas; Fases 1–2 dos cenários 3D implementadas (Estúdio Dark + Oficina X-Motion, seletor compacto, oclusão e captura com cenário); alterações por commitar
+- **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas; **quatro cenários completos** (Estúdio Dark, Oficina X-Motion, Luz do Dia e Pôr do Sol) com sombras reais no exterior, céu/chão procedurais e seletor compacto; alterações por commitar
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 28/10/2026 — Simulador 3D: Fase 3 (sol e pôr do sol)
+
+- **Âmbito**: completar os quatro cenários com `outdoor-sun` e `golden-hour`, sem HDRI externo nem pós-processamento; `dark-studio` continua default.
+- **Configuração pura**: novo `src/lib/outdoor-scene.ts` com sol (elevação/azimute/distância/cor/intensidade), céu, chão, névoa, glow do sol e `shadowBounds` por cenário; helpers `sunDirection`, `isCompactViewport`, `shadowMapSizeForWidth` (512 px em mobile) e `environmentResolutionForWidth` (128 px em mobile).
+- **Cenários**: `OutdoorEnv.tsx` partilhado com céu em gradiente (`CanvasTexture`), disco/glow do sol em sprite, chão procedural de asfalto, luz hemisférica/ambiente e `directionalLight` com sombras reais; `OutdoorSunEnv.tsx` (6500K, elevação 46°, sombras curtas) e `GoldenHourEnv.tsx` (3200K, elevação 8,5°, sombras longas e horizonte quente). O environment map é procedural (`Environment` + `Lightformer`), incluindo o disco solar para reflexos na tinta.
+- **Sombra visível**: o sol passou para azimute lateral (88° de dia, 80° ao pôr do sol). Com o azimute quase frontal anterior (38°/64°), a sombra caía atrás da viatura e ficava escondida na câmara 3/4 — não era falha de `autoUpdate` nem do shadow map. Teste de regressão em `outdoor-scene.test.ts` exige azimute entre 70° e 110°.
+- **Qualidade**: `Canvas shadows="percentage"` evita o aviso de `PCFSoftShadowMap` deprecado; DPR máximo 1,75 no exterior, shadow map 1024→512 px e environment map 256→128 px abaixo de 640 px. Sombras direcionais mantêm-se em mobile (fallback para `ContactShadows` fica disponível se o teste de FPS o exigir).
+- **Recursos GPU**: `EnvironmentMapDisposer` liberta a textura PMREM no unmount/re-bake (o drei liberta o cubemap, não o PMREM); ao cruzar o breakpoint de 640 px a `directionalLight` é remontada por `key` (o three não redimensiona um shadow map existente) e o mapa antigo é libertado no cleanup.
+- **Transição**: seletor passa a trocar o cenário sob overlay de 150 ms; o environment map é remontado por `key` no ponto médio e as texturas/névoa são libertadas no unmount (sem flicker nem erro de consola).
+- **Calibração**: chão de dia baixado para cinza médio (`#6f7376`, roughness 0.74) por estar a estourar; validado com Brushed Aluminium (satin), Gloss Black, Gloss Dragon Fire Red, Gloss White e Stealth PPF (mate) nos dois cenários. O néon/oficina e o estúdio não foram alterados.
+- **Verificação**: `npm run typecheck`, `npm run lint`, `npm test` **354/354 (52 ficheiros)** e `npm run build` OK; produção local em `:3000`; 60 FPS em desktop no `outdoor-sun`; sombra confirmada na câmara 3/4 nos dois cenários, em desktop 1536 px e após resize para 390 px (light/shadow map recriados); capturas desktop/390/320 px; câmaras 3/4, frente, traseira e topo sem oclusões; PNG exportado opaco (`xflow-3d-outdoor-sun-stealth-ppf.png`, 864×414) com cenário, película, cobertura e atribuição; consola sem erros.
+- **Pendentes**: matriz visual com RAM 1500 TRX (5,92 m) e Rolls-Royce Ghost (5,55 m); medir FPS em telemóvel físico; decidir se o disco solar deve entrar no enquadramento de alguma câmara; Fase 4 (polimento de UI/testes de exportação/regressão).
+- **Skills/agentes**: `design-de-interfaces` e `vercel-react-best-practices`; exploração direta, sem subagentes nesta fase.
 
 ## Sessão 26/10/2026 — Simulador 3D: Fase 2 (oficina X-Motion)
 

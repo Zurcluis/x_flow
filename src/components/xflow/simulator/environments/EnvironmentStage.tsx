@@ -8,6 +8,8 @@ import { ContactShadows } from "@react-three/drei";
 import type { CarEnvironment } from "@/lib/car-environments";
 import { StudioDarkEnv } from "./StudioDarkEnv";
 import { XMotionWorkshopEnv } from "./XMotionWorkshopEnv";
+import { OutdoorSunEnv } from "./OutdoorSunEnv";
+import { GoldenHourEnv } from "./GoldenHourEnv";
 
 type SceneBackground = THREE.Scene["background"];
 
@@ -77,6 +79,20 @@ export function EnvironmentStage({
       {environment.id === "xmotion-workshop" ? (
         <XMotionWorkshopEnv
           resolution={environment.quality.environmentResolution}
+        />
+      ) : null}
+
+      {environment.id === "outdoor-sun" ? (
+        <OutdoorSunEnv
+          resolution={environment.quality.environmentResolution}
+          shadowMapSize={environment.quality.shadowMapSize}
+        />
+      ) : null}
+
+      {environment.id === "golden-hour" ? (
+        <GoldenHourEnv
+          resolution={environment.quality.environmentResolution}
+          shadowMapSize={environment.quality.shadowMapSize}
         />
       ) : null}
     </>

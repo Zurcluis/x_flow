@@ -10,6 +10,7 @@ import {
   shouldShowWorkshopCeiling,
   shouldShowWorkshopWall,
 } from "@/lib/workshop-scene";
+import { EnvironmentMapDisposer } from "./EnvironmentMapDisposer";
 
 interface NeonTube {
   key: string;
@@ -388,6 +389,7 @@ export function XMotionWorkshopEnv({ resolution }: { resolution: number }) {
           color="#dbe9ff"
         />
       </Environment>
+      <EnvironmentMapDisposer resolution={resolution} />
     </>
   );
 }

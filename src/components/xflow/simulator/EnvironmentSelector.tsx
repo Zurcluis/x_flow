@@ -28,9 +28,11 @@ const FOCUS_RING =
 export function EnvironmentSelector({
   value,
   onChange,
+  busy = false,
 }: {
   value: EnvironmentId;
   onChange: (id: EnvironmentId) => void;
+  busy?: boolean;
 }) {
   const current =
     CAR_ENVIRONMENTS.find((environment) => environment.id === value) ??
@@ -45,6 +47,7 @@ export function EnvironmentSelector({
         value={value}
         onChange={(event) => onChange(event.target.value as EnvironmentId)}
         aria-label="Cenário"
+        aria-busy={busy}
         title={current.name}
         className={`min-w-0 flex-1 appearance-none truncate bg-transparent text-[10px] font-bold uppercase tracking-wide text-[#d7dbdc] outline-none ${FOCUS_RING}`}
       >
