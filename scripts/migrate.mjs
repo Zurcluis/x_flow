@@ -305,6 +305,18 @@ if (!(await hasTable("assistant_conversations"))) {
   console.log("20260828000029 já aplicada.");
 }
 
+// 000030 — site público: leads do formulário e rate limit durável
+if (!(await hasTable("website_leads")) || !(await hasTable("api_rate_limits"))) {
+  const migration30 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000030_public_site.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration30);
+  console.log("OK: 20260828000030");
+} else {
+  console.log("20260828000030 já aplicada.");
+}
+
 // Backfill de passwords demo (idempotente): só preenche password_hash IS NULL
 const teamEmails = [
   "luis@xmotion.pt",

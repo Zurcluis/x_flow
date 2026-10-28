@@ -43,6 +43,12 @@ console.log(
   foreignCustomers.rows[0].n,
   "(devia ser 0 — RLS isolou)"
 );
+const foreignLeads = await client.query("SELECT count(*)::int AS n FROM website_leads");
+console.log(
+  "6c. SELECT website_leads com GUC de outra org:",
+  foreignLeads.rows[0].n,
+  "(devia ser 0 — RLS isolou)"
+);
 await client.query(
   "SELECT set_config('app.current_organization_id', $1, false)",
   [org.rows[0].org_id]
@@ -65,6 +71,8 @@ console.log("9. Perfis com password:", profiles.rows.map((r) => r.email).join(",
 await client.query("SELECT set_config('app.current_organization_id', '', false)");
 const denied = await client.query("SELECT count(*)::int AS n FROM customers");
 console.log("10. SELECT customers SEM GUC org:", denied.rows[0].n, "(devia ser 0 — RLS bloqueou)");
+const deniedLeads = await client.query("SELECT count(*)::int AS n FROM website_leads");
+console.log("10b. SELECT website_leads SEM GUC org:", deniedLeads.rows[0].n, "(devia ser 0 — RLS bloqueou)");
 
 await client.end();
 console.log("\nRLS verificada com a role xflow_app.");

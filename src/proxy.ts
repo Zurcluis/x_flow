@@ -12,7 +12,13 @@ const PUBLIC_PREFIXES = [
 ];
 
 function isPublicPath(pathname: string): boolean {
-  if (pathname === "/login" || pathname === "/api/health") return true;
+  if (
+    pathname === "/login" ||
+    pathname === "/api/health" ||
+    pathname === "/api/proposals"
+  ) {
+    return true;
+  }
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
