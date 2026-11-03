@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Building,
   ArrowRight,
@@ -65,7 +66,14 @@ export function SettingsView({
   location: LocationInfo | null;
   initialSettings: OrganizationSettings | null;
 }) {
-  const [activeTab, setActiveTab] = useState<"general" | "sidebar" | "pricing_jump">("general");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") === "sidebar" ? "sidebar" : "general";
+  const [activeTab, setActiveTab] = useState<"general" | "sidebar" | "pricing_jump">(initialTab);
+  const [prevUrlTab, setPrevUrlTab] = useState(initialTab);
+  if (prevUrlTab !== initialTab) {
+    setPrevUrlTab(initialTab);
+    setActiveTab(initialTab);
+  }
   const [isPending, startTransition] = useTransition();
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 

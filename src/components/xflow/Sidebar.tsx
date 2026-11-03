@@ -156,7 +156,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "hidden lg:flex flex-col border-r border-white/[0.08] bg-[#080a0b] py-5 transition-all duration-300 select-none z-30 shrink-0",
+        "hidden lg:flex flex-col sticky top-0 h-screen border-r border-white/[0.08] bg-[#080a0b] py-5 transition-all duration-300 select-none z-30 shrink-0",
         collapsed ? "w-[80px] px-2.5" : "w-[240px] px-4"
       )}
       aria-label="Navegação Principal"
@@ -188,8 +188,21 @@ export function Sidebar({
         ))}
       </nav>
 
-      {/* Collapse Action */}
-      <div className="pt-4 border-t border-white/[0.04] shrink-0">
+      {/* Pinned Settings + Collapse Action */}
+      <div className="pt-3 border-t border-white/[0.06] shrink-0 flex flex-col gap-1">
+        {role === "admin" && (
+          <Link
+            href="/settings?tab=sidebar"
+            className={cn(
+              "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-xs font-semibold text-[#f7d46d] bg-[#1f1b14]/60 border border-[#d3a548]/30 hover:bg-[#1f1b14] hover:border-[#d3a548]/60 transition-colors cursor-pointer",
+              collapsed && "justify-center px-2"
+            )}
+            title="Configurações e Personalizar Barra Lateral"
+          >
+            <Settings className="h-4 w-4 shrink-0 text-[#d3a548]" />
+            {!collapsed && <span className="truncate">Personalizar Menu</span>}
+          </Link>
+        )}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className={cn(

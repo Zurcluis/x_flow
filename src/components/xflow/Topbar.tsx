@@ -12,6 +12,8 @@ import {
   Search,
   LogOut,
   LogIn,
+  Settings,
+  Sliders,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CommandPaletteModal } from "@/components/xflow/search/CommandPaletteModal";
@@ -204,6 +206,26 @@ export function Topbar({
                         {user.email}
                       </span>
                     </div>
+                    {user.role === "admin" && (
+                      <>
+                        <Link
+                          href="/settings"
+                          onClick={() => setProfileOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-xs text-[#f1ede5] hover:text-[#f7d46d] hover:bg-white/[0.04] transition-colors"
+                        >
+                          <Settings className="h-3.5 w-3.5 text-[#d3a548]" />
+                          <span>Configurações do Sistema</span>
+                        </Link>
+                        <Link
+                          href="/settings?tab=sidebar"
+                          onClick={() => setProfileOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-sm text-xs text-[#f1ede5] hover:text-[#f7d46d] hover:bg-white/[0.04] transition-colors border-b border-white/[0.06]"
+                        >
+                          <Sliders className="h-3.5 w-3.5 text-[#d3a548]" />
+                          <span>Personalizar Barra Lateral</span>
+                        </Link>
+                      </>
+                    )}
                     <form action={logoutAction}>
                       <button
                         type="submit"
