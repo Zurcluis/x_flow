@@ -317,6 +317,36 @@ if (!(await hasTable("website_leads")) || !(await hasTable("api_rate_limits"))) 
   console.log("20260828000030 já aplicada.");
 }
 
+// 000031 — configurações da organização, itens universais e lead source
+if (!(await hasTable("organization_settings"))) {
+  const migration31 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000031_organization_settings_and_items.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration31);
+  console.log("OK: 20260828000031");
+} else {
+  console.log("20260828000031 já aplicada.");
+}
+
+// 000032 — operações Go-Live: sinal em orçamentos, movimentos/retalhos/encomendas de stock e pós-venda
+if (
+  !(await hasTable("material_remnants")) ||
+  !(await hasTable("purchase_orders")) ||
+  !(await hasTable("material_movements")) ||
+  !(await hasColumn("quotes", "deposit_status")) ||
+  !(await hasColumn("deliveries", "satisfaction_rating"))
+) {
+  const migration32 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000032_golive_operations_and_aftersales.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration32);
+  console.log("OK: 20260828000032");
+} else {
+  console.log("20260828000032 já aplicada.");
+}
+
 // Backfill de passwords demo (idempotente): só preenche password_hash IS NULL
 const teamEmails = [
   "luis@xmotion.pt",

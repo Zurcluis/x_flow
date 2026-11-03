@@ -92,6 +92,13 @@ export function ClientPortalView({
       ? "expired"
       : status;
 
+  const depositPercentage =
+    quote.depositPercentage && quote.depositPercentage > 0
+      ? quote.depositPercentage
+      : 30;
+  const showDepositCondition =
+    Boolean(quote.depositRequired) || (quote.depositPercentage ?? 0) > 0;
+
   const handleAccept = async (optionId: string) => {
     setBusy(optionId);
     setError(null);
@@ -262,6 +269,20 @@ export function ClientPortalView({
                       {formatCurrency(opt.vatAmount)}
                     </span>
                   </div>
+                  {showDepositCondition && (
+                    <div className="flex flex-col gap-0.5 pt-1.5 mt-1 border-t border-white/[0.06]">
+                      <span className="font-semibold text-[#f7d46d]">
+                        Sinal de Adjudicação ({depositPercentage}%):{" "}
+                        {formatCurrency(
+                          Math.round(opt.totalWithVat * (depositPercentage / 100) * 100) / 100
+                        )}{" "}
+                        para reserva de material e vaga na agenda
+                      </span>
+                      <span className="font-mono text-[10px] text-[#a9adae]">
+                        IBAN X-Motion: PT50 0036 0096 9910 0129 8892 6
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {canDecide && (

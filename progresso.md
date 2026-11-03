@@ -1,15 +1,58 @@
 # Progresso — X-Flow
 
-_Última atualização: 28/10/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 03/11/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
-- X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada)
-- Health: typecheck OK, lint OK, **354/354 testes (52 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada; endpoint público de propostas do site e Fases 1–3 dos cenários 3D criados (por commitar)
-- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `5dbe04c` (`fix: sincronizar package-lock com @emnapi runtime/core para npm ci`), com `5746ae1` e `a47136f` já enviados; integração Gemini ainda local. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
+- X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada; **363/363 testes em 54 ficheiros**, 62 tabelas com RLS)
+- Health: typecheck OK, lint OK, **354/354 testes (52 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada; endpoint público de propostas do site e Fases 1–3 dos cenários 3D commitados e enviados
+- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `55266c7` (`feat: luz do dia e pôr do sol no simulador 3D`), sincronizado, com `b8131bb` (`feat: endpoint público de propostas do site`) imediatamente antes. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
-- **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas; **quatro cenários completos** (Estúdio Dark, Oficina X-Motion, Luz do Dia e Pôr do Sol) com sombras reais no exterior, céu/chão procedurais e seletor compacto; alterações por commitar
+- **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas; **quatro cenários completos** (Estúdio Dark, Oficina X-Motion, Luz do Dia e Pôr do Sol) com sombras reais no exterior, céu/chão procedurais e seletor compacto; Fase 3 commitada (`55266c7`)
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+
+## Sessão 03/11/2026 — Execução Completa Go-Live (Blocos 1 a 4 — Ciclo Operacional de 13 Passos)
+
+- **Objetivo**: Concluir os 4 blocos do plano de Go-Live (Receção -> Diagnóstico -> Amostras -> Orçamento c/ Sinal -> Material/Encomendas -> Agenda -> Check-in -> Corte/Retalhos + Execução -> QC Persistido -> Entrega/Passaporte/Garantia -> Pagamento Sinal + Liquidação -> Satisfação + Google Review -> Revisão D+30).
+- **Bloco 1 (Fecho 100% — CRM, Caixa de Leads, Viaturas/Objetos e Edição Universal)**:
+  - **Viaturas, Embarcações e Objetos Avulsos (`src/server/vehicles.ts`, `VehicleFormModal.tsx`, `VehiclesView.tsx`, `VehiclePassportView.tsx`)**: suporte completo a `itemType` (`vehicle` vs `object`), criação de barcos, capacetes, peças soltas e outros objetos sem matrícula obrigatória, filtros por categoria e edição completa (`updateVehicleAction`) no passaporte.
+  - **CRM, Arquivo e Caixa de Leads do Site (`src/server/customers.ts`, `src/server/website-leads.ts`, `CustomersView.tsx`, `CustomerDetailView.tsx`)**: edição e arquivo/restauro de clientes na UI, campo `source` (`CUSTOMER_SOURCE_LABELS`), aba de Arquivados e aba **Leads do Site** com conversão num clique (`convertWebsiteLeadToCustomer`).
+  - **Equipa e Fornecedores Editáveis (`TeamView.tsx`, `TeamMemberFormModal.tsx`, `KitsSuppliersTab.tsx`, `src/server/pricing.ts`)**: edição completa e estado rápido de colaboradores em `/team`; listagem e edição de todos os fornecedores (incluindo telefone, email, notas e serviços/kits inativos) em `/settings/pricing`.
+- **Migração 32 Aplicada (`20260828000032_golive_operations_and_aftersales.sql`)**:
+  - Colunas de sinal em `quotes` (`deposit_required`, `deposit_percentage`, `deposit_amount`, `deposit_status`, `deposit_paid_at`, `deposit_payment_method`).
+  - Tabelas `material_movements`, `material_remnants` (retalhos com medidas `width_cm × length_cm` e localização) e `purchase_orders` (encomendas a fornecedores).
+  - Colunas de pós-venda em `deliveries` (`satisfaction_rating`, `satisfaction_comment`, `satisfaction_submitted_at`, `google_review_clicked`, `followup_d7_sent_at`, `review_d30_scheduled_at`, `review_d30_completed_at`, `review_d30_notes`).
+  - RLS e `GRANT` a `xflow_app` verificados (`node scripts/verify-rls.mjs`: 62 tabelas com RLS, 66 políticas).
+- **Bloco 2 (Orçamentos com Sinal, Stock de Rolos, Corte por Metro, Retalhos e Encomendas)**:
+  - **Orçamentos e Sinal (`src/server/quotes.ts`, `QuoteDetailView.tsx`, `PublicQuoteView.tsx`, `ClientPortalView.tsx`)**: cálculo automático do sinal a partir de `organization_settings`, exibição das condições e IBAN na proposta pública/portal, registo de sinal recebido (`registerQuoteDepositAction`) com lançamento automático em `transactions` (tesouraria) e botão WhatsApp com telefone normalizado e Template T1.
+  - **Stock, Corte, Retalhos e Encomendas (`src/server/materials.ts`, `src/app/actions/materials.ts`, `StockView.tsx`, `MaterialUsageWidget.tsx`)**: criação/edição de materiais e entrada de rolos, registo de corte por metro (com desconto no lote, registo na obra e opção de guardar sobra como retalho), aba **Retalhos Aproveitáveis** (medidas, área m², localização e utilização) e aba **Encomendas a Fornecedores** com envio direto por WhatsApp/Email e receção automática de rolo em stock.
+- **Blocos 3 e 4 (QC Persistido, Entrega c/ Garantia e Fatura Automática, Inquérito Google Review e Pós-Venda D+7/D+30)**:
+  - **Controlo de Qualidade Persistido (`src/server/production.ts`, `QcInspectionView.tsx`)**: `getOrCreateQcInspection` e `saveQcInspection` gravam em `qc_inspections` e `qc_items`, geram `certificate_number` (`QC-YYYY-XXXXXX-PASS`) e concluem a fase `quality_control` e a Ordem de Trabalho.
+  - **Entrega Automática + Abatimento de Sinal + WhatsApp (`src/server/deliveries.ts`, `DeliveryDetailView.tsx`, `CheckinDetailView.tsx`)**: `createDelivery` agenda `review_d30_scheduled_at` (+30 dias), emite automaticamente o certificado em `warranties` (5 anos) e a fatura espelho em `invoices` + `invoice_lines` (abatendo automaticamente o sinal de adjudicação já pago em `quotes` e calculando o saldo remanescente na entrega); adicionados botões WhatsApp no Check-in (Template T2) e na Entrega (Template T4 + link de satisfação).
+  - **Pós-Venda: Inquérito de Satisfação + Google Review + D+7/D+30 (`/feedback/[token]`, `DeliveriesView.tsx`, `src/server/dashboard.ts`)**: página pública standalone `/feedback/[token]` (1–5 estrelas; notas 4–5 destacam botão direto para o `googleReviewUrl` configurado em `/settings`; notas 1–3 encaminham para acompanhamento interno do Luís), painel acionável de Pós-Venda D+7 e Revisão D+30 em `/deliveries`, alertas determinísticos D+7/D+30 e KPI real de Satisfação no Centro de Comando (`/`).
+  - **Passos 2 e 3 no Passaporte da Viatura (`src/server/vehicles.ts`, `VehiclePassportView.tsx`)**: criação e remoção de notas de Diagnóstico Técnico, Estado da Pintura/Carroçaria e Curadoria de 3 Amostras com templates rápidos e projeção automática na timeline da viatura.
+- **Verificação**: `npm run typecheck` OK, `npm run lint` 0 erros, `npm test` **363/363 (54 ficheiros)** OK, `npm run build` OK, E2E no browser (`1440px` e `390px`) **12/12 checks PASS** com 0 erros de consola.
+- **Skills/agentes**: `design-de-interfaces`, `supabase-postgres-best-practices`, `vercel-react-best-practices`, `seguranca-owasp`, `tdd` e `verification-before-completion`; 3 agentes `research` (auditoria inicial) + 6 agentes `self` em 2 ondas paralelas (1A/1B/1C e 2A/2B/3-4).
+
+## Sessão 29/10/2026 — Planeamento e Alinhamento Go-Live (Meta: 1 Mês)
+
+- **Objetivo**: Fechar o ciclo operacional ponta a ponta da oficina em 4 semanas (~30 dias), congelando módulos secundários (simulador 3D, IA, site) e focando no essencial de negócio.
+- **Processo Base (13 Passos)**:
+  1. Receção (Lead / Balcão) -> 2. Diagnóstico Técnico -> 3. Solução / Amostras -> 4. Orçamento (Modular / Sinal) -> 5. Material (Verificação / Encomenda) -> 6. Agenda Universal -> 7. Check-in (Fotos / Danos) -> 8. Corte (Rolos + Retalhos) + Execução -> 9. Verificação (QC Persistido) -> 10. Entrega (Passaporte / Garantia) -> 11. Pagamento (Sinal + Liquidação) -> 12. Satisfação (Inquérito + Google Review) -> 13. Revisão D+30.
+- **Decisões Registadas com o Luís**:
+  1. **Itens**: Suporta carros, motas, barcos, autocaravanas, camiões, bem como capacetes, peças soltas e "Outro" (descrição livre, sem matrícula obrigatória).
+  2. **Sinal**: Obrigatório na aprovação do orçamento, com percentagem/valor configurável em Configurações.
+  3. **Google Review**: Integrado com Google Business (perfil registado; link direto a configurar nas definições).
+  4. **Encomendas a Fornecedores**: Envio direto por WhatsApp e Email com PDF/resumo.
+  5. **Corte e Retalhos**: Registo por metro e gestão de retalhos (sobras úteis com medidas, película e localização).
+  6. **Menu / Barra Lateral**: Configurável pelo Luís na própria app em Configurações (ativação/desativação de módulos).
+  7. **Tudo Editável**: Página central de Configurações para editar preços, sinal, fórmulas, catálogo, pós-venda e barra lateral; clientes, fornecedores e colaboradores com edição/arquivo completo.
+- **Estado Atual da Execução (Semana 1 - Bloco 1 Concluído)**:
+  - **Migração 31 Aplicada**: tabela `organization_settings` criada com RLS, campos de review Google Business, regras de sinal (`deposit_required`, `deposit_percentage`) e `sidebar_visible_items`. Coluna `source` adicionada em `customers`. `vehicles` alargado para aceitar barcos (`boat`), autocaravanas (`motorhome`), camiões (`truck`), capacetes (`helmet`), peças soltas (`part`) e `other`, com matrículas facultativas para objetos.
+  - **Configurações Centrais Implementadas**: novo ecrã `/settings` com separadores (Geral/Pós-venda e Barra Lateral), persistência via Server Action `updateOrganizationSettingsAction` e `src/server/settings.ts`.
+  - **Barra Lateral Dinâmica**: `Sidebar` e `AppShell` agora filtram os módulos que o Luís ocultar nas configurações em tempo real, mantendo a interface leve.
+  - **CRM/Clientes com Edição/Arquivo**: adicionados métodos `updateCustomer` e `archiveCustomer` em `src/server/customers.ts` e `src/app/actions/customers.ts`.
+  - **Verificação**: `npm test` 354/354 (52 ficheiros) OK, `typecheck` OK, `lint` 0 erros, `build` de produção OK.
 
 ## Sessão 28/10/2026 — Simulador 3D: Fase 3 (sol e pôr do sol)
 
@@ -22,6 +65,7 @@ _Última atualização: 28/10/2026. Ficheiro de continuação de sessão — diz
 - **Transição**: seletor passa a trocar o cenário sob overlay de 150 ms; o environment map é remontado por `key` no ponto médio e as texturas/névoa são libertadas no unmount (sem flicker nem erro de consola).
 - **Calibração**: chão de dia baixado para cinza médio (`#6f7376`, roughness 0.74) por estar a estourar; validado com Brushed Aluminium (satin), Gloss Black, Gloss Dragon Fire Red, Gloss White e Stealth PPF (mate) nos dois cenários. O néon/oficina e o estúdio não foram alterados.
 - **Verificação**: `npm run typecheck`, `npm run lint`, `npm test` **354/354 (52 ficheiros)** e `npm run build` OK; produção local em `:3000`; 60 FPS em desktop no `outdoor-sun`; sombra confirmada na câmara 3/4 nos dois cenários, em desktop 1536 px e após resize para 390 px (light/shadow map recriados); capturas desktop/390/320 px; câmaras 3/4, frente, traseira e topo sem oclusões; PNG exportado opaco (`xflow-3d-outdoor-sun-stealth-ppf.png`, 864×414) com cenário, película, cobertura e atribuição; consola sem erros.
+- **Commit/push**: Fase 3 em `55266c7` (`feat: luz do dia e pôr do sol no simulador 3D`); o endpoint público ficou no commit anterior `b8131bb` (`feat: endpoint público de propostas do site`); ambos enviados para `origin/main`. Continuam por commitar apenas artefactos locais: `docs/X-motion/` (sensível), `public/oficina/`, screenshots/referências (`site-*.png`, `reference-*`, `screens/`).
 - **Pendentes**: matriz visual com RAM 1500 TRX (5,92 m) e Rolls-Royce Ghost (5,55 m); medir FPS em telemóvel físico; decidir se o disco solar deve entrar no enquadramento de alguma câmara; Fase 4 (polimento de UI/testes de exportação/regressão).
 - **Skills/agentes**: `design-de-interfaces` e `vercel-react-best-practices`; exploração direta, sem subagentes nesta fase.
 

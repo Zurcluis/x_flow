@@ -3,10 +3,15 @@ import { WorkOrder } from "@/domains/checkins/types";
 import {
   MaterialUsage,
   PhaseKey,
+  QCCategory,
+  QCInspection,
+  QCItem,
+  QCItemStatus,
   WorkOrderChecklistItem,
   WorkOrderPhase,
   WorkOrderTimeEntry,
 } from "@/domains/production/types";
+import { initialBMWQCInspection } from "@/lib/demo-data/production-phases-data";
 
 type Row = Record<string, unknown>;
 
@@ -495,6 +500,363 @@ export async function addTimeEntry(
   } catch (e) {
     await client.query("ROLLBACK").catch(() => {});
     return { ok: false, error: e instanceof Error ? e.message : "Erro ao registar horas." };
+  } finally {
+    client.release();
+  }
+}
+
+const VALID_QC_CATEGORIES: readonly QCCategory[] = [
+  "finish",
+  "edges",
+  "alignment",
+  "cleanliness",
+  "safety",
+];
+
+const VALID_QC_ITEM_STATUSES: readonly QCItemStatus[] = ["pass", "fail", "na"];
+
+function normalizeQcCategory(value: unknown): QCCategory {
+  const str = String(value ?? "finish") as QCCategory;
+  return VALID_QC_CATEGORIES.includes(str) ? str : "finish";
+}
+
+function normalizeQcItemStatus(value: unknown): QCItemStatus {
+  const str = String(value ?? "pass") as QCItemStatus;
+  return VALID_QC_ITEM_STATUSES.includes(str) ? str : "pass";
+}
+
+function mapQcItem(r: Row): QCItem {
+  return {
+    id: String(r.id),
+    criterionName: String(r.criterion_name),
+    category: normalizeQcCategory(r.category),
+    status: normalizeQcItemStatus(r.status),
+    reworkNotes: (r.rework_notes as string) ?? undefined,
+    resolvedAt: r.resolved_at ? iso(r.resolved_at) : undefined,
+    photoUrl: (r.photo_url as string) ?? undefined,
+  };
+}
+
+function mapQcInspection(
+  r: Row,
+  woRow: Row,
+  itemRows: Row[]
+): QCInspection {
+  const rawStatus = String(r.status ?? "in_rework");
+  const status: QCInspection["status"] =
+    rawStatus === "passed" || rawStatus === "failed" || rawStatus === "in_rework"
+      ? rawStatus
+      : "in_rework";
+
+  return {
+    id: String(r.id),
+    workOrderId: String(r.work_order_id),
+    vehiclePlate: String(woRow.plate_display ?? ""),
+    vehicleModel: String(woRow.vehicle_model ?? ""),
+    customerName: String(woRow.customer_name ?? ""),
+    inspectorName: String(r.inspector_name ?? "Inspetor QC"),
+    status,
+    items: itemRows.map(mapQcItem),
+    overallNotes: (r.overall_notes as string) ?? undefined,
+    certificateNumber: (r.certificate_number as string) ?? undefined,
+    approvedAt: r.approved_at ? iso(r.approved_at) : undefined,
+    signatureDataUrl: (r.signature_data_url as string) ?? undefined,
+    createdAt: r.created_at ? iso(r.created_at) : new Date().toISOString(),
+  };
+}
+
+export async function getOrCreateQcInspection(
+  organizationId: string,
+  workOrderId: string,
+  inspectorName: string
+): Promise<QCInspection> {
+  assertUuid(organizationId, "Organização");
+  assertUuid(workOrderId, "Ordem de trabalho");
+  const inspector = inspectorName.trim().slice(0, 100) || "Equipa QC";
+
+  const db = getDb();
+  const client = (await db.connect()) as PgExecutor & { release: () => void };
+  try {
+    await client.query("BEGIN");
+
+    const { rows: woRows } = await client.query(
+      `SELECT w.id, v.plate_display, v.make || ' ' || v.model AS vehicle_model,
+              c.name AS customer_name
+       FROM work_orders w
+       JOIN vehicles v ON v.id = w.vehicle_id
+       JOIN customers c ON c.id = w.customer_id
+       WHERE w.id = $1 AND w.organization_id = $2
+       FOR UPDATE OF w`,
+      [workOrderId, organizationId]
+    );
+    if (woRows.length === 0) {
+      throw new Error("Ordem de trabalho não encontrada.");
+    }
+    const woRow = woRows[0];
+
+    const { rows: existingInspections } = await client.query(
+      `SELECT * FROM qc_inspections
+       WHERE work_order_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [workOrderId]
+    );
+
+    let inspectionRow: Row;
+    if (existingInspections.length === 0) {
+      const { rows: createdRows } = await client.query(
+        `INSERT INTO qc_inspections (work_order_id, inspector_name, status, overall_notes)
+         VALUES ($1, $2, 'in_rework', NULL)
+         RETURNING *`,
+        [workOrderId, inspector]
+      );
+      inspectionRow = createdRows[0];
+
+      for (const seedItem of initialBMWQCInspection.items) {
+        await client.query(
+          `INSERT INTO qc_items (inspection_id, criterion_name, category, status)
+           VALUES ($1, $2, $3, $4)`,
+          [
+            String(inspectionRow.id),
+            seedItem.criterionName,
+            normalizeQcCategory(seedItem.category),
+            normalizeQcItemStatus(seedItem.status),
+          ]
+        );
+      }
+    } else {
+      inspectionRow = existingInspections[0];
+    }
+
+    let { rows: itemRows } = await client.query(
+      `SELECT * FROM qc_items
+       WHERE inspection_id = $1
+       ORDER BY id`,
+      [String(inspectionRow.id)]
+    );
+
+    if (itemRows.length === 0) {
+      for (const seedItem of initialBMWQCInspection.items) {
+        await client.query(
+          `INSERT INTO qc_items (inspection_id, criterion_name, category, status)
+           VALUES ($1, $2, $3, $4)`,
+          [
+            String(inspectionRow.id),
+            seedItem.criterionName,
+            normalizeQcCategory(seedItem.category),
+            normalizeQcItemStatus(seedItem.status),
+          ]
+        );
+      }
+      const reloaded = await client.query(
+        `SELECT * FROM qc_items WHERE inspection_id = $1 ORDER BY id`,
+        [String(inspectionRow.id)]
+      );
+      itemRows = reloaded.rows;
+    }
+
+    await client.query("COMMIT");
+    return mapQcInspection(inspectionRow, woRow, itemRows);
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function saveQcInspection(
+  organizationId: string,
+  workOrderId: string,
+  input: {
+    inspectorName: string;
+    overallNotes?: string;
+    items: Array<{
+      id?: string;
+      criterionName: string;
+      category: string;
+      status: "pass" | "fail" | "na";
+      reworkNotes?: string;
+    }>;
+    finalizeApprove?: boolean;
+  }
+): Promise<QCInspection> {
+  assertUuid(organizationId, "Organização");
+  assertUuid(workOrderId, "Ordem de trabalho");
+
+  const inspector = input.inspectorName.trim().slice(0, 100) || "Equipa QC";
+  const overallNotes = input.overallNotes?.trim().slice(0, 2000) || null;
+  if (!Array.isArray(input.items) || input.items.length === 0) {
+    throw new Error("A inspeção QC requer os critérios de avaliação.");
+  }
+
+  const hasFailures = input.items.some((item) => item.status === "fail");
+  if (input.finalizeApprove && hasFailures) {
+    throw new Error(
+      "Não é possível aprovar o Controlo de Qualidade enquanto existirem critérios reprovados."
+    );
+  }
+
+  const db = getDb();
+  const client = (await db.connect()) as PgExecutor & { release: () => void };
+  try {
+    await client.query("BEGIN");
+
+    const { rows: woRows } = await client.query(
+      `SELECT w.id, v.plate_display, v.make || ' ' || v.model AS vehicle_model,
+              c.name AS customer_name
+       FROM work_orders w
+       JOIN vehicles v ON v.id = w.vehicle_id
+       JOIN customers c ON c.id = w.customer_id
+       WHERE w.id = $1 AND w.organization_id = $2
+       FOR UPDATE OF w`,
+      [workOrderId, organizationId]
+    );
+    if (woRows.length === 0) {
+      throw new Error("Ordem de trabalho não encontrada.");
+    }
+    const woRow = woRows[0];
+
+    const { rows: existingInspections } = await client.query(
+      `SELECT * FROM qc_inspections
+       WHERE work_order_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1
+       FOR UPDATE`,
+      [workOrderId]
+    );
+
+    let inspectionId: string;
+    let existingCertNumber: string | null = null;
+    if (existingInspections.length === 0) {
+      const { rows: createdRows } = await client.query(
+        `INSERT INTO qc_inspections (work_order_id, inspector_name, status, overall_notes)
+         VALUES ($1, $2, 'in_rework', $3)
+         RETURNING *`,
+        [workOrderId, inspector, overallNotes]
+      );
+      inspectionId = String(createdRows[0].id);
+    } else {
+      inspectionId = String(existingInspections[0].id);
+      existingCertNumber = (existingInspections[0].certificate_number as string) ?? null;
+    }
+
+    for (const item of input.items) {
+      const status = normalizeQcItemStatus(item.status);
+      const category = normalizeQcCategory(item.category);
+      const criterionName = item.criterionName.trim().slice(0, 255);
+      const reworkNotes =
+        status === "fail" ? item.reworkNotes?.trim().slice(0, 1000) || null : null;
+
+      let updatedCount = 0;
+      if (item.id && UUID_PATTERN.test(item.id)) {
+        const { rows: updated } = await client.query(
+          `UPDATE qc_items
+           SET status = $1,
+               rework_notes = $2,
+               resolved_at = CASE WHEN $1 = 'pass' AND status = 'fail' THEN NOW() ELSE resolved_at END
+           WHERE id = $3 AND inspection_id = $4
+           RETURNING id`,
+          [status, reworkNotes, item.id, inspectionId]
+        );
+        updatedCount = updated.length;
+      }
+
+      if (updatedCount === 0) {
+        const { rows: updatedByCriterion } = await client.query(
+          `UPDATE qc_items
+           SET status = $1,
+               rework_notes = $2,
+               resolved_at = CASE WHEN $1 = 'pass' AND status = 'fail' THEN NOW() ELSE resolved_at END
+           WHERE inspection_id = $3 AND criterion_name = $4
+           RETURNING id`,
+          [status, reworkNotes, inspectionId, criterionName]
+        );
+        if (updatedByCriterion.length === 0) {
+          await client.query(
+            `INSERT INTO qc_items (inspection_id, criterion_name, category, status, rework_notes)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [inspectionId, criterionName, category, status, reworkNotes]
+          );
+        }
+      }
+    }
+
+    let updatedInspectionRow: Row;
+    if (input.finalizeApprove) {
+      const certNum =
+        existingCertNumber ||
+        `QC-${new Date().getFullYear()}-${workOrderId.slice(0, 6).toUpperCase()}-PASS`;
+
+      const { rows: updatedInsp } = await client.query(
+        `UPDATE qc_inspections
+         SET inspector_name = $2,
+             overall_notes = $3,
+             status = 'passed',
+             approved_at = NOW(),
+             certificate_number = $4
+         WHERE id = $1
+         RETURNING *`,
+        [inspectionId, inspector, overallNotes, certNum]
+      );
+      updatedInspectionRow = updatedInsp[0];
+
+      await client.query(
+        `UPDATE work_order_checklist_items ci
+         SET is_completed = TRUE,
+             completed_by_name = COALESCE(ci.completed_by_name, $2),
+             completed_at = COALESCE(ci.completed_at, NOW())
+         FROM work_order_phases ph
+         WHERE ci.phase_id = ph.id
+           AND ph.work_order_id = $1
+           AND ph.phase_key = 'quality_control'
+           AND ci.is_completed = FALSE`,
+        [workOrderId, inspector]
+      );
+
+      await client.query(
+        `UPDATE work_order_phases
+         SET status = 'completed',
+             started_at = COALESCE(started_at, NOW()),
+             completed_at = COALESCE(completed_at, NOW()),
+             actual_hours = CASE WHEN actual_hours > 0 THEN actual_hours ELSE estimated_hours END
+         WHERE work_order_id = $1 AND phase_key = 'quality_control'`,
+        [workOrderId]
+      );
+
+      await client.query(
+        `UPDATE work_orders
+         SET status = 'completed',
+             progress_percentage = 100,
+             completed_at = COALESCE(completed_at, NOW()),
+             updated_at = NOW()
+         WHERE id = $1 AND organization_id = $2`,
+        [workOrderId, organizationId]
+      );
+    } else {
+      const nextStatus = hasFailures ? "failed" : "in_rework";
+      const { rows: updatedInsp } = await client.query(
+        `UPDATE qc_inspections
+         SET inspector_name = $2,
+             overall_notes = $3,
+             status = $4
+         WHERE id = $1
+         RETURNING *`,
+        [inspectionId, inspector, overallNotes, nextStatus]
+      );
+      updatedInspectionRow = updatedInsp[0];
+    }
+
+    const { rows: itemRows } = await client.query(
+      `SELECT * FROM qc_items WHERE inspection_id = $1 ORDER BY id`,
+      [inspectionId]
+    );
+
+    await client.query("COMMIT");
+    return mapQcInspection(updatedInspectionRow, woRow, itemRows);
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
   } finally {
     client.release();
   }

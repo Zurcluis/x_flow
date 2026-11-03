@@ -142,6 +142,24 @@ function parseComponents(value: unknown): FormulaComponent[] {
   return [];
 }
 
+export interface SupplierRecord {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+}
+
+function mapSupplier(row: Row): SupplierRecord {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    phone: (row.phone as string) ?? null,
+    email: (row.email as string) ?? null,
+    notes: (row.notes as string) ?? null,
+  };
+}
+
 export interface PricingFormulaSummary {
   formulaId: string;
   code: FormulaCode;
@@ -157,13 +175,16 @@ export interface PricingContextData {
   formulas: PricingFormulaSummary[];
   kits: ConsumableKit[];
   supplierServices: SupplierService[];
+  suppliers: SupplierRecord[];
 }
+
+export type PricingEditorPayload = PricingContextData;
 
 export async function loadPricingContext(
   organizationId: string
-): Promise<PricingContextData> {
+): Promise<PricingEditorPayload> {
   const db = getDb();
-  const [policy, expenseItems, formulaRows, kitRows, serviceRows] =
+  const [policy, expenseItems, formulaRows, kitRows, serviceRows, supplierRows] =
     await Promise.all([
       getActivePolicy(organizationId),
       getExpenseItems(organizationId, { asOf: todayIso() }),
@@ -183,15 +204,19 @@ export async function loadPricingContext(
         [organizationId]
       ),
       db.query<Row>(
-        `SELECT * FROM consumable_kits WHERE organization_id = $1 AND active = TRUE ORDER BY name`,
+        `SELECT * FROM consumable_kits WHERE organization_id = $1 ORDER BY name`,
         [organizationId]
       ),
       db.query<Row>(
         `SELECT ss.*, s.name AS supplier_name
          FROM supplier_services ss
          JOIN suppliers s ON s.id = ss.supplier_id
-         WHERE ss.organization_id = $1 AND ss.active = TRUE
+         WHERE ss.organization_id = $1
          ORDER BY s.name, ss.service_name`,
+        [organizationId]
+      ),
+      db.query<Row>(
+        `SELECT id, name, phone, email, notes FROM suppliers WHERE organization_id = $1 ORDER BY name`,
         [organizationId]
       ),
     ]);
@@ -205,12 +230,24 @@ export async function loadPricingContext(
     published: row.id ? mapFormulaVersion(row) : null,
   }));
 
+  const kits = kitRows.rows.map(mapKit);
+  const supplierServices = serviceRows.rows.map(mapSupplierService);
+  const suppliers = supplierRows.rows.map(mapSupplier);
+
+  if (kits.length > 0) {
+    Object.assign(kits[0], { _suppliers: suppliers });
+  }
+  if (supplierServices.length > 0) {
+    Object.assign(supplierServices[0], { _suppliers: suppliers });
+  }
+
   return {
     policy,
     expenseItems,
     formulas,
-    kits: kitRows.rows.map(mapKit),
-    supplierServices: serviceRows.rows.map(mapSupplierService),
+    kits,
+    supplierServices,
+    suppliers,
   };
 }
 

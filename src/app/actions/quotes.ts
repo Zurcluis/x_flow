@@ -11,10 +11,11 @@ import {
   getQuoteByToken,
   loadDraftQuote,
   quoteErrorMessage,
+  registerQuoteDepositPayment,
   rejectQuote,
   updateDraftQuote,
 } from "@/server/quotes";
-import type { CreateQuoteInput, DraftQuoteData } from "@/domains/quotes/types";
+import type { CreateQuoteInput, DraftQuoteData, Quote } from "@/domains/quotes/types";
 
 export type ApproveQuoteResult =
   | { ok: true; workOrderId: string }
@@ -263,6 +264,39 @@ export async function approvePublicQuoteAction(
     return {
       ok: false,
       error: quoteErrorMessage(e, "Erro ao aprovar o orçamento."),
+    };
+  }
+}
+
+export type RegisterQuoteDepositResult =
+  | { ok: true; quote: Quote }
+  | { ok: false; error: string };
+
+export async function registerQuoteDepositAction(
+  quoteId: string,
+  input: { amount?: number; paymentMethod?: string }
+): Promise<RegisterQuoteDepositResult> {
+  const auth = await requireRole(SCHEDULING_ROLES);
+  try {
+    if (!quoteId) {
+      return { ok: false, error: "Orçamento não indicado." };
+    }
+    const quote = await registerQuoteDepositPayment(
+      auth.organizationId,
+      quoteId,
+      input
+    );
+    revalidatePath("/quotes");
+    revalidatePath(`/quotes/${quoteId}`);
+    revalidatePath(`/quotes/public/${quote.publicToken}`);
+    revalidatePath(`/portal/${quote.publicToken}`);
+    revalidatePath("/finance");
+    revalidatePath("/finance/movements");
+    return { ok: true, quote };
+  } catch (e) {
+    return {
+      ok: false,
+      error: quoteErrorMessage(e, "Erro ao registar o pagamento do sinal."),
     };
   }
 }

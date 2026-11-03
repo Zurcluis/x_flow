@@ -19,12 +19,31 @@ interface QuoteCardProps {
   appOrigin?: string;
 }
 
+function normalizeWhatsAppPhone(phone?: string): string {
+  const raw = (phone ?? "").replace(/\D/g, "");
+  if (!raw) return "";
+  if (raw.startsWith("00")) return raw.slice(2);
+  if (raw.length === 9) return `351${raw}`;
+  return raw;
+}
+
 export function QuoteCard({ quote, onCopyLink, appOrigin = "" }: QuoteCardProps) {
   // Find recommended or approved option
   const mainOption =
     quote.options.find((o) => o.id === quote.selectedOptionId) ||
     quote.options.find((o) => o.isRecommended) ||
     quote.options[0];
+
+  const depositPercentage =
+    quote.depositPercentage && quote.depositPercentage > 0
+      ? quote.depositPercentage
+      : 30;
+  const depositAmount =
+    (quote.depositAmount ?? 0) > 0
+      ? Number(quote.depositAmount)
+      : mainOption
+        ? Math.round(mainOption.totalWithVat * (depositPercentage / 100) * 100) / 100
+        : 0;
 
   const getStatusBadge = (status: Quote["status"]) => {
     switch (status) {
@@ -44,9 +63,17 @@ export function QuoteCard({ quote, onCopyLink, appOrigin = "" }: QuoteCardProps)
     }
   };
 
+  const publicQuoteUrl = `${appOrigin}/quotes/public/${quote.publicToken}`;
+  const depositLine = quote.depositRequired
+    ? `\n\n📌 Sinal de adjudicação (${depositPercentage}%): ${formatCurrency(depositAmount)} para reserva de material e vaga na agenda.`
+    : "";
   const whatsappMessage = encodeURIComponent(
-    `Olá ${quote.customerName}, segue a proposta comercial para o seu ${quote.vehicleModel} (${quote.vehiclePlate}):\n${appOrigin}/quotes/public/${quote.publicToken}`
+    `Olá, ${quote.customerName}! Foi um gosto recebê-lo hoje na X-Motion.\n\nPreparei a sua proposta para o ${quote.vehicleModel} (${quote.vehiclePlate}), detalhando os materiais, as fases do trabalho e as opções que analisámos.\n\nPode consultar a proposta completa e interativa aqui:\n👉 ${publicQuoteUrl}${depositLine}\n\nQualquer dúvida ou ajuste que pretenda fazer, basta dizer. Um abraço, Luís | X-Motion`
   );
+  const whatsappDigits = normalizeWhatsAppPhone(quote.customerPhone);
+  const whatsappHref = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}?text=${whatsappMessage}`
+    : `https://wa.me/?text=${whatsappMessage}`;
 
   return (
     <Card className="flex flex-col justify-between p-5 bg-[#101314] border border-white/[0.08] hover:border-white/20 transition-all duration-150 group">
@@ -118,6 +145,22 @@ export function QuoteCard({ quote, onCopyLink, appOrigin = "" }: QuoteCardProps)
                 Margem: {mainOption.estimatedMarginPercentage}% ({formatCurrency(mainOption.estimatedMarginAmount)})
               </span>
             </div>
+            {(quote.depositRequired || quote.depositStatus === "paid") && (
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-white/[0.03]">
+                <span className="text-[#a9adae]">
+                  Sinal ({depositPercentage}%): {formatCurrency(depositAmount)}
+                </span>
+                <span
+                  className={
+                    quote.depositStatus === "paid"
+                      ? "text-[#68a46b] font-semibold"
+                      : "text-[#f7d46d] font-semibold"
+                  }
+                >
+                  {quote.depositStatus === "paid" ? "Sinal Pago" : "Sinal Pendente"}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -127,7 +170,7 @@ export function QuoteCard({ quote, onCopyLink, appOrigin = "" }: QuoteCardProps)
         <div className="flex items-center gap-2">
           {/* WhatsApp share */}
           <a
-            href={`https://wa.me/?text=${whatsappMessage}`}
+            href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
             className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-[#68a46b]/20 hover:text-[#68a46b] text-[#8a9092] transition-colors"

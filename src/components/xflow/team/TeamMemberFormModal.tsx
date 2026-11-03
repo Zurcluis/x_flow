@@ -4,31 +4,61 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TeamMember } from "@/lib/demo-data/tools-team-data";
-import { createTeamMemberAction } from "@/app/actions/team";
+import {
+  createTeamMemberAction,
+  updateTeamMemberAction,
+} from "@/app/actions/team";
 
 interface TeamMemberFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (member: TeamMember) => void;
+  initialData?: TeamMember;
 }
 
 export function TeamMemberFormModal({
   isOpen,
   onClose,
   onSave,
+  initialData,
 }: TeamMemberFormModalProps) {
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("");
-  const [specialty, setSpecialty] = useState("");
-  const [level, setLevel] = useState<TeamMember["level"]>("Assistente");
-  const [status, setStatus] = useState<TeamMember["status"]>("disponivel");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [certifications, setCertifications] = useState("");
+  const syncKey = `${isOpen}:${initialData?.id ?? "new"}`;
+  const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
+  const [name, setName] = useState(initialData?.name ?? "");
+  const [role, setRole] = useState(initialData?.role ?? "");
+  const [specialty, setSpecialty] = useState(initialData?.specialty ?? "");
+  const [level, setLevel] = useState<TeamMember["level"]>(
+    initialData?.level ?? "Assistente"
+  );
+  const [status, setStatus] = useState<TeamMember["status"]>(
+    initialData?.status ?? "disponivel"
+  );
+  const [email, setEmail] = useState(initialData?.email ?? "");
+  const [phone, setPhone] = useState(initialData?.phone ?? "");
+  const [certifications, setCertifications] = useState(
+    initialData?.certifications?.join(", ") ?? ""
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  if (prevSyncKey !== syncKey) {
+    setPrevSyncKey(syncKey);
+    if (isOpen) {
+      setName(initialData?.name ?? "");
+      setRole(initialData?.role ?? "");
+      setSpecialty(initialData?.specialty ?? "");
+      setLevel(initialData?.level ?? "Assistente");
+      setStatus(initialData?.status ?? "disponivel");
+      setEmail(initialData?.email ?? "");
+      setPhone(initialData?.phone ?? "");
+      setCertifications(initialData?.certifications?.join(", ") ?? "");
+      setError(null);
+    }
+  }
+
   if (!isOpen) return null;
+
+  const isEditing = Boolean(initialData);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +77,7 @@ export function TeamMemberFormModal({
     setSaving(true);
     setError(null);
 
-    const result = await createTeamMemberAction({
+    const payload = {
       name,
       role,
       specialty: specialty || "Geral",
@@ -59,7 +89,11 @@ export function TeamMemberFormModal({
         .split(",")
         .map((c) => c.trim())
         .filter(Boolean),
-    });
+    };
+
+    const result = initialData
+      ? await updateTeamMemberAction(initialData.id, payload)
+      : await createTeamMemberAction(payload);
 
     if (result.ok) {
       onSave(result.member);
@@ -81,7 +115,9 @@ export function TeamMemberFormModal({
         aria-modal="true"
       >
         <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
-          <h2 className="text-lg font-bold">Novo Colaborador</h2>
+          <h2 className="text-lg font-bold">
+            {isEditing ? "Editar Colaborador" : "Novo Colaborador"}
+          </h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-white/[0.06] cursor-pointer"
@@ -194,7 +230,13 @@ export function TeamMemberFormModal({
               <span>Cancelar</span>
             </Button>
             <Button variant="primary" size="sm" type="submit" disabled={saving}>
-              <span>{saving ? "A guardar..." : "Adicionar Colaborador"}</span>
+              <span>
+                {saving
+                  ? "A guardar..."
+                  : isEditing
+                    ? "Guardar Alterações"
+                    : "Adicionar Colaborador"}
+              </span>
             </Button>
           </div>
         </form>

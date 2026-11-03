@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import { TeamMember, WorkshopTool } from "@/lib/demo-data/tools-team-data";
 import {
+  TeamValidationError,
   parseTeamMemberInput,
   parseTeamMemberStatus,
   parseToolStatus,
@@ -149,6 +150,80 @@ export async function createTeamMember(
     email: (r.email as string) ?? undefined,
     phone: (r.phone as string) ?? undefined,
     completedJobsCount: 0,
+    efficiencyRating: "—",
+    certifications: Array.isArray(r.certifications) ? (r.certifications as string[]) : [],
+  };
+}
+
+export async function updateTeamMember(
+  organizationId: string,
+  employeeId: string,
+  input: TeamMemberCreateInput
+): Promise<TeamMember> {
+  assertUuid(organizationId, "Organização");
+  assertUuid(employeeId, "Colaborador");
+  const parsed = parseTeamMemberInput(input);
+
+  const { rows } = await getDb().query<Row>(
+    `UPDATE employees
+     SET name = $3,
+         role = $4,
+         specialty = $5,
+         level = $6,
+         status = $7,
+         certifications = $8::jsonb,
+         email = $9,
+         phone = $10
+     WHERE organization_id = $1 AND id = $2
+     RETURNING *,
+       (SELECT count(*)::int FROM work_orders w
+         WHERE w.organization_id = employees.organization_id
+           AND w.primary_technician_id = employees.profile_id
+           AND w.status = 'completed') AS completed_jobs,
+       (SELECT w.work_order_number || ' - ' || w.service_title FROM work_orders w
+         WHERE w.organization_id = employees.organization_id
+           AND w.primary_technician_id = employees.profile_id
+           AND w.status = 'in_progress'
+         ORDER BY w.started_at DESC NULLS LAST
+         LIMIT 1) AS active_wo,
+       (SELECT v.make || ' ' || v.model FROM work_orders w
+         JOIN vehicles v ON v.id = w.vehicle_id AND v.organization_id = w.organization_id
+         WHERE w.organization_id = employees.organization_id
+           AND w.primary_technician_id = employees.profile_id
+           AND w.status = 'in_progress'
+         ORDER BY w.started_at DESC NULLS LAST
+         LIMIT 1) AS active_vehicle`,
+    [
+      organizationId,
+      employeeId,
+      parsed.name,
+      parsed.role,
+      parsed.specialty,
+      parsed.level,
+      parsed.status,
+      JSON.stringify(parsed.certifications),
+      parsed.email ?? null,
+      parsed.phone ?? null,
+    ]
+  );
+
+  if (rows.length === 0) {
+    throw new TeamValidationError("Colaborador não encontrado.");
+  }
+
+  const r = rows[0];
+  return {
+    id: String(r.id),
+    name: String(r.name),
+    role: String(r.role),
+    specialty: String(r.specialty),
+    level: String(r.level) as TeamMember["level"],
+    status: String(r.status) as TeamMember["status"],
+    email: (r.email as string) ?? undefined,
+    phone: (r.phone as string) ?? undefined,
+    activeWorkOrder: (r.active_wo as string) ?? undefined,
+    activeVehicle: (r.active_vehicle as string) ?? undefined,
+    completedJobsCount: Number(r.completed_jobs ?? 0),
     efficiencyRating: "—",
     certifications: Array.isArray(r.certifications) ? (r.certifications as string[]) : [],
   };

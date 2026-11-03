@@ -68,6 +68,8 @@ export interface QuoteEvent {
   createdAt: string;
 }
 
+export type QuoteDepositStatus = "not_required" | "pending" | "paid";
+
 export interface Quote {
   id: string;
   organizationId: string;
@@ -90,6 +92,12 @@ export interface Quote {
   createdBy: string;
   approvedAt?: string;
   approvedByName?: string;
+  depositRequired?: boolean;
+  depositPercentage?: number;
+  depositAmount?: number;
+  depositStatus?: QuoteDepositStatus;
+  depositPaidAt?: string;
+  depositPaymentMethod?: string;
   options: QuoteOption[];
   events: QuoteEvent[];
   createdAt: string;
@@ -227,5 +235,11 @@ export interface PublicQuote {
   organizationName: string;
   organizationPhone?: string | null;
   organizationEmail?: string | null;
+  depositRequired?: boolean;
+  depositPercentage?: number;
+  depositAmount?: number;
+  depositStatus?: QuoteDepositStatus;
+  depositPaidAt?: string;
+  depositPaymentMethod?: string;
   options: PublicQuoteOption[];
 }

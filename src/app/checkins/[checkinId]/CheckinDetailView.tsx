@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ShieldCheck,
   FileCheck,
+  MessageCircle,
 } from "lucide-react";
 import { Button, buttonStyles } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,8 +26,24 @@ import {
 import { PhotoInspectionGrid } from "@/components/xflow/checkins/PhotoInspectionGrid";
 import { copyTextToClipboard } from "@/lib/clipboard";
 
+const subscribeToOrigin = () => () => {};
+
+function formatWhatsAppPhone(phone?: string): string {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 9 && digits.startsWith("9")) {
+    return `351${digits}`;
+  }
+  return digits;
+}
+
 export function CheckinDetailView({ checkin }: { checkin: Checkin }) {
   const [copyFeedback, setCopyFeedback] = useState<"copied" | "failed" | null>(null);
+  const appOrigin = useSyncExternalStore(
+    subscribeToOrigin,
+    () => window.location.origin,
+    () => ""
+  );
 
   const handleCopyLink = async () => {
     const url = `${window.location.origin}/checkins/report/${checkin.token}`;
@@ -34,6 +51,15 @@ export function CheckinDetailView({ checkin }: { checkin: Checkin }) {
     setCopyFeedback(copied ? "copied" : "failed");
     window.setTimeout(() => setCopyFeedback(null), 3000);
   };
+
+  const reportUrl = `${appOrigin}/checkins/report/${checkin.token}`;
+  const cleanPhone = formatWhatsAppPhone(checkin.customerPhone);
+  const whatsappMessage = encodeURIComponent(
+    `Olá ${checkin.customerName}! A receção e inspeção fotográfica 360° da sua viatura ${checkin.vehicleModel} (${checkin.vehiclePlate}) na X-Motion foi concluída com sucesso. Pode consultar o Relatório Digital de Check-in aqui:\n${reportUrl}`
+  );
+  const whatsappHref = cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${whatsappMessage}`
+    : `https://wa.me/?text=${whatsappMessage}`;
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -102,6 +128,20 @@ export function CheckinDetailView({ checkin }: { checkin: Checkin }) {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonStyles({
+              variant: "outline",
+              size: "sm",
+              className: "bg-[#15191a]",
+            })}
+          >
+            <MessageCircle className="h-4 w-4 text-[#68a46b]" />
+            <span>Enviar por WhatsApp</span>
+          </a>
+
           <Button variant="outline" size="sm" onClick={handleCopyLink} className="bg-[#15191a]">
             <Share2 className="h-4 w-4 text-[#d3a548]" />
             <span>Copiar Link do Relatório</span>

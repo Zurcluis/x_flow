@@ -96,13 +96,16 @@ const FINANCIAL_HREFS = new Set(["/finance", "/reports"]);
 const ADMIN_HREFS = new Set(["/settings"]);
 const MANAGEMENT_HREFS = new Set(["/b2b"]);
 
-export function navSectionsForRole(role?: string): NavSection[] {
+export function navSectionsForRole(role?: string, hiddenHrefs?: string[] | Set<string>): NavSection[] {
   const hideFinancials = role !== "admin" && role !== "workshop_manager";
   const hideAdmin = role !== "admin";
   const hideManagement = role !== "admin" && role !== "workshop_manager";
+  const hiddenSet = hiddenHrefs instanceof Set ? hiddenHrefs : new Set(hiddenHrefs ?? []);
+
   return NAV_SECTIONS.map((section) => ({
     ...section,
     items: section.items.filter((item) => {
+      if (hiddenSet.has(item.href)) return false;
       if (hideFinancials && FINANCIAL_HREFS.has(item.href)) return false;
       if (hideAdmin && ADMIN_HREFS.has(item.href)) return false;
       if (hideManagement && MANAGEMENT_HREFS.has(item.href)) return false;
@@ -140,9 +143,15 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   );
 }
 
-export function Sidebar({ role }: { role?: string }) {
+export function Sidebar({
+  role,
+  hiddenHrefs,
+}: {
+  role?: string;
+  hiddenHrefs?: string[];
+}) {
   const [collapsed, setCollapsed] = useState(false);
-  const sections = navSectionsForRole(role);
+  const sections = navSectionsForRole(role, hiddenHrefs);
 
   return (
     <aside

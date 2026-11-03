@@ -8,9 +8,11 @@ import {
   Calendar,
   Fuel,
   Gauge,
+  Pencil,
+  Package,
 } from "lucide-react";
-import { buttonStyles } from "@/components/ui/button";
-import { Vehicle } from "@/domains/vehicles/types";
+import { Button, buttonStyles } from "@/components/ui/button";
+import { BODY_TYPE_LABELS, isObjectBodyType, Vehicle } from "@/domains/vehicles/types";
 import { formatNumber } from "@/lib/formatting";
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -28,23 +30,38 @@ const COLOR_SWATCHES: Record<string, string> = {
 
 interface VehiclePassportHeroProps {
   vehicle: Vehicle;
+  onEdit?: () => void;
 }
 
-export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
+export function VehiclePassportHero({ vehicle, onEdit }: VehiclePassportHeroProps) {
   const swatchColor = COLOR_SWATCHES[vehicle.originalColorFamily] || "#52525b";
+  const hasPlate = Boolean(vehicle.plateDisplay && vehicle.plateDisplay.trim().length > 0);
+  const isObject = vehicle.itemType === "object" || isObjectBodyType(vehicle.bodyType);
+  const bodyLabel = BODY_TYPE_LABELS[vehicle.bodyType] ?? vehicle.bodyType;
 
   return (
     <div className="flex flex-col gap-6 p-6 rounded-[20px] bg-gradient-to-br from-[#15191a] via-[#101314] to-[#080a0b] border border-white/[0.1] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
       {/* Top row: License plate, Title & Actions */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex flex-wrap items-center gap-4">
-          {/* License Plate Style Frame */}
-          <div className="inline-flex items-center rounded-sm border-2 border-white/20 bg-[#050606] px-3.5 py-1.5 shadow-[0_4px_14px_rgba(0,0,0,0.6)] font-mono">
-            <span className="text-[#6e93b5] mr-2 text-xs font-black font-sans">P</span>
-            <span className="text-xl font-black tracking-widest text-[#f1ede5]">
-              {vehicle.plateDisplay}
-            </span>
-          </div>
+          {/* License Plate Style Frame or Object Badge */}
+          {hasPlate ? (
+            <div className="inline-flex items-center rounded-sm border-2 border-white/20 bg-[#050606] px-3.5 py-1.5 shadow-[0_4px_14px_rgba(0,0,0,0.6)] font-mono">
+              {!isObject && (
+                <span className="text-[#6e93b5] mr-2 text-xs font-black font-sans">P</span>
+              )}
+              <span className="text-xl font-black tracking-widest text-[#f1ede5]">
+                {vehicle.plateDisplay}
+              </span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 rounded-sm border border-[#d3a548]/40 bg-[#1f1b14] px-3.5 py-1.5 shadow-[0_4px_14px_rgba(0,0,0,0.6)]">
+              <Package className="h-4 w-4 text-[#d3a548]" />
+              <span className="text-xs font-extrabold uppercase tracking-wider text-[#f7d46d]">
+                {isObject ? "OBJETO / S/ MATRÍCULA" : "S/ MATRÍCULA"}
+              </span>
+            </div>
+          )}
 
           {/* Vehicle Make & Model Title */}
           <div className="flex flex-col">
@@ -59,6 +76,18 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {onEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={onEdit}
+              className="h-9 px-3.5 text-xs bg-[#101314]"
+            >
+              <Pencil className="h-3.5 w-3.5 text-[#d3a548]" />
+              <span>Editar</span>
+            </Button>
+          )}
           <Link
             href={`/checkins/new?vehicleId=${vehicle.id}`}
             className={buttonStyles({
@@ -111,10 +140,16 @@ export function VehiclePassportHero({ vehicle }: VehiclePassportHeroProps) {
 
         {/* 2. Carroçaria */}
         <div className="flex items-center gap-2.5 p-3 rounded-md bg-[#101314] border border-white/[0.04]">
-          <Car className="h-4 w-4 text-[#d3a548] shrink-0" />
+          {isObject ? (
+            <Package className="h-4 w-4 text-[#d3a548] shrink-0" />
+          ) : (
+            <Car className="h-4 w-4 text-[#d3a548] shrink-0" />
+          )}
           <div className="flex flex-col min-w-0">
-            <span className="text-[11px] text-[#8a9092] uppercase">Carroçaria</span>
-            <span className="font-semibold text-[#f1ede5] capitalize truncate">{vehicle.bodyType}</span>
+            <span className="text-[11px] text-[#8a9092] uppercase">
+              {isObject ? "Categoria" : "Carroçaria"}
+            </span>
+            <span className="font-semibold text-[#f1ede5] truncate">{bodyLabel}</span>
           </div>
         </div>
 

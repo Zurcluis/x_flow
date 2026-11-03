@@ -2,12 +2,15 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ShieldCheck,
   CheckCircle2,
   ExternalLink,
   AlertTriangle,
+  Save,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,56 +18,119 @@ import { QCInspectionGrid } from "@/components/xflow/production/QCInspectionGrid
 import { initialBMWQCInspection } from "@/lib/demo-data/production-phases-data";
 import { QCInspection, QCItem } from "@/domains/production/types";
 import { WorkOrder } from "@/domains/checkins/types";
-import { generateQCCertificateNumber } from "@/domains/production/qc-validator";
+import { saveQcInspectionAction } from "@/app/actions/production";
 
 interface QcInspectionViewProps {
   workOrder: WorkOrder;
   inspectorName: string;
+  initialInspection?: QCInspection;
 }
 
-export function QcInspectionView({ workOrder, inspectorName }: QcInspectionViewProps) {
-  const [inspection, setInspection] = useState<QCInspection>(() => ({
-    ...initialBMWQCInspection,
-    id: `preview-${workOrder.id}`,
-    workOrderId: workOrder.id,
-    vehiclePlate: workOrder.vehiclePlate,
-    vehicleModel: workOrder.vehicleModel,
-    customerName: workOrder.customerName,
-    inspectorName,
-    status: "in_rework",
-    certificateNumber: undefined,
-    approvedAt: undefined,
-  }));
-  const [isApprovedModalOpen, setIsApprovedModalOpen] = useState(false);
-  const [certificateNumber, setCertificateNumber] = useState<string>(
-    inspection.certificateNumber || generateQCCertificateNumber(inspection.vehiclePlate)
+export function QcInspectionView({
+  workOrder,
+  inspectorName,
+  initialInspection,
+}: QcInspectionViewProps) {
+  const router = useRouter();
+  const [inspection, setInspection] = useState<QCInspection>(() =>
+    initialInspection
+      ? initialInspection
+      : {
+          ...initialBMWQCInspection,
+          id: `qc-${workOrder.id}`,
+          workOrderId: workOrder.id,
+          vehiclePlate: workOrder.vehiclePlate,
+          vehicleModel: workOrder.vehicleModel,
+          customerName: workOrder.customerName,
+          inspectorName,
+          status: "in_rework",
+          certificateNumber: undefined,
+          approvedAt: undefined,
+        }
   );
+  const [overallNotes, setOverallNotes] = useState<string>(
+    initialInspection?.overallNotes ?? ""
+  );
+  const [saving, setSaving] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [isApprovedModalOpen, setIsApprovedModalOpen] = useState(false);
 
-  const handleApproveQC = () => {
-    const certNum = generateQCCertificateNumber(inspection.vehiclePlate);
-    setCertificateNumber(certNum);
+  const certificateNumber =
+    inspection.certificateNumber ||
+    `QC-${new Date().getFullYear()}-${workOrder.id.slice(0, 6).toUpperCase()}-PASS`;
 
-    setInspection({
-      ...inspection,
-      status: "passed",
-      certificateNumber: certNum,
-      approvedAt: new Date().toISOString().replace("T", " ").slice(0, 16),
+  const handleSaveProgress = async () => {
+    setSaving(true);
+    setFeedback(null);
+    const result = await saveQcInspectionAction(workOrder.id, {
+      inspectorName,
+      overallNotes,
+      items: inspection.items.map((item) => ({
+        id: item.id,
+        criterionName: item.criterionName,
+        category: item.category,
+        status: item.status,
+        reworkNotes: item.reworkNotes,
+      })),
+      finalizeApprove: false,
     });
+    setSaving(false);
 
+    if (!result.ok) {
+      setFeedback({ type: "error", message: result.error });
+      return;
+    }
+
+    setInspection(result.inspection);
+    setFeedback({
+      type: "success",
+      message: "Progresso da inspeção QC guardado com sucesso na base de dados.",
+    });
+    router.refresh();
+  };
+
+  const handleApproveQC = async () => {
+    setApproving(true);
+    setFeedback(null);
+    const result = await saveQcInspectionAction(workOrder.id, {
+      inspectorName,
+      overallNotes,
+      items: inspection.items.map((item) => ({
+        id: item.id,
+        criterionName: item.criterionName,
+        category: item.category,
+        status: item.status,
+        reworkNotes: item.reworkNotes,
+      })),
+      finalizeApprove: true,
+    });
+    setApproving(false);
+
+    if (!result.ok) {
+      setFeedback({ type: "error", message: result.error });
+      return;
+    }
+
+    setInspection(result.inspection);
     setIsApprovedModalOpen(true);
+    router.refresh();
   };
 
   const handleUpdateItems = (updatedItems: QCItem[]) => {
-    setInspection({
-      ...inspection,
+    setInspection((prev) => ({
+      ...prev,
       items: updatedItems,
-    });
+    }));
   };
 
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* Back button */}
-      <div>
+      <div className="flex items-center justify-between gap-4">
         <Link
           href={`/production/${workOrder.id}`}
           className="inline-flex items-center gap-2 text-xs font-semibold text-[#a9adae] hover:text-[#f7d46d] transition-colors"
@@ -72,19 +138,40 @@ export function QcInspectionView({ workOrder, inspectorName }: QcInspectionViewP
           <ArrowLeft className="h-4 w-4" />
           <span>Voltar à Ordem de Trabalho</span>
         </Link>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSaveProgress}
+          disabled={saving || approving}
+          className="bg-[#15191a]"
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin text-[#d3a548]" />
+          ) : (
+            <Save className="h-4 w-4 text-[#d3a548]" />
+          )}
+          <span>{saving ? "A guardar..." : "Guardar Progresso"}</span>
+        </Button>
       </div>
 
-      {/* Aviso de pré-visualização */}
-      <div
-        role="status"
-        className="flex items-start gap-2.5 rounded-md border border-[#d3a548]/30 bg-[#1f1b14] px-4 py-3 text-xs text-[#f7d46d]"
-      >
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <p>
-          Pré-visualização: os resultados desta inspeção ainda não são gravados na
-          base de dados nem atualizam o estado da ordem de trabalho.
-        </p>
-      </div>
+      {feedback && (
+        <div
+          role={feedback.type === "error" ? "alert" : "status"}
+          className={`flex items-start gap-2.5 rounded-md border px-4 py-3 text-xs font-medium ${
+            feedback.type === "success"
+              ? "border-[#68a46b]/40 bg-[#142618] text-[#9de3a0]"
+              : "border-[#f05a50]/50 bg-[#2a1714] text-[#f78e85]"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#68a46b]" />
+          ) : (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#f05a50]" />
+          )}
+          <p>{feedback.message}</p>
+        </div>
+      )}
 
       {/* Hero Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-6 rounded-[20px] bg-[#101314] border border-white/[0.08] shadow-[0_18px_48px_rgba(0,0,0,0.35)]">
@@ -96,8 +183,13 @@ export function QcInspectionView({ workOrder, inspectorName }: QcInspectionViewP
             <h1 className="text-2xl font-bold text-[#f1ede5]">
               Controlo de Qualidade Final (QC)
             </h1>
-            <Badge variant="gold" className="text-xs">
-              Inspeção de Entrega
+            <Badge
+              variant={inspection.status === "passed" ? "success" : "gold"}
+              className="text-xs"
+            >
+              {inspection.status === "passed"
+                ? "QC Aprovado & Certificado"
+                : "Inspeção de Entrega"}
             </Badge>
           </div>
 
@@ -109,20 +201,57 @@ export function QcInspectionView({ workOrder, inspectorName }: QcInspectionViewP
             <span className="font-bold text-[#f1ede5]">{inspection.vehicleModel}</span>
             <span>·</span>
             <span>Cliente: {inspection.customerName}</span>
+            {inspection.certificateNumber && (
+              <>
+                <span>·</span>
+                <span className="font-mono font-bold text-[#f7d46d]">
+                  {inspection.certificateNumber}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
-        {inspection.status === "passed" && (
-          <Link
-            href={`/qc/certificate/${certificateNumber}`}
-            target="_blank"
+        <div className="flex flex-wrap items-center gap-2.5">
+          {inspection.status === "passed" && inspection.certificateNumber && (
+            <Link
+              href={`/qc/certificate/${inspection.certificateNumber}`}
+              target="_blank"
+            >
+              <Button
+                variant="primary"
+                size="sm"
+                className="bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-extrabold"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span>Ver Certificado de Conformidade</span>
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Notas Gerais da Inspeção QC */}
+      <div className="flex flex-col gap-2 p-5 rounded-[18px] bg-[#101314] border border-white/[0.08]">
+        <div className="flex items-center justify-between gap-2">
+          <label
+            htmlFor="qc-overall-notes"
+            className="text-xs font-bold uppercase tracking-wider text-[#d3a548]"
           >
-            <Button variant="primary" size="sm" className="bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-extrabold">
-              <ExternalLink className="h-4 w-4" />
-              <span>Ver Certificado de Conformidade</span>
-            </Button>
-          </Link>
-        )}
+            Observações Técnicas Finais do Inspetor QC
+          </label>
+          <span className="text-[11px] text-[#8a9092]">
+            Incluído no Certificado de Conformidade QC
+          </span>
+        </div>
+        <textarea
+          id="qc-overall-notes"
+          rows={2}
+          value={overallNotes}
+          onChange={(e) => setOverallNotes(e.target.value)}
+          placeholder="Ex: Aplicação irrepreensível sob luz Scangrip. Todos os cantos embutidos e pós-aquecimento térmico a 90°C validado."
+          className="w-full rounded-md bg-[#0c0f10] border border-white/[0.08] focus:border-[#d3a548] p-3 text-xs text-[#f1ede5] placeholder-[#8a9092] outline-none"
+        />
       </div>
 
       {/* QC Checklist & Inspection Component */}
@@ -131,6 +260,46 @@ export function QcInspectionView({ workOrder, inspectorName }: QcInspectionViewP
         onChangeItems={handleUpdateItems}
         onApproveInspection={handleApproveQC}
       />
+
+      {/* Barra adicional de Ações Persistidas */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <Button
+          variant="outline"
+          size="md"
+          onClick={handleSaveProgress}
+          disabled={saving || approving}
+          className="bg-[#15191a]"
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin text-[#d3a548]" />
+          ) : (
+            <Save className="h-4 w-4 text-[#d3a548]" />
+          )}
+          <span>Guardar Progresso na BD</span>
+        </Button>
+
+        <Button
+          variant="primary"
+          size="md"
+          onClick={handleApproveQC}
+          disabled={
+            saving ||
+            approving ||
+            inspection.items.some((item) => item.status === "fail")
+          }
+        >
+          {approving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ShieldCheck className="h-4 w-4" />
+          )}
+          <span>
+            {approving
+              ? "A emitir certificado..."
+              : "Emitir Certificado QC e Aprovar Obra"}
+          </span>
+        </Button>
+      </div>
 
       {/* Success Modal on Approval */}
       {isApprovedModalOpen && (
@@ -145,7 +314,9 @@ export function QcInspectionView({ workOrder, inspectorName }: QcInspectionViewP
               </div>
               <div className="flex flex-col">
                 <h3 className="font-bold text-lg">Controlo de Qualidade Aprovado!</h3>
-                <span className="text-xs text-[#a9adae]">Viatura 100% conforme para entrega</span>
+                <span className="text-xs text-[#a9adae]">
+                  Viatura 100% conforme e Ordem de Trabalho concluída
+                </span>
               </div>
             </div>
 
@@ -158,7 +329,7 @@ export function QcInspectionView({ workOrder, inspectorName }: QcInspectionViewP
               </div>
 
               <p className="text-[#a9adae] leading-relaxed">
-                O passaporte digital do veículo foi atualizado com o selo verde de aprovação QC e garantia de aplicação certificada.
+                O passaporte digital do veículo foi atualizado com o selo verde de aprovação QC e a Ordem de Trabalho ficou pronta para Entrega ao Cliente.
               </p>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/[0.08]">

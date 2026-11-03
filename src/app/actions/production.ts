@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { PhaseKey } from "@/domains/production/types";
+import { PhaseKey, QCInspection } from "@/domains/production/types";
 import { WorkOrder } from "@/domains/checkins/types";
 import { requireAuth, type AuthContext } from "@/server/auth";
 import { hasRole, SCHEDULING_ROLES } from "@/lib/roles";
 import {
   addTimeEntry,
   completePhase,
+  saveQcInspection,
   startPhase,
   toggleChecklistItem,
   updateWorkOrderStatus,
@@ -119,4 +120,48 @@ export async function addTimeEntryAction(
     revalidatePath("/time-book");
   }
   return result;
+}
+
+export async function saveQcInspectionAction(
+  workOrderId: string,
+  input: {
+    inspectorName?: string;
+    overallNotes?: string;
+    items: Array<{
+      id?: string;
+      criterionName: string;
+      category: string;
+      status: "pass" | "fail" | "na";
+      reworkNotes?: string;
+    }>;
+    finalizeApprove?: boolean;
+  }
+): Promise<{ ok: true; inspection: QCInspection } | { ok: false; error: string }> {
+  const auth = await requireAuth();
+  try {
+    assertSchedulingAccess(auth);
+    const inspection = await saveQcInspection(auth.organizationId, workOrderId, {
+      inspectorName: input.inspectorName?.trim() || auth.name,
+      overallNotes: input.overallNotes,
+      items: input.items,
+      finalizeApprove: input.finalizeApprove,
+    });
+    revalidatePath("/production");
+    revalidatePath(`/production/${workOrderId}`);
+    revalidatePath(`/production/${workOrderId}/qc`);
+    revalidatePath("/deliveries");
+    revalidatePath("/deliveries/new");
+    if (inspection.certificateNumber) {
+      revalidatePath(`/qc/certificate/${inspection.certificateNumber}`);
+    }
+    return { ok: true, inspection };
+  } catch (e) {
+    return {
+      ok: false,
+      error:
+        e instanceof Error
+          ? e.message
+          : "Erro ao gravar a inspeção de Controlo de Qualidade.",
+    };
+  }
 }

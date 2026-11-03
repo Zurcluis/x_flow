@@ -9,6 +9,7 @@ import {
   setTeamMemberStatus,
   setToolStatus,
   TeamMemberCreateInput,
+  updateTeamMember,
 } from "@/server/team";
 import {
   TeamValidationError,
@@ -48,6 +49,34 @@ export async function createTeamMemberAction(
     return {
       ok: false,
       error: actionError(error, "Não foi possível criar o colaborador."),
+    };
+  }
+}
+
+export async function updateTeamMemberAction(
+  employeeId: string,
+  input: TeamMemberCreateInput
+): Promise<TeamActionResult> {
+  const auth = await requireAuth();
+  try {
+    assertManagementAccess(auth);
+    const parsed = parseTeamMemberInput(input);
+    const member = await updateTeamMember(auth.organizationId, employeeId, {
+      name: parsed.name,
+      role: parsed.role,
+      specialty: parsed.specialty,
+      level: parsed.level,
+      status: parsed.status,
+      email: parsed.email,
+      phone: parsed.phone,
+      certifications: parsed.certifications,
+    });
+    revalidatePath("/team");
+    return { ok: true, member };
+  } catch (error) {
+    return {
+      ok: false,
+      error: actionError(error, "Não foi possível atualizar o colaborador."),
     };
   }
 }

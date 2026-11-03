@@ -22,6 +22,7 @@ import { Card } from "@/components/ui/card";
 import { QuoteOptionSelector } from "@/components/xflow/quotes/QuoteOptionSelector";
 import { QuoteFinancialSummary } from "@/components/xflow/quotes/QuoteFinancialSummary";
 import { Quote } from "@/domains/quotes/types";
+import { formatCurrency } from "@/lib/formatting";
 import {
   formatQuoteDateTime,
   quoteStatusBadgeVariant,
@@ -31,7 +32,23 @@ import {
   approveQuoteAction,
   deleteQuoteAction,
   emitQuoteAction,
+  registerQuoteDepositAction,
 } from "@/app/actions/quotes";
+
+const DEPOSIT_PAYMENT_METHODS: Array<{ value: string; label: string }> = [
+  { value: "bank_transfer", label: "Transferência" },
+  { value: "mbway", label: "MB WAY" },
+  { value: "multibanco", label: "Multibanco" },
+  { value: "cash", label: "Numerário" },
+];
+
+function normalizeWhatsAppPhone(phone?: string): string {
+  const raw = (phone ?? "").replace(/\D/g, "");
+  if (!raw) return "";
+  if (raw.startsWith("00")) return raw.slice(2);
+  if (raw.length === 9) return `351${raw}`;
+  return raw;
+}
 
 interface QuoteDetailViewProps {
   quote: Quote;
@@ -50,6 +67,11 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
   const [approveError, setApproveError] = useState<string | null>(null);
   const [emitting, setEmitting] = useState(false);
   const [emitError, setEmitError] = useState<string | null>(null);
+  const [depositMethod, setDepositMethod] = useState<string>(
+    quote.depositPaymentMethod || "bank_transfer"
+  );
+  const [registeringDeposit, setRegisteringDeposit] = useState(false);
+  const [depositError, setDepositError] = useState<string | null>(null);
   const appOrigin = useSyncExternalStore(
     subscribeToOrigin,
     () => window.location.origin,
@@ -64,6 +86,17 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
 
   const activeOption =
     quote.options.find((o) => o.id === currentOptionId) || quote.options[0];
+
+  const depositPercentage =
+    quote.depositPercentage && quote.depositPercentage > 0
+      ? quote.depositPercentage
+      : 30;
+  const computedDepositAmount =
+    quote.depositStatus === "paid" && (quote.depositAmount ?? 0) > 0
+      ? Number(quote.depositAmount)
+      : activeOption
+        ? Math.round(activeOption.totalWithVat * (depositPercentage / 100) * 100) / 100
+        : Number(quote.depositAmount ?? 0);
 
   const canDecide = quote.status === "sent" || quote.status === "viewed";
 
@@ -108,9 +141,32 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
     router.push("/quotes");
   };
 
+  const handleRegisterDeposit = async () => {
+    setRegisteringDeposit(true);
+    setDepositError(null);
+    const result = await registerQuoteDepositAction(quote.id, {
+      amount: computedDepositAmount,
+      paymentMethod: depositMethod,
+    });
+    setRegisteringDeposit(false);
+    if (!result.ok) {
+      setDepositError(result.error);
+      return;
+    }
+    router.refresh();
+  };
+
+  const publicQuoteUrl = `${appOrigin}/quotes/public/${quote.publicToken}`;
+  const depositLine = quote.depositRequired
+    ? `\n\n📌 Sinal de adjudicação (${depositPercentage}%): ${formatCurrency(computedDepositAmount)} para reserva de material e vaga na agenda.`
+    : "";
   const whatsappMessage = encodeURIComponent(
-    `Olá ${quote.customerName}, segue a sua proposta comercial para o ${quote.vehicleModel} (${quote.vehiclePlate}):\n${appOrigin}/quotes/public/${quote.publicToken}`
+    `Olá, ${quote.customerName}! Foi um gosto recebê-lo hoje na X-Motion.\n\nPreparei a sua proposta para o ${quote.vehicleModel} (${quote.vehiclePlate}), detalhando os materiais, as fases do trabalho e as opções que analisámos.\n\nPode consultar a proposta completa e interativa aqui:\n👉 ${publicQuoteUrl}${depositLine}\n\nQualquer dúvida ou ajuste que pretenda fazer, basta dizer. Um abraço, Luís | X-Motion`
   );
+  const whatsappDigits = normalizeWhatsAppPhone(quote.customerPhone);
+  const whatsappHref = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}?text=${whatsappMessage}`
+    : `https://wa.me/?text=${whatsappMessage}`;
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -193,7 +249,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
           )}
 
           <a
-            href={`https://wa.me/?text=${whatsappMessage}`}
+            href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
             className={buttonStyles({
@@ -203,7 +259,7 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
             })}
           >
             <MessageCircle className="h-4 w-4 text-[#68a46b]" />
-            <span>WhatsApp</span>
+            <span>Enviar por WhatsApp</span>
           </a>
 
           <Button
@@ -356,6 +412,106 @@ export function QuoteDetailView({ quote: initialQuote }: QuoteDetailViewProps) {
         <div className="lg:col-span-4 flex flex-col gap-4">
           <div className="sticky top-6 flex flex-col gap-4">
             {activeOption && <QuoteFinancialSummary financials={activeOption} />}
+
+            <Card className="p-4 flex flex-col gap-3 bg-[#15191a] border border-white/[0.08]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] uppercase font-bold text-[#8a9092]">
+                  Sinal de Adjudicação
+                </span>
+                {quote.depositStatus === "paid" ? (
+                  <Badge variant="success">Sinal Pago</Badge>
+                ) : quote.depositRequired || quote.depositStatus === "pending" ? (
+                  <Badge variant="gold">Pendente</Badge>
+                ) : (
+                  <Badge variant="outline">Não exigido</Badge>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-sm bg-[#080a0b] border border-white/[0.04]">
+                <div className="flex flex-col">
+                  <span className="text-xs text-[#a9adae]">
+                    Sinal ({depositPercentage}%)
+                  </span>
+                  <span className="text-[11px] text-[#8a9092]">
+                    Reserva de material e vaga na agenda
+                  </span>
+                </div>
+                <span className="font-mono font-extrabold text-base text-[#f7d46d] tabular-nums">
+                  {formatCurrency(computedDepositAmount)}
+                </span>
+              </div>
+
+              {quote.depositStatus === "paid" ? (
+                <div className="flex flex-col gap-1 text-xs text-[#68a46b] bg-[#68a46b]/10 border border-[#68a46b]/20 rounded-sm p-2.5">
+                  <div className="flex items-center gap-1.5 font-semibold">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Sinal liquidado (
+                      {DEPOSIT_PAYMENT_METHODS.find(
+                        (m) => m.value === quote.depositPaymentMethod
+                      )?.label ??
+                        quote.depositPaymentMethod ??
+                        "Transferência"}
+                      )
+                    </span>
+                  </div>
+                  {quote.depositPaidAt && (
+                    <span className="text-[11px] text-[#a9adae] font-mono">
+                      Recebido em {formatQuoteDateTime(quote.depositPaidAt)}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-[#a9adae]">
+                      Método de Recebimento
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {DEPOSIT_PAYMENT_METHODS.map((m) => (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => setDepositMethod(m.value)}
+                          className={`px-2.5 py-1.5 rounded-sm text-xs font-semibold border transition-colors cursor-pointer ${
+                            depositMethod === m.value
+                              ? "bg-[#d3a548]/20 border-[#d3a548] text-[#f7d46d]"
+                              : "bg-[#080a0b] border-white/[0.08] text-[#a9adae] hover:text-[#f1ede5]"
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {depositError && (
+                    <p role="alert" className="text-[11px] font-semibold text-[#f05a50]">
+                      {depositError}
+                    </p>
+                  )}
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleRegisterDeposit}
+                    disabled={registeringDeposit || computedDepositAmount <= 0}
+                    className="w-full"
+                  >
+                    {registeringDeposit ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    <span>
+                      {registeringDeposit
+                        ? "A registar sinal..."
+                        : "Registar Sinal Recebido"}
+                    </span>
+                  </Button>
+                </div>
+              )}
+            </Card>
 
             {quote.status === "draft" && (
               <div className="flex items-start gap-2 p-3 rounded-md bg-[#d3a548]/10 border border-[#d3a548]/30 text-[11px] text-[#f7d46d]">

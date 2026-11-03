@@ -26,12 +26,23 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const auth = await getOptionalAuth();
+  let hiddenHrefs: string[] = [];
+  if (auth?.organizationId) {
+    try {
+      const { getOrganizationSettings } = await import("@/server/settings");
+      const settings = await getOrganizationSettings(auth.organizationId);
+      hiddenHrefs = settings.sidebarVisibleItems;
+    } catch {
+      hiddenHrefs = [];
+    }
+  }
 
   return (
     <html lang="pt-PT" className="dark" suppressHydrationWarning>
       <body className="bg-[#050606] text-[#f1ede5] min-h-screen" suppressHydrationWarning>
         <AppShell
           user={auth ? { name: auth.name, email: auth.email, role: auth.role } : null}
+          hiddenHrefs={hiddenHrefs}
         >
           {children}
         </AppShell>

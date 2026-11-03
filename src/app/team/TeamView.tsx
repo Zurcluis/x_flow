@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { Award, TrendingUp, UserPlus, Users } from "lucide-react";
+import { Award, Pencil, TrendingUp, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TeamMemberFormModal } from "@/components/xflow/team/TeamMemberFormModal";
+import { setTeamMemberStatusAction } from "@/app/actions/team";
 
 import type { TeamMember } from "@/lib/demo-data/tools-team-data";
 
 const STATUS_LABEL: Record<TeamMember["status"], string> = {
   disponivel: "Disponível",
-  em_trabalho: "Em trabalho",
+  em_trabalho: "Em Tarefa",
   ausente: "Ausente",
 };
 
@@ -24,9 +25,36 @@ export function TeamView({
 }) {
   const [team, setTeam] = useState<TeamMember[]>(initialTeam);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const handleSaveMember = (member: TeamMember) => {
-    setTeam([member, ...team]);
+    setTeam((prev) => {
+      const exists = prev.some((m) => m.id === member.id);
+      if (exists) {
+        return prev.map((m) => (m.id === member.id ? member : m));
+      }
+      return [member, ...prev];
+    });
+    setEditingMember(null);
+  };
+
+  const handleStatusChange = async (
+    memberId: string,
+    nextStatus: TeamMember["status"]
+  ) => {
+    setUpdatingStatusId(memberId);
+    setStatusError(null);
+    const result = await setTeamMemberStatusAction(memberId, nextStatus);
+    if (result.ok) {
+      setTeam((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, status: nextStatus } : m))
+      );
+    } else {
+      setStatusError(result.error ?? "Não foi possível atualizar o estado.");
+    }
+    setUpdatingStatusId(null);
   };
 
   const availableCount = team.filter((member) => member.status === "disponivel").length;
@@ -53,7 +81,10 @@ export function TeamView({
         {canManage && (
           <Button
             variant="primary"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingMember(null);
+              setIsModalOpen(true);
+            }}
             className="self-start sm:self-auto"
           >
             <UserPlus className="h-4 w-4" />
@@ -61,6 +92,12 @@ export function TeamView({
           </Button>
         )}
       </div>
+
+      {statusError && (
+        <p role="alert" className="text-xs font-semibold text-[#f05a50]">
+          {statusError}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="p-4 flex flex-col justify-between">
@@ -175,6 +212,15 @@ export function TeamView({
                     </strong>
                   </div>
 
+                  {(member.email || member.phone) && (
+                    <div className="flex items-center justify-between text-[#a9adae]">
+                      <span>Contacto:</span>
+                      <strong className="text-[#f1ede5] text-right">
+                        {[member.phone, member.email].filter(Boolean).join(" · ")}
+                      </strong>
+                    </div>
+                  )}
+
                   {member.activeWorkOrder && (
                     <div className="flex items-center justify-between text-[#d3a548] pt-1.5 border-t border-white/[0.04]">
                       <span>Trabalho ativo:</span>
@@ -207,6 +253,43 @@ export function TeamView({
                     </div>
                   )}
                 </div>
+
+                {canManage && (
+                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-white/[0.06]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold text-[#a9adae]">
+                        Estado:
+                      </span>
+                      <select
+                        value={member.status}
+                        disabled={updatingStatusId === member.id}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            member.id,
+                            e.target.value as TeamMember["status"]
+                          )
+                        }
+                        aria-label={`Estado operacional de ${member.name}`}
+                        className="h-8 px-2.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-xs text-[#f1ede5] cursor-pointer"
+                      >
+                        <option value="disponivel">Disponível</option>
+                        <option value="em_trabalho">Em Tarefa</option>
+                        <option value="ausente">Ausente</option>
+                      </select>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingMember(member);
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      <span>Editar</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}
@@ -216,8 +299,12 @@ export function TeamView({
       {canManage && (
         <TeamMemberFormModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingMember(null);
+          }}
           onSave={handleSaveMember}
+          initialData={editingMember ?? undefined}
         />
       )}
     </div>

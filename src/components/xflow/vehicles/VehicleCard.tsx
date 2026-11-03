@@ -1,9 +1,9 @@
 import React from "react";
 import Link from "next/link";
-import { User, ArrowRight, Gauge } from "lucide-react";
+import { User, ArrowRight, Gauge, Package } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Vehicle } from "@/domains/vehicles/types";
+import { BODY_TYPE_LABELS, isObjectBodyType, Vehicle } from "@/domains/vehicles/types";
 import { formatNumber } from "@/lib/formatting";
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -26,6 +26,23 @@ interface VehicleCardProps {
 
 export function VehicleCard({ vehicle, coverUrl }: VehicleCardProps) {
   const swatchColor = COLOR_SWATCHES[vehicle.originalColorFamily] || "#52525b";
+  const hasPlate = Boolean(vehicle.plateDisplay && vehicle.plateDisplay.trim().length > 0);
+  const isObject = vehicle.itemType === "object" || isObjectBodyType(vehicle.bodyType);
+  const bodyLabel = BODY_TYPE_LABELS[vehicle.bodyType] ?? vehicle.bodyType;
+
+  const plateBadge = hasPlate ? (
+    <div className="inline-flex items-center rounded-[6px] border border-white/20 bg-[#080a0b] px-2.5 py-1 text-xs font-bold tracking-widest text-[#f1ede5] shadow-inner font-mono">
+      {!isObject && (
+        <span className="text-[#6e93b5] mr-1.5 text-[11px] font-sans font-black">P</span>
+      )}
+      <span>{vehicle.plateDisplay}</span>
+    </div>
+  ) : (
+    <div className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#d3a548]/30 bg-[#1f1b14] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[#f7d46d] shadow-inner">
+      <Package className="h-3 w-3 text-[#d3a548]" />
+      <span>{isObject ? "OBJETO / S/ MATRÍCULA" : "S/ MATRÍCULA"}</span>
+    </div>
+  );
 
   return (
     <Card className="flex flex-col justify-between p-5 bg-[#101314] border border-white/[0.08] hover:border-white/20 transition-all duration-150 group">
@@ -40,23 +57,15 @@ export function VehicleCard({ vehicle, coverUrl }: VehicleCardProps) {
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#101314] via-transparent to-transparent" />
-            <div className="absolute top-3 left-5">
-              <div className="inline-flex items-center rounded-[6px] border border-white/20 bg-[#080a0b] px-2.5 py-1 text-xs font-bold tracking-widest text-[#f1ede5] shadow-inner font-mono">
-                <span className="text-[#6e93b5] mr-1.5 text-[11px] font-sans font-black">P</span>
-                <span>{vehicle.plateDisplay}</span>
-              </div>
-            </div>
+            <div className="absolute top-3 left-5">{plateBadge}</div>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-2">
             {/* Top bar: License Plate Badge & Body Type */}
-            <div className="inline-flex items-center rounded-[6px] border border-white/20 bg-[#080a0b] px-2.5 py-1 text-xs font-bold tracking-widest text-[#f1ede5] shadow-inner font-mono">
-              <span className="text-[#6e93b5] mr-1.5 text-[11px] font-sans font-black">P</span>
-              <span>{vehicle.plateDisplay}</span>
-            </div>
+            {plateBadge}
 
             <Badge variant="outline" className="text-[11px] uppercase tracking-wider">
-              {vehicle.bodyType}
+              {bodyLabel}
             </Badge>
           </div>
         )}

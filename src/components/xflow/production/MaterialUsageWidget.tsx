@@ -1,12 +1,18 @@
 import React from "react";
+import { Scissors } from "lucide-react";
 import { MaterialUsage } from "@/domains/production/types";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface MaterialUsageWidgetProps {
   materialUsage: MaterialUsage;
+  onRegisterCut?: (materialId: string) => void;
 }
 
-export function MaterialUsageWidget({ materialUsage }: MaterialUsageWidgetProps) {
+export function MaterialUsageWidget({
+  materialUsage,
+  onRegisterCut,
+}: MaterialUsageWidgetProps) {
   const isHighScrap = materialUsage.scrapPercentage >= 15;
 
   return (
@@ -66,6 +72,21 @@ export function MaterialUsageWidget({ materialUsage }: MaterialUsageWidgetProps)
           </span>
         </div>
       </div>
+
+      {onRegisterCut && materialUsage.materialId && (
+        <div className="pt-2 border-t border-white/[0.04]">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onRegisterCut(materialUsage.materialId)}
+            className="w-full text-[11px]"
+          >
+            <Scissors className="h-3.5 w-3.5 text-[#d3a548]" />
+            <span>Registar Novo Corte desta Película</span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import type {
   ConsumableKitKind,
   SupplierService,
 } from "@/domains/pricing/types";
+import type { SupplierRecord } from "@/server/pricing";
 import type {
   SaveKitInput,
   SaveSupplierInput,
@@ -25,7 +26,6 @@ import {
   SelectInput,
   TextInput,
 } from "./controls";
-import { groupSupplierServices } from "./pricing-utils";
 
 const KIT_KIND_LABELS: Record<ConsumableKitKind, string> = {
   spot: "Pontual",
@@ -52,12 +52,14 @@ type SaveWithIdResult = {
 export function KitsSuppliersTab({
   kits,
   supplierServices,
+  suppliers: suppliersProp,
   saveKit,
   saveSupplier,
   saveSupplierService,
 }: {
   kits: ConsumableKit[];
   supplierServices: SupplierService[];
+  suppliers?: SupplierRecord[];
   saveKit: (input: SaveKitInput) => Promise<SaveWithIdResult>;
   saveSupplier: (input: SaveSupplierInput) => Promise<SaveWithIdResult>;
   saveSupplierService: (
@@ -74,31 +76,67 @@ export function KitsSuppliersTab({
   const [editingKit, setEditingKit] = useState<ConsumableKit | null>(null);
 
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<SupplierRecord | null>(
+    null
+  );
 
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<SupplierService | null>(
     null
   );
 
-  const [extraSuppliers, setExtraSuppliers] = useState<
-    { id: string; name: string }[]
-  >([]);
+  const [savedSuppliers, setSavedSuppliers] = useState<SupplierRecord[]>([]);
 
   const suppliers = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const service of supplierServices) {
-      map.set(service.supplierId, service.supplierName);
-    }
-    for (const extra of extraSuppliers) {
-      if (!map.has(extra.id)) map.set(extra.id, extra.name);
-    }
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [supplierServices, extraSuppliers]);
+    const embedded =
+      suppliersProp ??
+      (kits[0] as (ConsumableKit & { _suppliers?: SupplierRecord[] }) | undefined)
+        ?._suppliers ??
+      (
+        supplierServices[0] as
+          | (SupplierService & { _suppliers?: SupplierRecord[] })
+          | undefined
+      )?._suppliers ??
+      [];
 
-  const groups = useMemo(
-    () => groupSupplierServices(supplierServices),
-    [supplierServices]
-  );
+    const map = new Map<string, SupplierRecord>();
+    for (const s of embedded) {
+      map.set(s.id, s);
+    }
+    for (const service of supplierServices) {
+      if (!map.has(service.supplierId)) {
+        map.set(service.supplierId, {
+          id: service.supplierId,
+          name: service.supplierName,
+          phone: null,
+          email: null,
+          notes: null,
+        });
+      }
+    }
+    for (const saved of savedSuppliers) {
+      map.set(saved.id, saved);
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-PT")
+    );
+  }, [suppliersProp, kits, supplierServices, savedSuppliers]);
+
+  const supplierGroups = useMemo(() => {
+    const servicesBySupplier = new Map<string, SupplierService[]>();
+    for (const service of supplierServices) {
+      const list = servicesBySupplier.get(service.supplierId);
+      if (list) {
+        list.push(service);
+      } else {
+        servicesBySupplier.set(service.supplierId, [service]);
+      }
+    }
+    return suppliers.map((supplier) => ({
+      supplier,
+      services: servicesBySupplier.get(supplier.id) ?? [],
+    }));
+  }, [suppliers, supplierServices]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -218,7 +256,10 @@ export function KitsSuppliersTab({
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => setSupplierModalOpen(true)}
+                onClick={() => {
+                  setEditingSupplier(null);
+                  setSupplierModalOpen(true);
+                }}
               >
                 <Plus className="h-4 w-4" />
                 <span>Novo fornecedor</span>
@@ -237,10 +278,10 @@ export function KitsSuppliersTab({
             </div>
           </div>
 
-          {groups.length === 0 ? (
+          {supplierGroups.length === 0 ? (
             <div className="p-8 flex flex-col items-center gap-2 text-center">
               <span className="text-sm font-semibold text-[#f1ede5]">
-                Sem serviços de fornecedores
+                Sem fornecedores registados
               </span>
               <span className="text-xs text-[#8a9092] max-w-xs">
                 Regista fornecedores e os serviços que substituem fases
@@ -249,60 +290,93 @@ export function KitsSuppliersTab({
             </div>
           ) : (
             <div className="p-5 flex flex-col gap-4">
-              {groups.map((group) => (
+              {supplierGroups.map(({ supplier, services }) => (
                 <div
-                  key={group.supplierId}
+                  key={supplier.id}
                   className="flex flex-col gap-2.5 p-4 rounded-lg bg-[#15191a] border border-white/[0.06]"
                 >
-                  <span className="text-xs font-bold text-[#f1ede5]">
-                    {group.supplierName}
-                  </span>
-                  <div className="flex flex-col gap-1.5">
-                    {group.services.map((service) => (
-                      <div
-                        key={service.id}
-                        className="flex items-center justify-between gap-3 p-2.5 rounded-sm bg-[#080a0b] border border-white/[0.04]"
-                      >
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className="text-xs font-semibold text-[#f1ede5] truncate">
-                            {service.serviceName}
-                          </span>
-                          <span className="text-[11px] text-[#8a9092]">
-                            Fase substituída:{" "}
-                            {service.replacedPhaseKey
-                              ? service.replacedPhaseKey
-                              : "—"}
-                            {service.phaseHours
-                              ? ` · ${service.phaseHours} h`
-                              : ""}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs font-mono font-bold text-[#f7d46d] whitespace-nowrap">
-                            {formatCurrency(service.basePrice)}
-                          </span>
-                          <Badge
-                            variant={service.active ? "success" : "default"}
-                            className="text-[10px] px-1.5 py-0"
-                          >
-                            {service.active ? "Ativo" : "Inativo"}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="px-2"
-                            onClick={() => {
-                              setEditingService(service);
-                              setServiceModalOpen(true);
-                            }}
-                            aria-label={`Editar serviço ${service.serviceName}`}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs font-bold text-[#f1ede5]">
+                        {supplier.name}
+                      </span>
+                      {(supplier.phone || supplier.email) && (
+                        <span className="text-[11px] text-[#a9adae]">
+                          {[supplier.phone, supplier.email]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      )}
+                      {supplier.notes && (
+                        <span className="text-[11px] text-[#8a9092]">
+                          {supplier.notes}
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingSupplier(supplier);
+                        setSupplierModalOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      <span>Editar fornecedor</span>
+                    </Button>
                   </div>
+                  {services.length === 0 ? (
+                    <span className="text-[11px] text-[#8a9092]">
+                      Sem serviços subcontratados associados.
+                    </span>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      {services.map((service) => (
+                        <div
+                          key={service.id}
+                          className="flex items-center justify-between gap-3 p-2.5 rounded-sm bg-[#080a0b] border border-white/[0.04]"
+                        >
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-xs font-semibold text-[#f1ede5] truncate">
+                              {service.serviceName}
+                            </span>
+                            <span className="text-[11px] text-[#8a9092]">
+                              Fase substituída:{" "}
+                              {service.replacedPhaseKey
+                                ? service.replacedPhaseKey
+                                : "—"}
+                              {service.phaseHours
+                                ? ` · ${service.phaseHours} h`
+                                : ""}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-xs font-mono font-bold text-[#f7d46d] whitespace-nowrap">
+                              {formatCurrency(service.basePrice)}
+                            </span>
+                            <Badge
+                              variant={service.active ? "success" : "default"}
+                              className="text-[10px] px-1.5 py-0"
+                            >
+                              {service.active ? "Ativo" : "Inativo"}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="px-2"
+                              onClick={() => {
+                                setEditingService(service);
+                                setServiceModalOpen(true);
+                              }}
+                              aria-label={`Editar serviço ${service.serviceName}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -339,21 +413,39 @@ export function KitsSuppliersTab({
 
       {supplierModalOpen && (
         <SupplierFormModal
+          key={editingSupplier?.id ?? "new-supplier"}
+          initial={editingSupplier}
           onSubmit={async (input) => {
             const result = await saveSupplier(input);
             if (result.ok) {
               setSupplierModalOpen(false);
-              setExtraSuppliers((prev) => [
-                ...prev,
-                { id: result.id, name: input.name },
-              ]);
-              setFeedback({ tone: "success", text: "Fornecedor criado." });
+              setEditingSupplier(null);
+              setSavedSuppliers((prev) => {
+                const updated: SupplierRecord = {
+                  id: result.id,
+                  name: input.name,
+                  phone: input.phone ?? null,
+                  email: input.email ?? null,
+                  notes: input.notes ?? null,
+                };
+                const filtered = prev.filter((item) => item.id !== result.id);
+                return [...filtered, updated];
+              });
+              setFeedback({
+                tone: "success",
+                text: input.id
+                  ? "Fornecedor atualizado."
+                  : "Fornecedor criado.",
+              });
             } else {
               setFeedback({ tone: "error", text: result.error });
             }
             return result;
           }}
-          onClose={() => setSupplierModalOpen(false)}
+          onClose={() => {
+            setSupplierModalOpen(false);
+            setEditingSupplier(null);
+          }}
         />
       )}
 
@@ -486,16 +578,18 @@ function KitFormModal({
 }
 
 function SupplierFormModal({
+  initial,
   onSubmit,
   onClose,
 }: {
+  initial: SupplierRecord | null;
   onSubmit: (input: SaveSupplierInput) => Promise<SaveWithIdResult>;
   onClose: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [notes, setNotes] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [email, setEmail] = useState(initial?.email ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -507,6 +601,7 @@ function SupplierFormModal({
     setSaving(true);
     setError(null);
     const result = await onSubmit({
+      id: initial?.id,
       name: name.trim(),
       phone: phone.trim() || null,
       email: email.trim() || null,
@@ -517,7 +612,10 @@ function SupplierFormModal({
   };
 
   return (
-    <ModalShell title="Novo fornecedor" onClose={onClose}>
+    <ModalShell
+      title={initial ? "Editar fornecedor" : "Novo fornecedor"}
+      onClose={onClose}
+    >
       <div className="flex flex-col gap-4 mt-5">
         <Field label="Nome do fornecedor" required>
           <TextInput
@@ -560,7 +658,13 @@ function SupplierFormModal({
           </Button>
           <Button variant="primary" onClick={handleSubmit} disabled={saving}>
             <Check className="h-4 w-4" />
-            <span>{saving ? "A guardar…" : "Criar fornecedor"}</span>
+            <span>
+              {saving
+                ? "A guardar…"
+                : initial
+                  ? "Guardar fornecedor"
+                  : "Criar fornecedor"}
+            </span>
           </Button>
         </div>
       </div>

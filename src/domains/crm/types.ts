@@ -2,6 +2,15 @@ export type CustomerType = "individual" | "business";
 export type CustomerStatus = "active" | "lead" | "archived";
 export type PreferredChannel = "whatsapp" | "phone" | "email";
 
+export const CUSTOMER_SOURCE_LABELS: Record<string, string> = {
+  direct: "Balcão / Direto",
+  instagram: "Instagram",
+  website: "Website",
+  referral: "Recomendação",
+  b2b_partner: "Parceiro B2B",
+  google: "Google / Pesquisa",
+};
+
 export interface CustomerContact {
   id: string;
   customerId: string;
@@ -35,6 +44,7 @@ export interface CustomerCommunication {
 export type CustomerB2BDraft = Partial<Omit<B2BAccountDetails, "id" | "customerId">>;
 
 export type CustomerDraft = Omit<Partial<Customer>, "b2bDetails"> & {
+  source?: string;
   b2bDetails?: CustomerB2BDraft;
 };
 
@@ -51,6 +61,7 @@ export interface Customer {
   preferredChannel: PreferredChannel;
   notes?: string;
   status: CustomerStatus;
+  source?: string;
   createdAt: string;
   updatedAt: string;
   // Associated summary metrics

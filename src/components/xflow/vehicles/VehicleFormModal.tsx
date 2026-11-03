@@ -1,9 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Car, Check, AlertCircle } from "lucide-react";
+import { X, Car, Package, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Vehicle, BodyType, ColorFamily, FuelType } from "@/domains/vehicles/types";
+import {
+  Vehicle,
+  BodyType,
+  BODY_TYPE_LABELS,
+  ColorFamily,
+  FuelType,
+  ItemType,
+  isObjectBodyType,
+} from "@/domains/vehicles/types";
 import { Customer } from "@/domains/crm/types";
 import {
   formatPlateForDisplay,
@@ -22,83 +30,168 @@ interface VehicleFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (
-    vehicle: Partial<Vehicle> & { customerId?: string }
+    vehicle: Partial<Vehicle> & { customerId?: string; itemType?: ItemType }
   ) => Promise<VehicleSaveResult>;
-  customers: Customer[];
+  customers?: Customer[];
   initialCustomerId?: string;
+  initialData?: Vehicle;
 }
+
+const ALL_BODY_TYPES: BodyType[] = [
+  "coupe",
+  "sedan",
+  "suv",
+  "wagon",
+  "hatchback",
+  "cabrio",
+  "motorcycle",
+  "van",
+  "boat",
+  "motorhome",
+  "truck",
+  "helmet",
+  "part",
+  "other",
+];
 
 export function VehicleFormModal({
   isOpen,
   onClose,
   onSave,
-  customers,
+  customers = [],
   initialCustomerId,
+  initialData,
 }: VehicleFormModalProps) {
-  const [plate, setPlate] = useState("");
-  const [make, setMake] = useState("");
-  const [model, setModel] = useState("");
-  const [generationYear, setGenerationYear] = useState("");
-  const [bodyType, setBodyType] = useState<BodyType | "">("");
-  const [colorName, setColorName] = useState("");
-  const [colorFamily, setColorFamily] = useState<ColorFamily | "">("");
-  const [vin, setVin] = useState("");
-  const [mileage, setMileage] = useState("");
-  const [fuelType, setFuelType] = useState<FuelType | "">("");
-  const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId ?? "");
-  const [notes, setNotes] = useState("");
+  const isEditing = Boolean(initialData);
+  const initialItemType: ItemType =
+    initialData?.itemType ??
+    (initialData?.bodyType && isObjectBodyType(initialData.bodyType) ? "object" : "vehicle");
+
+  const [itemType, setItemType] = useState<ItemType>(initialItemType);
+  const [plate, setPlate] = useState(initialData?.plateDisplay ?? "");
+  const [make, setMake] = useState(initialData?.make ?? "");
+  const [model, setModel] = useState(initialData?.model ?? "");
+  const [generationYear, setGenerationYear] = useState(
+    initialData?.generationYear ? String(initialData.generationYear) : ""
+  );
+  const [bodyType, setBodyType] = useState<BodyType | "">(initialData?.bodyType ?? "");
+  const [colorName, setColorName] = useState(initialData?.originalColorName ?? "");
+  const [colorFamily, setColorFamily] = useState<ColorFamily | "">(
+    initialData?.originalColorFamily ?? ""
+  );
+  const [vin, setVin] = useState(initialData?.vin ?? "");
+  const [mileage, setMileage] = useState(
+    initialData?.currentMileage !== undefined ? String(initialData.currentMileage) : ""
+  );
+  const [fuelType, setFuelType] = useState<FuelType | "">(initialData?.fuelType ?? "");
+  const [selectedCustomerId, setSelectedCustomerId] = useState(
+    initialData?.currentOwner?.customerId ?? initialCustomerId ?? ""
+  );
+  const [notes, setNotes] = useState(initialData?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   if (!isOpen) return null;
 
+  const isPlateOptional = itemType === "object" || bodyType === "boat";
+  const plateLabel =
+    itemType === "object"
+      ? "Referência / Identificação (opcional)"
+      : bodyType === "boat"
+      ? "Matrícula / Registo (opcional)"
+      : "Matrícula *";
+
+  const handleItemTypeChange = (nextType: ItemType) => {
+    setItemType(nextType);
+    if (nextType === "object") {
+      if (!bodyType || !isObjectBodyType(bodyType)) {
+        setBodyType("helmet");
+      }
+      if (!colorFamily) {
+        setColorFamily("other");
+      }
+    } else if (bodyType && isObjectBodyType(bodyType)) {
+      setBodyType("coupe");
+    }
+  };
+
+  const handleBodyTypeChange = (nextBody: BodyType | "") => {
+    setBodyType(nextBody);
+    if (nextBody) {
+      setItemType(isObjectBodyType(nextBody) ? "object" : "vehicle");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pending) return;
-    if (!plate.trim()) {
-      setError("A matrícula é obrigatória.");
-      return;
+
+    const trimmedPlate = plate.trim();
+    if (!isPlateOptional) {
+      if (!trimmedPlate) {
+        setError("A matrícula é obrigatória.");
+        return;
+      }
+      if (!isValidPlate(trimmedPlate)) {
+        setError("A matrícula indicada não é válida.");
+        return;
+      }
     }
-    if (!isValidPlate(plate)) {
-      setError("A matrícula indicada não é válida.");
-      return;
-    }
+
     if (!make.trim() || !model.trim()) {
-      setError("Indica a marca e o modelo da viatura.");
+      setError(
+        itemType === "object"
+          ? "Indica a marca/fabricante e a descrição/modelo do objeto."
+          : "Indica a marca e o modelo da viatura."
+      );
       return;
     }
     if (!bodyType) {
-      setError("Seleciona a carroçaria da viatura.");
+      setError("Seleciona o tipo de carroçaria ou objeto.");
       return;
     }
-    if (!colorFamily) {
-      setError("Seleciona a família de cor da viatura.");
+    const resolvedColorFamily: ColorFamily | "" =
+      colorFamily || (itemType === "object" ? "other" : "");
+    if (!resolvedColorFamily) {
+      setError("Seleciona a família de cor.");
       return;
     }
 
     let year: number;
     let parsedMileage: number | undefined;
     try {
-      year = parseGenerationYear(generationYear);
+      if (itemType === "object" && !generationYear.trim()) {
+        year = new Date().getFullYear();
+      } else {
+        year = parseGenerationYear(generationYear);
+      }
       parsedMileage = parseMileage(mileage);
     } catch (e) {
-      setError(e instanceof VehicleValidationError ? e.message : "Dados da viatura inválidos.");
+      setError(e instanceof VehicleValidationError ? e.message : "Dados inválidos.");
       return;
     }
+
+    const formattedPlate = trimmedPlate
+      ? isValidPlate(trimmedPlate)
+        ? formatPlateForDisplay(trimmedPlate)
+        : trimmedPlate.slice(0, 50)
+      : "";
+    const normalizedPlate = trimmedPlate ? normalizePlate(trimmedPlate) : "";
 
     setPending(true);
     setError(null);
     try {
       const result = await onSave({
-        plateDisplay: formatPlateForDisplay(plate),
-        plateNormalized: normalizePlate(plate),
+        itemType,
+        plateDisplay: formattedPlate,
+        plateNormalized: normalizedPlate,
         vin: vin.trim() || undefined,
         make: make.trim(),
         model: model.trim(),
         generationYear: year,
         bodyType,
         originalColorName: colorName.trim() || "Por identificar",
-        originalColorFamily: colorFamily,
+        originalColorFamily: resolvedColorFamily,
         currentMileage: parsedMileage,
         fuelType: fuelType || undefined,
         notes: notes.trim() || undefined,
@@ -111,11 +204,15 @@ export function VehicleFormModal({
       }
       onClose();
     } catch {
-      setError("Não foi possível guardar a viatura. Tenta novamente.");
+      setError("Não foi possível guardar os dados. Tenta novamente.");
     } finally {
       setPending(false);
     }
   };
+
+  const hasCurrentOwnerInList =
+    !initialData?.currentOwner ||
+    customers.some((c) => c.id === initialData.currentOwner?.customerId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#050606]/85 backdrop-blur-sm overflow-y-auto">
@@ -127,9 +224,17 @@ export function VehicleFormModal({
       >
         <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
           <div className="flex items-center gap-2">
-            <Car className="h-5 w-5 text-[#d3a548]" />
+            {itemType === "object" ? (
+              <Package className="h-5 w-5 text-[#d3a548]" />
+            ) : (
+              <Car className="h-5 w-5 text-[#d3a548]" />
+            )}
             <h2 id="vehicle-modal-title" className="text-lg font-bold text-[#f1ede5]">
-              Nova Viatura
+              {isEditing
+                ? "Editar Passaporte Digital"
+                : itemType === "object"
+                ? "Novo Objeto / Peça Solta"
+                : "Nova Viatura / Embarcação"}
             </h2>
           </div>
           <button
@@ -143,6 +248,36 @@ export function VehicleFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-5">
+          {/* Seletor Viatura vs Objeto */}
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-md bg-[#15191a] border border-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => handleItemTypeChange("vehicle")}
+              aria-pressed={itemType === "vehicle"}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-sm text-xs font-semibold transition-all cursor-pointer ${
+                itemType === "vehicle"
+                  ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
+                  : "text-[#a9adae] hover:text-[#f1ede5]"
+              }`}
+            >
+              <Car className="h-3.5 w-3.5" />
+              <span>Viatura / Embarcação</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleItemTypeChange("object")}
+              aria-pressed={itemType === "object"}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-sm text-xs font-semibold transition-all cursor-pointer ${
+                itemType === "object"
+                  ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
+                  : "text-[#a9adae] hover:text-[#f1ede5]"
+              }`}
+            >
+              <Package className="h-3.5 w-3.5" />
+              <span>Objeto / Peça Solta</span>
+            </button>
+          </div>
+
           {error && (
             <div
               role="alert"
@@ -155,15 +290,25 @@ export function VehicleFormModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Matrícula *</label>
+              <label className="text-xs font-medium text-[#a9adae]">{plateLabel}</label>
               <input
                 type="text"
                 value={plate}
                 onChange={(e) => setPlate(e.target.value)}
-                onBlur={() => setPlate(formatPlateForDisplay(plate))}
-                placeholder="ex: 00-AA-00"
+                onBlur={() => {
+                  if (plate.trim() && isValidPlate(plate)) {
+                    setPlate(formatPlateForDisplay(plate));
+                  }
+                }}
+                placeholder={
+                  itemType === "object"
+                    ? "ex: CAP-01 ou S/ Matrícula"
+                    : bodyType === "boat"
+                    ? "ex: PT-BAR-01 (opcional)"
+                    : "ex: 00-AA-00"
+                }
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm font-mono font-bold text-[#f1ede5] uppercase tracking-wider"
-                required
+                required={!isPlateOptional}
               />
             </div>
 
@@ -177,6 +322,15 @@ export function VehicleFormModal({
                 <option value="" className="bg-[#15191a] text-[#f1ede5]">
                   Sem proprietário
                 </option>
+                {!hasCurrentOwnerInList && initialData?.currentOwner && (
+                  <option
+                    value={initialData.currentOwner.customerId}
+                    className="bg-[#15191a] text-[#f1ede5]"
+                  >
+                    {initialData.currentOwner.customerName} (
+                    {initialData.currentOwner.customerType === "business" ? "B2B" : "Particular"})
+                  </option>
+                )}
                 {customers.map((c) => (
                   <option key={c.id} value={c.id} className="bg-[#15191a] text-[#f1ede5]">
                     {c.name} ({c.type === "business" ? "B2B" : "Particular"})
@@ -188,29 +342,35 @@ export function VehicleFormModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Marca *</label>
+              <label className="text-xs font-medium text-[#a9adae]">
+                {itemType === "object" ? "Marca / Fabricante *" : "Marca *"}
+              </label>
               <input
                 type="text"
                 value={make}
                 onChange={(e) => setMake(e.target.value)}
-                placeholder="ex: Porsche"
+                placeholder={itemType === "object" ? "ex: Arai / OEM" : "ex: Porsche"}
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                 required
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Modelo *</label>
+              <label className="text-xs font-medium text-[#a9adae]">
+                {itemType === "object" ? "Modelo / Peça *" : "Modelo *"}
+              </label>
               <input
                 type="text"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                placeholder="ex: 911 Carrera"
+                placeholder={itemType === "object" ? "ex: Capacete GP-7" : "ex: 911 Carrera"}
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
                 required
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Ano *</label>
+              <label className="text-xs font-medium text-[#a9adae]">
+                {itemType === "object" ? "Ano (opcional)" : "Ano *"}
+              </label>
               <input
                 type="number"
                 value={generationYear}
@@ -223,23 +383,22 @@ export function VehicleFormModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">Carroçaria *</label>
+              <label className="text-xs font-medium text-[#a9adae]">
+                {itemType === "object" ? "Categoria / Tipo *" : "Carroçaria *"}
+              </label>
               <select
                 value={bodyType}
-                onChange={(e) => setBodyType(e.target.value as BodyType | "")}
-                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5] capitalize"
+                onChange={(e) => handleBodyTypeChange(e.target.value as BodyType | "")}
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] text-sm text-[#f1ede5]"
               >
                 <option value="" disabled>
                   Selecionar
                 </option>
-                <option value="coupe">Coupé</option>
-                <option value="sedan">Sedan</option>
-                <option value="suv">SUV</option>
-                <option value="wagon">Carrinha (Wagon)</option>
-                <option value="hatchback">Hatchback</option>
-                <option value="cabrio">Cabriolet</option>
-                <option value="motorcycle">Mota</option>
-                <option value="van">Comercial</option>
+                {ALL_BODY_TYPES.map((bt) => (
+                  <option key={bt} value={bt}>
+                    {BODY_TYPE_LABELS[bt]}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -307,7 +466,7 @@ export function VehicleFormModal({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#a9adae]">VIN (Chassis)</label>
+              <label className="text-xs font-medium text-[#a9adae]">VIN / Nº Série</label>
               <input
                 type="text"
                 value={vin}
@@ -319,7 +478,7 @@ export function VehicleFormModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-[#a9adae]">Observações Iniciais</label>
+            <label className="text-xs font-medium text-[#a9adae]">Observações</label>
             <textarea
               rows={2}
               value={notes}
@@ -335,7 +494,15 @@ export function VehicleFormModal({
             </Button>
             <Button variant="primary" type="submit" disabled={pending}>
               <Check className="h-4 w-4" />
-              <span>{pending ? "A guardar..." : "Registar Viatura"}</span>
+              <span>
+                {pending
+                  ? "A guardar..."
+                  : isEditing
+                  ? "Guardar Alterações"
+                  : itemType === "object"
+                  ? "Registar Objeto"
+                  : "Registar Viatura"}
+              </span>
             </Button>
           </div>
         </form>

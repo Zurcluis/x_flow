@@ -1,3 +1,5 @@
+export type ItemType = "vehicle" | "object";
+
 export type BodyType =
   | "sedan"
   | "coupe"
@@ -5,8 +7,35 @@ export type BodyType =
   | "wagon"
   | "hatchback"
   | "cabrio"
+  | "van"
   | "motorcycle"
-  | "van";
+  | "boat"
+  | "motorhome"
+  | "truck"
+  | "helmet"
+  | "part"
+  | "other";
+
+export const BODY_TYPE_LABELS: Record<BodyType, string> = {
+  coupe: "Coupé",
+  sedan: "Sedan",
+  suv: "SUV",
+  wagon: "Station Wagon",
+  hatchback: "Compacto / Hatchback",
+  cabrio: "Cabrio / Roadster",
+  motorcycle: "Mota",
+  van: "Comercial / Van",
+  boat: "Barco / Embarcação",
+  motorhome: "Autocaravana",
+  truck: "Camião / Pesado",
+  helmet: "Capacete",
+  part: "Peça Solta",
+  other: "Outro Objeto",
+};
+
+export function isObjectBodyType(bodyType: BodyType): boolean {
+  return bodyType === "helmet" || bodyType === "part" || bodyType === "other";
+}
 
 export type ColorFamily =
   | "white"
@@ -65,6 +94,7 @@ export interface VehicleNote {
 export interface Vehicle {
   id: string;
   organizationId: string;
+  itemType?: ItemType;
   plateDisplay: string;
   plateNormalized: string;
   vin?: string;

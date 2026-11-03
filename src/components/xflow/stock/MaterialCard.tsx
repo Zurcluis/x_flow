@@ -1,19 +1,29 @@
 import React from "react";
+import { Plus, Scissors, ShoppingCart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { Material } from "@/domains/materials/types";
 import { isCriticalStock, stockLevelPercentage } from "@/domains/materials/stock";
 import { formatCurrency } from "@/lib/formatting";
 
 interface MaterialCardProps {
   material: Material;
+  onAddRoll?: (material: Material) => void;
+  onRegisterCut?: (material: Material) => void;
+  onOrderSupplier?: (material: Material) => void;
 }
 
 function unitLabel(material: Material): string {
   return material.unit === "bottle" ? "un" : material.unit === "kit" ? "kit" : "m";
 }
 
-export function MaterialCard({ material }: MaterialCardProps) {
+export function MaterialCard({
+  material,
+  onAddRoll,
+  onRegisterCut,
+  onOrderSupplier,
+}: MaterialCardProps) {
   const isCritical = isCriticalStock(material.status);
   const isOutOfStock = material.status === "out_of_stock";
   const stockPercentage = stockLevelPercentage(
@@ -79,7 +89,9 @@ export function MaterialCard({ material }: MaterialCardProps) {
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-[#8a9092] mt-0.5">
-            <span>Alerta mín: {material.minimumStockAlertMeters} {unitLabel(material)}</span>
+            <span>
+              Alerta mín: {material.minimumStockAlertMeters} {unitLabel(material)}
+            </span>
             {material.batches && material.batches.length > 0 && (
               <span>Lote: {material.batches[0].batchNumber}</span>
             )}
@@ -87,19 +99,64 @@ export function MaterialCard({ material }: MaterialCardProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-white/[0.04] text-xs">
-        <div className="flex flex-col">
-          <span className="text-[11px] text-[#8a9092]">Custo Oficina</span>
-          <span className="font-semibold text-[#a9adae] tabular-nums">
-            {formatCurrency(material.costPerMeter)}/{unitLabel(material)}
-          </span>
+      <div className="flex flex-col gap-3 mt-4 pt-3 border-t border-white/[0.04]">
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <div className="flex flex-col">
+            <span className="text-[11px] text-[#8a9092]">Custo Oficina</span>
+            <span className="font-semibold text-[#a9adae] tabular-nums">
+              {formatCurrency(material.costPerMeter)}/{unitLabel(material)}
+            </span>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[11px] text-[#8a9092]">Preço Venda</span>
+            <span className="font-bold text-[#f7d46d] tabular-nums">
+              {formatCurrency(material.pricePerMeter)}/{unitLabel(material)}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-[11px] text-[#8a9092]">Preço Venda</span>
-          <span className="font-bold text-[#f7d46d] tabular-nums">
-            {formatCurrency(material.pricePerMeter)}/{unitLabel(material)}
-          </span>
-        </div>
+
+        {(onRegisterCut || onOrderSupplier || onAddRoll) && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/[0.04]">
+            {onRegisterCut && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => onRegisterCut(material)}
+                disabled={material.currentStockMeters <= 0}
+                className="flex-1 text-[11px] px-2.5"
+              >
+                <Scissors className="h-3.5 w-3.5 text-[#d3a548]" />
+                <span>Registar Corte (m)</span>
+              </Button>
+            )}
+            {onAddRoll && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onAddRoll(material)}
+                className="text-[11px] px-2.5"
+                title="Adicionar novo rolo ou lote a este material"
+              >
+                <Plus className="h-3.5 w-3.5 text-[#f7d46d]" />
+                <span>Novo Rolo</span>
+              </Button>
+            )}
+            {onOrderSupplier && (
+              <Button
+                type="button"
+                variant={isCritical ? "primary" : "outline"}
+                size="sm"
+                onClick={() => onOrderSupplier(material)}
+                className="w-full text-[11px] mt-0.5"
+              >
+                <ShoppingCart className="h-3.5 w-3.5" />
+                <span>Encomendar ao Fornecedor</span>
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </Card>
   );

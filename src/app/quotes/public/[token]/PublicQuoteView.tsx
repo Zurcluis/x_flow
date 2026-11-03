@@ -216,6 +216,13 @@ export function PublicQuoteView({
   const selectedOption =
     quote.options.find((o) => o.id === selectedOptionId) || quote.options[0];
 
+  const depositPercentage =
+    quote.depositPercentage && quote.depositPercentage > 0
+      ? quote.depositPercentage
+      : 30;
+  const showDepositCondition =
+    Boolean(quote.depositRequired) || (quote.depositPercentage ?? 0) > 0;
+
   const canRespond = quote.status === "sent" || quote.status === "viewed";
   const contactHref = quote.organizationPhone
     ? `https://wa.me/${quote.organizationPhone.replace(/\D/g, "")}`
@@ -362,6 +369,42 @@ export function PublicQuoteView({
           )}
         </div>
 
+        {/* Condições de Adjudicação e Sinal */}
+        {showDepositCondition && selectedOption && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-[18px] bg-[#101314] border border-[#d3a548]/30">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] uppercase font-bold tracking-wider text-[#d3a548]">
+                  Condições de Adjudicação
+                </span>
+                {quote.depositStatus === "paid" && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#68a46b]/15 text-[#68a46b] border border-[#68a46b]/30">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Sinal Pago
+                  </span>
+                )}
+              </div>
+              <p className="text-xs sm:text-sm font-semibold text-[#f1ede5]">
+                Sinal de Adjudicação ({depositPercentage}%):{" "}
+                <span className="text-[#f7d46d] font-bold tabular-nums">
+                  {formatCurrency(
+                    Math.round(selectedOption.totalWithVat * (depositPercentage / 100) * 100) / 100
+                  )}
+                </span>{" "}
+                para reserva de material e vaga na agenda
+              </p>
+            </div>
+            <div className="flex flex-col sm:items-end text-xs text-[#a9adae] bg-[#080a0b] px-3.5 py-2.5 rounded-md border border-white/[0.06]">
+              <span className="text-[11px] text-[#8a9092] uppercase font-semibold">
+                IBAN X-Motion (Millennium BCP)
+              </span>
+              <span className="font-mono font-bold text-[#f7d46d] tracking-wide">
+                PT50 0036 0096 9910 0129 8892 6
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Bottom Approval Action Bar */}
         {!isApproved && !canRespond && (
           <div
@@ -429,13 +472,28 @@ export function PublicQuoteView({
             </div>
 
             <form onSubmit={handleConfirmApproval} className="flex flex-col gap-4 mt-4 text-xs">
-              <div className="p-3.5 rounded-md bg-[#15191a] border border-white/[0.04] flex flex-col gap-1">
+              <div className="p-3.5 rounded-md bg-[#15191a] border border-white/[0.04] flex flex-col gap-1.5">
                 <div className="flex items-center justify-between text-sm font-bold text-[#f1ede5]">
                   <span>Total da Proposta c/ IVA:</span>
                   <span className="text-[#f7d46d] tabular-nums font-black">
                     {formatCurrency(selectedOption.totalWithVat)}
                   </span>
                 </div>
+                {showDepositCondition && (
+                  <div className="pt-2 mt-1 border-t border-white/[0.06] flex flex-col gap-1 text-[12px]">
+                    <span className="font-semibold text-[#f7d46d]">
+                      Sinal de Adjudicação ({depositPercentage}%):{" "}
+                      {formatCurrency(
+                        Math.round(selectedOption.totalWithVat * (depositPercentage / 100) * 100) /
+                          100
+                      )}{" "}
+                      para reserva de material e vaga na agenda
+                    </span>
+                    <span className="font-mono text-[11px] text-[#a9adae]">
+                      IBAN X-Motion: PT50 0036 0096 9910 0129 8892 6
+                    </span>
+                  </div>
+                )}
                 <span className="text-[12px] text-[#8a9092]">
                   Garantia de {selectedOption.warrantyYears} anos com certificado digital emitido
                   após conclusão.

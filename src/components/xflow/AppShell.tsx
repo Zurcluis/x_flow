@@ -50,9 +50,11 @@ function DrawerLink({ item, onNavigate }: { item: NavItem; onNavigate: () => voi
 export function AppShell({
   children,
   user = null,
+  hiddenHrefs = [],
 }: {
   children: React.ReactNode;
   user?: ShellUser | null;
+  hiddenHrefs?: string[];
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -60,7 +62,7 @@ export function AppShell({
   const assistantEnabled = Boolean(user && canUseAssistant(user.role));
   const openAssistant = useCallback(() => setAssistantOpen(true), []);
   const closeAssistant = useCallback(() => setAssistantOpen(false), []);
-  const sections = navSectionsForRole(user?.role);
+  const sections = navSectionsForRole(user?.role, hiddenHrefs);
 
   // If public standalone route (like client portal, quote approval, reception report, QC certificate, warranty certificate, or passport), don't render workshop shell
   if (
@@ -69,6 +71,7 @@ export function AppShell({
     pathname.startsWith("/checkins/report/") ||
     pathname.startsWith("/qc/certificate/") ||
     pathname.startsWith("/warranties/certificate/") ||
+    pathname.startsWith("/feedback/") ||
     pathname.startsWith("/passport/") ||
     pathname === "/shop-floor" ||
     pathname === "/change-password" ||
@@ -80,7 +83,7 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-[#050606] text-[#f1ede5] antialiased">
       {/* Desktop Sidebar */}
-      <Sidebar role={user?.role} />
+      <Sidebar role={user?.role} hiddenHrefs={hiddenHrefs} />
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">

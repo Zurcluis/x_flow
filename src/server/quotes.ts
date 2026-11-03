@@ -1,11 +1,14 @@
 import { getDb } from "@/lib/db";
 import type { PoolClient } from "pg";
+import { formatCurrency } from "@/lib/formatting";
+import { getOrganizationSettings } from "@/server/settings";
 import {
   OptionTier,
   PublicQuote,
   PublicQuoteOption,
   PublicQuoteOptionLine,
   Quote,
+  QuoteDepositStatus,
   QuoteEvent,
   QuoteOption,
   QuoteStatus,
@@ -112,6 +115,28 @@ function mapOption(row: Row): QuoteOption {
 }
 
 function mapQuote(row: Row): Quote {
+  const rowDepositRequired = Boolean(row.deposit_required);
+  const orgDepositRequired = Boolean(row.org_deposit_required);
+  const rawStatus = (row.deposit_status as QuoteDepositStatus) || "not_required";
+  const depositRequired =
+    rowDepositRequired ||
+    orgDepositRequired ||
+    rawStatus === "pending" ||
+    rawStatus === "paid";
+  const rawPct = rowDepositRequired
+    ? num(row.deposit_percentage)
+    : row.org_deposit_percentage != null
+      ? num(row.org_deposit_percentage)
+      : num(row.deposit_percentage);
+  const depositPercentage = rawPct > 0 ? rawPct : 30;
+  const depositAmount = num(row.deposit_amount);
+  const depositStatus: QuoteDepositStatus =
+    rawStatus === "paid"
+      ? "paid"
+      : depositRequired
+        ? "pending"
+        : rawStatus;
+
   return {
     id: String(row.id),
     organizationId: String(row.organization_id),
@@ -134,6 +159,12 @@ function mapQuote(row: Row): Quote {
     createdBy: row.created_by ? String(row.created_by) : "",
     approvedAt: row.approved_at ? iso(row.approved_at) : undefined,
     approvedByName: (row.approved_by_name as string) ?? undefined,
+    depositRequired,
+    depositPercentage,
+    depositAmount,
+    depositStatus,
+    depositPaidAt: row.deposit_paid_at ? iso(row.deposit_paid_at) : undefined,
+    depositPaymentMethod: (row.deposit_payment_method as string) ?? undefined,
     options: [],
     events: [],
     createdAt: iso(row.created_at),
@@ -141,10 +172,43 @@ function mapQuote(row: Row): Quote {
   };
 }
 
+function finalizeQuoteDepositFields<
+  T extends {
+    options: Array<{ id: string; isRecommended: boolean; totalWithVat: number }>;
+    selectedOptionId?: string | null;
+    depositRequired?: boolean;
+    depositPercentage?: number;
+    depositAmount?: number;
+    depositStatus?: QuoteDepositStatus;
+  },
+>(quote: T): T {
+  const rawAmount = Number(quote.depositAmount ?? 0);
+  if (rawAmount > 0) {
+    quote.depositAmount = rawAmount;
+    return quote;
+  }
+  if (quote.depositRequired) {
+    const refOption =
+      (quote.selectedOptionId
+        ? quote.options.find((o) => o.id === quote.selectedOptionId)
+        : undefined) ||
+      quote.options.find((o) => o.isRecommended) ||
+      quote.options[0];
+    const recommendedOptionTotalWithVat = refOption ? refOption.totalWithVat : 0;
+    const pct = quote.depositPercentage && quote.depositPercentage > 0 ? quote.depositPercentage : 30;
+    quote.depositAmount =
+      Math.round(recommendedOptionTotalWithVat * (pct / 100) * 100) / 100;
+  } else {
+    quote.depositAmount = 0;
+  }
+  return quote;
+}
+
 const QUOTE_JOINS = `
   FROM quotes q
   JOIN vehicles v ON v.id = q.vehicle_id AND v.organization_id = q.organization_id
-  JOIN customers c ON c.id = q.customer_id AND c.organization_id = q.organization_id`;
+  JOIN customers c ON c.id = q.customer_id AND c.organization_id = q.organization_id
+  LEFT JOIN organization_settings os ON os.organization_id = q.organization_id`;
 
 export async function listQuotes(organizationId: string): Promise<Quote[]> {
   if (!isUuid(organizationId)) return [];
@@ -153,7 +217,9 @@ export async function listQuotes(organizationId: string): Promise<Quote[]> {
     `SELECT q.*, v.plate_display AS vehicle_plate, v.make || ' ' || v.model AS vehicle_model,
             v.generation_year AS vehicle_year, v.original_color_name AS vehicle_color,
             c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
-            c.type AS customer_type
+            c.type AS customer_type,
+            os.deposit_required AS org_deposit_required,
+            os.deposit_percentage AS org_deposit_percentage
      ${QUOTE_JOINS}
      WHERE q.organization_id = $1
      ORDER BY q.created_at DESC`,
@@ -177,7 +243,7 @@ export async function listQuotes(organizationId: string): Promise<Quote[]> {
   return rows.map((r) => {
     const q = mapQuote(r);
     q.options = optionsByQuote.get(q.id) ?? [];
-    return q;
+    return finalizeQuoteDepositFields(q);
   });
 }
 
@@ -191,7 +257,9 @@ export async function getQuoteById(
     `SELECT q.*, v.plate_display AS vehicle_plate, v.make || ' ' || v.model AS vehicle_model,
             v.generation_year AS vehicle_year, v.original_color_name AS vehicle_color,
             c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
-            c.type AS customer_type
+            c.type AS customer_type,
+            os.deposit_required AS org_deposit_required,
+            os.deposit_percentage AS org_deposit_percentage
      ${QUOTE_JOINS}
      WHERE q.organization_id = $1 AND q.id = $2`,
     [organizationId, quoteId]
@@ -204,6 +272,7 @@ export async function getQuoteById(
     [quoteId]
   );
   quote.options = optionRows.map(mapOption);
+  finalizeQuoteDepositFields(quote);
 
   const { rows: itemRows } = await db.query<Row>(
     `SELECT i.* FROM quote_option_items i JOIN quote_options o ON o.id = i.quote_option_id WHERE o.quote_id = $1`,
@@ -621,11 +690,26 @@ export async function createQuote(
     const publicToken = `qt_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
     const status = input.intent === "draft" ? "draft" : "sent";
 
+    const orgSettings = await getOrganizationSettings(organizationId);
+    const depositRequired = orgSettings.depositRequired;
+    const depositPercentage =
+      orgSettings.depositPercentage > 0 ? orgSettings.depositPercentage : 30;
+    const recOption =
+      prepared.find((p) => p.input.isRecommended) ?? prepared[0];
+    const recTotalWithVat = recOption ? recOption.financials.totalWithVat : 0;
+    const depositAmount = depositRequired
+      ? Math.round(recTotalWithVat * (depositPercentage / 100) * 100) / 100
+      : 0;
+    const depositStatus: QuoteDepositStatus = depositRequired
+      ? "pending"
+      : "not_required";
+
     const { rows: quoteRows } = await client.query<Row>(
       `INSERT INTO quotes
         (organization_id, quote_number, vehicle_id, customer_id, status, public_token,
-         expires_at, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6, NOW() + INTERVAL '30 days', $7, $8)
+         expires_at, notes, created_by,
+         deposit_required, deposit_percentage, deposit_amount, deposit_status)
+       VALUES ($1,$2,$3,$4,$5,$6, NOW() + INTERVAL '30 days', $7, $8, $9, $10, $11, $12)
        RETURNING id`,
       [
         organizationId,
@@ -636,6 +720,10 @@ export async function createQuote(
         publicToken,
         input.notes ?? null,
         profileId ?? null,
+        depositRequired,
+        depositPercentage,
+        depositAmount,
+        depositStatus,
       ]
     );
     quoteId = String(quoteRows[0].id);
@@ -1344,7 +1432,8 @@ export async function approveQuote(
     await client.query("BEGIN");
 
     const { rows: quoteRows } = await client.query<Row>(
-      `SELECT q.id, q.status, q.selected_option_id, q.vehicle_id, q.customer_id
+      `SELECT q.id, q.status, q.selected_option_id, q.vehicle_id, q.customer_id,
+              q.deposit_required, q.deposit_percentage, q.deposit_amount, q.deposit_status
        FROM quotes q
        WHERE q.id = $1 AND q.organization_id = $2
        FOR UPDATE OF q`,
@@ -1354,6 +1443,15 @@ export async function approveQuote(
       throw new QuoteError("Orçamento não encontrado.");
     }
     const quote = quoteRows[0];
+
+    const { rows: orgSettingsRows } = await client.query<Row>(
+      `SELECT deposit_required, deposit_percentage
+       FROM organization_settings
+       WHERE organization_id = $1
+       LIMIT 1`,
+      [organizationId]
+    );
+    const orgSettingsRow = orgSettingsRows[0];
 
     const { rows: existing } = await client.query<Row>(
       `SELECT id FROM work_orders WHERE quote_id = $1 AND organization_id = $2 LIMIT 1`,
@@ -1380,10 +1478,11 @@ export async function approveQuote(
     let chosenOptionId: string | null = null;
     let chosenOptionName: string | null = null;
     let chosenEstimatedHours: number | null = null;
+    let chosenTotalWithVat = 0;
 
     if (selectedOptionId) {
       const { rows: owned } = await client.query<Row>(
-        `SELECT id, name, estimated_hours FROM quote_options WHERE id = $1 AND quote_id = $2`,
+        `SELECT id, name, estimated_hours, total_with_vat FROM quote_options WHERE id = $1 AND quote_id = $2`,
         [selectedOptionId, quoteId]
       );
       if (owned.length === 0) {
@@ -1397,9 +1496,10 @@ export async function approveQuote(
       chosenOptionName = (owned[0].name as string) ?? null;
       chosenEstimatedHours =
         owned[0].estimated_hours === null ? null : num(owned[0].estimated_hours);
+      chosenTotalWithVat = num(owned[0].total_with_vat);
     } else {
       const { rows: optRows } = await client.query<Row>(
-        `SELECT id, name, estimated_hours FROM quote_options
+        `SELECT id, name, estimated_hours, total_with_vat FROM quote_options
          WHERE quote_id = $1 AND (is_recommended OR id = $2)
          LIMIT 1`,
         [quoteId, quote.selected_option_id ?? null]
@@ -1409,14 +1509,51 @@ export async function approveQuote(
         chosenOptionName = (optRows[0].name as string) ?? null;
         chosenEstimatedHours =
           optRows[0].estimated_hours === null ? null : num(optRows[0].estimated_hours);
+        chosenTotalWithVat = num(optRows[0].total_with_vat);
       }
     }
 
+    const depositRequired =
+      Boolean(quote.deposit_required) || Boolean(orgSettingsRow?.deposit_required);
+    const rawPct = Boolean(quote.deposit_required)
+      ? num(quote.deposit_percentage)
+      : orgSettingsRow?.deposit_percentage != null
+        ? num(orgSettingsRow.deposit_percentage)
+        : num(quote.deposit_percentage);
+    const depositPercentage = rawPct > 0 ? rawPct : 30;
+    const currentDepositStatus =
+      (quote.deposit_status as QuoteDepositStatus) || "not_required";
+    const depositAmount =
+      currentDepositStatus === "paid" && num(quote.deposit_amount) > 0
+        ? num(quote.deposit_amount)
+        : depositRequired
+          ? Math.round(chosenTotalWithVat * (depositPercentage / 100) * 100) / 100
+          : num(quote.deposit_amount);
+    const nextDepositStatus: QuoteDepositStatus =
+      depositRequired && currentDepositStatus === "not_required"
+        ? "pending"
+        : currentDepositStatus;
+
     await client.query(
       `UPDATE quotes
-       SET status = 'approved', approved_at = NOW(), approved_by_name = $2, updated_at = NOW()
+       SET status = 'approved',
+           approved_at = NOW(),
+           approved_by_name = $2,
+           deposit_required = $4,
+           deposit_percentage = $5,
+           deposit_amount = $6,
+           deposit_status = $7,
+           updated_at = NOW()
        WHERE id = $1 AND organization_id = $3`,
-      [quoteId, safeApproverName ?? "Cliente", organizationId]
+      [
+        quoteId,
+        safeApproverName ?? "Cliente",
+        organizationId,
+        depositRequired,
+        depositPercentage,
+        depositAmount,
+        nextDepositStatus,
+      ]
     );
     if (chosenOptionId) {
       await client.query(
@@ -1511,6 +1648,134 @@ export async function approveQuote(
   }
 }
 
+export async function registerQuoteDepositPayment(
+  organizationId: string,
+  quoteId: string,
+  input: { amount?: number; paymentMethod?: string }
+): Promise<Quote> {
+  assertQuoteUuid(organizationId, "Organização");
+  assertQuoteUuid(quoteId, "Orçamento");
+
+  const db = getDb();
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: quoteRows } = await client.query<Row>(
+      `SELECT q.id, q.quote_number, q.selected_option_id,
+              q.deposit_required, q.deposit_percentage, q.deposit_amount, q.deposit_status,
+              os.deposit_percentage AS org_deposit_percentage
+       FROM quotes q
+       LEFT JOIN organization_settings os ON os.organization_id = q.organization_id
+       WHERE q.id = $1 AND q.organization_id = $2
+       FOR UPDATE OF q`,
+      [quoteId, organizationId]
+    );
+    if (quoteRows.length === 0) {
+      throw new QuoteError("Orçamento não encontrado.");
+    }
+    const quoteRow = quoteRows[0];
+
+    let amount =
+      input.amount != null && Number.isFinite(Number(input.amount)) && Number(input.amount) > 0
+        ? round2(Number(input.amount))
+        : num(quoteRow.deposit_amount) > 0
+          ? round2(num(quoteRow.deposit_amount))
+          : 0;
+
+    if (amount <= 0) {
+      const { rows: optRows } = await client.query<Row>(
+        `SELECT total_with_vat FROM quote_options
+         WHERE quote_id = $1
+         ORDER BY CASE WHEN id = $2 THEN 0 WHEN is_recommended THEN 1 ELSE 2 END, created_at ASC
+         LIMIT 1`,
+        [quoteId, quoteRow.selected_option_id ?? null]
+      );
+      const optionTotal = optRows[0] ? num(optRows[0].total_with_vat) : 0;
+      const pct =
+        num(quoteRow.deposit_percentage) > 0
+          ? num(quoteRow.deposit_percentage)
+          : num(quoteRow.org_deposit_percentage) > 0
+            ? num(quoteRow.org_deposit_percentage)
+            : 30;
+      amount = round2(optionTotal * (pct / 100));
+    }
+
+    if (amount <= 0) {
+      throw new QuoteError("O valor do sinal tem de ser superior a zero.");
+    }
+
+    const paymentMethod = input.paymentMethod?.trim() || "bank_transfer";
+
+    await client.query(
+      `UPDATE quotes
+       SET deposit_required = TRUE,
+           deposit_status = 'paid',
+           deposit_amount = $1,
+           deposit_paid_at = NOW(),
+           deposit_payment_method = $2,
+           updated_at = NOW()
+       WHERE id = $3 AND organization_id = $4`,
+      [amount, paymentMethod, quoteId, organizationId]
+    );
+
+    const eventDescription = `Sinal liquidado (${formatCurrency(amount)})`;
+    await client.query(
+      `INSERT INTO quote_events (quote_id, event_type, description, author_name)
+       VALUES ($1, 'approved', $2, 'X-Flow')`,
+      [quoteId, eventDescription]
+    );
+
+    const { rows: bankRows } = await client.query<Row>(
+      `SELECT id FROM bank_accounts
+       WHERE organization_id = $1 AND active = TRUE
+       ORDER BY CASE
+         WHEN $2 = 'cash' AND kind = 'cash' THEN 0
+         WHEN $2 = 'mbway' AND kind = 'mbway' THEN 0
+         WHEN kind = 'bank' THEN 1
+         ELSE 2
+       END, created_at ASC
+       LIMIT 1`,
+      [organizationId, paymentMethod]
+    );
+    const bankAccountId = bankRows[0] ? String(bankRows[0].id) : null;
+    const netAmount = amount / 1.23;
+    const vatAmount = round2(amount - netAmount);
+    const quoteNumber = String(quoteRow.quote_number);
+
+    await client.query(
+      `INSERT INTO transactions
+         (organization_id, type, occurred_at, amount, bank_account_id, description,
+          payment_method, reference, vat_amount, source_type, source_id)
+       VALUES ($1, 'income', NOW(), $2, $3, $4, $5, $6, $7, 'manual', $8)`,
+      [
+        organizationId,
+        amount.toFixed(2),
+        bankAccountId,
+        `Sinal Orçamento ${quoteNumber}`,
+        paymentMethod,
+        quoteNumber,
+        vatAmount.toFixed(2),
+        quoteId,
+      ]
+    );
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    if (e instanceof QuoteError) throw e;
+    throw new QuoteError("Não foi possível registar o pagamento do sinal.");
+  } finally {
+    client.release();
+  }
+
+  const updated = await getQuoteById(organizationId, quoteId);
+  if (!updated) {
+    throw new QuoteError("Orçamento não encontrado após registo do sinal.");
+  }
+  return updated;
+}
+
 export async function getQuoteByToken(token: string): Promise<Quote | null> {
   if (!isPublicToken(token)) return null;
   const db = getDb();
@@ -1542,6 +1807,10 @@ export async function getPublicQuoteForOrganization(
     const { rows } = await client.query<Row>(
       `SELECT q.id, q.quote_number, q.status, q.selected_option_id, q.approved_by_name,
               q.expires_at, q.notes,
+              q.deposit_required, q.deposit_percentage, q.deposit_amount,
+              q.deposit_status, q.deposit_paid_at, q.deposit_payment_method,
+              os.deposit_required AS org_deposit_required,
+              os.deposit_percentage AS org_deposit_percentage,
               c.name AS customer_name,
               v.plate_display AS vehicle_plate, v.make || ' ' || v.model AS vehicle_model,
               v.generation_year AS vehicle_year, v.original_color_name AS vehicle_color,
@@ -1551,6 +1820,7 @@ export async function getPublicQuoteForOrganization(
        JOIN vehicles v ON v.id = q.vehicle_id AND v.organization_id = q.organization_id
        JOIN customers c ON c.id = q.customer_id AND c.organization_id = q.organization_id
        JOIN organizations o ON o.id = q.organization_id
+       LEFT JOIN organization_settings os ON os.organization_id = q.organization_id
        LEFT JOIN LATERAL (
          SELECT l.phone, l.email FROM locations l
          WHERE l.organization_id = q.organization_id
@@ -1649,7 +1919,29 @@ export async function getPublicQuoteForOrganization(
       };
     });
 
-    return {
+    const rowDepositRequired = Boolean(quoteRow.deposit_required);
+    const orgDepositRequired = Boolean(quoteRow.org_deposit_required);
+    const rawDepositStatus =
+      (quoteRow.deposit_status as QuoteDepositStatus) || "not_required";
+    const depositRequired =
+      rowDepositRequired ||
+      orgDepositRequired ||
+      rawDepositStatus === "pending" ||
+      rawDepositStatus === "paid";
+    const rawPct = rowDepositRequired
+      ? num(quoteRow.deposit_percentage)
+      : quoteRow.org_deposit_percentage != null
+        ? num(quoteRow.org_deposit_percentage)
+        : num(quoteRow.deposit_percentage);
+    const depositPercentage = rawPct > 0 ? rawPct : 30;
+    const depositStatus: QuoteDepositStatus =
+      rawDepositStatus === "paid"
+        ? "paid"
+        : depositRequired
+          ? "pending"
+          : rawDepositStatus;
+
+    return finalizeQuoteDepositFields({
       id: quoteId,
       quoteNumber: String(quoteRow.quote_number),
       status: quoteRow.status as QuoteStatus,
@@ -1670,8 +1962,14 @@ export async function getPublicQuoteForOrganization(
       organizationName: String(quoteRow.organization_name ?? ""),
       organizationPhone: (quoteRow.organization_phone as string) ?? null,
       organizationEmail: (quoteRow.organization_email as string) ?? null,
+      depositRequired,
+      depositPercentage,
+      depositAmount: num(quoteRow.deposit_amount),
+      depositStatus,
+      depositPaidAt: quoteRow.deposit_paid_at ? iso(quoteRow.deposit_paid_at) : undefined,
+      depositPaymentMethod: (quoteRow.deposit_payment_method as string) ?? undefined,
       options,
-    };
+    });
   } finally {
     await client.query("RESET app.public_token").catch(() => {});
     client.release();
@@ -1687,6 +1985,8 @@ export async function getPublicQuoteByToken(token: string): Promise<PublicQuote 
   if (rows.length === 0) return null;
   return getPublicQuoteForOrganization(rows[0].organization_id, token);
 }
+
+export const getQuoteByPublicToken = getPublicQuoteByToken;
 
 export function countQuotesWaitingOverFourDays(quotes: Quote[]): number {
   const cutoff = Date.now() - 4 * 24 * 60 * 60 * 1000;

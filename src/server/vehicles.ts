@@ -16,6 +16,8 @@ import {
   BodyType,
   ColorFamily,
   FuelType,
+  isObjectBodyType,
+  ItemType,
   Vehicle,
   VehicleCustomerLink,
   VehicleNote,
@@ -35,8 +37,14 @@ const BODY_TYPES = new Set<BodyType>([
   "wagon",
   "hatchback",
   "cabrio",
-  "motorcycle",
   "van",
+  "motorcycle",
+  "boat",
+  "motorhome",
+  "truck",
+  "helmet",
+  "part",
+  "other",
 ]);
 const COLOR_FAMILIES = new Set<ColorFamily>([
   "white",
@@ -51,6 +59,11 @@ const COLOR_FAMILIES = new Set<ColorFamily>([
   "other",
 ]);
 const FUEL_TYPES = new Set<FuelType>(["gasoline", "diesel", "electric", "hybrid"]);
+const NOTE_CATEGORIES = new Set<VehicleNote["category"]>([
+  "technical",
+  "bodywork",
+  "general",
+]);
 
 const QUOTE_STATUS_LABELS: Record<string, string> = {
   draft: "Rascunho",
@@ -123,15 +136,19 @@ function mapVehicle(row: Row, owner?: Row): Vehicle {
   return {
     id: String(row.id),
     organizationId: String(row.organization_id),
-    plateDisplay: String(row.plate_display),
-    plateNormalized: String(row.plate_normalized),
+    itemType: row.item_type === "object" ? "object" : "vehicle",
+    plateDisplay: row.plate_display ? String(row.plate_display) : "",
+    plateNormalized: row.plate_normalized ? String(row.plate_normalized) : "",
     vin: (row.vin as string) ?? undefined,
     make: String(row.make),
     model: String(row.model),
-    generationYear: Number(row.generation_year),
+    generationYear:
+      row.generation_year != null ? Number(row.generation_year) : new Date().getFullYear(),
     bodyType: row.body_type as BodyType,
-    originalColorName: String(row.original_color_name),
-    originalColorFamily: row.original_color_family as ColorFamily,
+    originalColorName: row.original_color_name
+      ? String(row.original_color_name)
+      : "Por identificar",
+    originalColorFamily: (row.original_color_family as ColorFamily) || "other",
     originalColorCode: (row.original_color_code as string) ?? undefined,
     currentMileage:
       row.current_mileage === null || row.current_mileage === undefined
@@ -397,12 +414,31 @@ export async function getVehiclePassport(
     content: String(r.content),
     createdAt: iso(r.created_at),
   }));
+  for (const r of noteRows) {
+    const category = r.category as VehicleNote["category"];
+    events.push({
+      id: `note-${r.id}`,
+      vehicleId,
+      type: "note_added",
+      title:
+        category === "technical"
+          ? "Diagnóstico Técnico"
+          : category === "bodywork"
+          ? "Inspeção de Pintura / Carroçaria"
+          : "Curadoria de Amostras & Notas",
+      description: String(r.content),
+      date: iso(r.created_at),
+      authorName: (r.author_name as string) ?? "Sistema",
+      badgeText: "Nota",
+    });
+  }
 
   vehicle.timeline = events.sort((a, b) => b.date.localeCompare(a.date));
   return vehicle;
 }
 
 export interface VehicleCreateInput {
+  itemType?: ItemType;
   plateDisplay: string;
   plateNormalized: string;
   make: string;
@@ -418,33 +454,91 @@ export interface VehicleCreateInput {
   customerId?: string;
 }
 
+export function resolveVehiclePlate(
+  rawPlate: unknown,
+  itemType: ItemType,
+  bodyType: BodyType
+): { displayPlate: string | null; plateNormalized: string | null } {
+  const isOptionalPlate = itemType === "object" || bodyType === "boat";
+  const text = typeof rawPlate === "string" ? rawPlate.trim() : "";
+
+  if (!isOptionalPlate) {
+    const required = requiredText(rawPlate, "A matrícula", 50);
+    if (!isValidPlate(required)) {
+      throw new VehicleValidationError("A matrícula indicada não é válida.");
+    }
+    return {
+      displayPlate: formatPlateForDisplay(required),
+      plateNormalized: normalizePlate(required),
+    };
+  }
+
+  if (text.length === 0) {
+    return { displayPlate: null, plateNormalized: null };
+  }
+  if (isValidPlate(text)) {
+    return {
+      displayPlate: formatPlateForDisplay(text),
+      plateNormalized: normalizePlate(text),
+    };
+  }
+  const displayPlate = text.slice(0, 50);
+  const normalized = normalizePlate(displayPlate);
+  return {
+    displayPlate,
+    plateNormalized: normalized.length > 0 ? normalized : displayPlate.toUpperCase(),
+  };
+}
+
+export function resolveVehicleGenerationYear(
+  rawYear: unknown,
+  itemType: ItemType,
+  now = new Date()
+): number {
+  if (itemType === "object") {
+    if (
+      rawYear === undefined ||
+      rawYear === null ||
+      rawYear === "" ||
+      Number(rawYear) === 0 ||
+      Number.isNaN(Number(rawYear))
+    ) {
+      return now.getFullYear();
+    }
+  }
+  return parseGenerationYear(rawYear, now);
+}
+
 export async function createVehicle(
   organizationId: string,
   input: VehicleCreateInput
 ): Promise<Vehicle> {
   assertUuid(organizationId, "Organização");
 
-  const plateDisplay = requiredText(input.plateDisplay, "A matrícula", 50);
-  if (!isValidPlate(plateDisplay)) {
-    throw new VehicleValidationError("A matrícula indicada não é válida.");
-  }
-  const plateNormalized = normalizePlate(plateDisplay);
-  const displayPlate = formatPlateForDisplay(plateDisplay);
-  const make = requiredText(input.make, "A marca", 100);
-  const model = requiredText(input.model, "O modelo", 100);
-  const generationYear = parseGenerationYear(input.generationYear);
   if (!BODY_TYPES.has(input.bodyType)) {
     throw new VehicleValidationError("Tipo de carroçaria inválido.");
   }
+  const itemType: ItemType =
+    input.itemType ?? (isObjectBodyType(input.bodyType) ? "object" : "vehicle");
+
+  const { displayPlate, plateNormalized } = resolveVehiclePlate(
+    input.plateDisplay,
+    itemType,
+    input.bodyType
+  );
+  const make = requiredText(input.make, "A marca", 100);
+  const model = requiredText(input.model, "O modelo", 100);
+  const generationYear = resolveVehicleGenerationYear(input.generationYear, itemType);
   const originalColorName =
     optionalText(input.originalColorName, "O nome da cor", 100) ?? "Por identificar";
-  if (!COLOR_FAMILIES.has(input.originalColorFamily)) {
+  const colorFamily: ColorFamily = input.originalColorFamily || "other";
+  if (!COLOR_FAMILIES.has(colorFamily)) {
     throw new VehicleValidationError("Família de cor inválida.");
   }
   const vin = parseOptionalVin(input.vin);
   const currentMileage = parseMileage(input.currentMileage);
   let fuelType: FuelType | undefined;
-  if (input.fuelType !== undefined && input.fuelType !== null) {
+  if (input.fuelType !== undefined && input.fuelType !== null && String(input.fuelType) !== "") {
     if (!FUEL_TYPES.has(input.fuelType)) {
       throw new VehicleValidationError("Tipo de combustível inválido.");
     }
@@ -470,11 +564,12 @@ export async function createVehicle(
 
     const { rows } = await client.query<Row>(
       `INSERT INTO vehicles
-        (organization_id, plate_display, plate_normalized, vin, make, model, generation_year,
+        (organization_id, item_type, plate_display, plate_normalized, vin, make, model, generation_year,
          body_type, original_color_name, original_color_family, current_mileage, fuel_type, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
       [
         organizationId,
+        itemType,
         displayPlate,
         plateNormalized,
         vin ?? null,
@@ -483,7 +578,7 @@ export async function createVehicle(
         generationYear,
         input.bodyType,
         originalColorName,
-        input.originalColorFamily,
+        colorFamily,
         currentMileage ?? null,
         fuelType ?? null,
         notes ?? null,
@@ -509,5 +604,238 @@ export async function createVehicle(
     throw e;
   } finally {
     client.release();
+  }
+}
+
+export async function updateVehicle(
+  organizationId: string,
+  vehicleId: string,
+  input: Partial<VehicleCreateInput> & { itemType?: ItemType }
+): Promise<Vehicle> {
+  assertUuid(organizationId, "Organização");
+  assertUuid(vehicleId, "Viatura");
+
+  const existing = await getVehicleById(organizationId, vehicleId);
+  if (!existing) {
+    throw new VehicleValidationError("Viatura não encontrada.");
+  }
+
+  const bodyType = input.bodyType ?? existing.bodyType;
+  if (!BODY_TYPES.has(bodyType)) {
+    throw new VehicleValidationError("Tipo de carroçaria inválido.");
+  }
+  const itemType: ItemType =
+    input.itemType ??
+    (isObjectBodyType(bodyType) ? "object" : existing.itemType ?? "vehicle");
+
+  const rawPlate =
+    input.plateDisplay !== undefined ? input.plateDisplay : existing.plateDisplay;
+  const { displayPlate, plateNormalized } = resolveVehiclePlate(
+    rawPlate,
+    itemType,
+    bodyType
+  );
+
+  const make = requiredText(input.make ?? existing.make, "A marca", 100);
+  const model = requiredText(input.model ?? existing.model, "O modelo", 100);
+  const rawYear =
+    input.generationYear !== undefined ? input.generationYear : existing.generationYear;
+  const generationYear = resolveVehicleGenerationYear(rawYear, itemType);
+
+  const originalColorName =
+    optionalText(
+      input.originalColorName !== undefined
+        ? input.originalColorName
+        : existing.originalColorName,
+      "O nome da cor",
+      100
+    ) ?? "Por identificar";
+
+  const colorFamily: ColorFamily =
+    input.originalColorFamily ?? existing.originalColorFamily ?? "other";
+  if (!COLOR_FAMILIES.has(colorFamily)) {
+    throw new VehicleValidationError("Família de cor inválida.");
+  }
+
+  const vin = input.vin !== undefined ? parseOptionalVin(input.vin) : existing.vin;
+  const currentMileage =
+    input.currentMileage !== undefined
+      ? parseMileage(input.currentMileage)
+      : existing.currentMileage;
+
+  let fuelType: FuelType | undefined;
+  const rawFuel = input.fuelType !== undefined ? input.fuelType : existing.fuelType;
+  if (rawFuel !== undefined && rawFuel !== null && String(rawFuel) !== "") {
+    if (!FUEL_TYPES.has(rawFuel)) {
+      throw new VehicleValidationError("Tipo de combustível inválido.");
+    }
+    fuelType = rawFuel;
+  }
+
+  const notes =
+    input.notes !== undefined
+      ? optionalText(input.notes, "As notas", 5000)
+      : existing.notes;
+
+  const hasCustomerField = "customerId" in input;
+  const customerId = hasCustomerField
+    ? input.customerId?.trim() || undefined
+    : existing.currentOwner?.customerId;
+  if (customerId) assertUuid(customerId, "Cliente");
+
+  const db = getDb();
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+
+    if (hasCustomerField && customerId !== existing.currentOwner?.customerId) {
+      if (customerId) {
+        const { rows: customerRows } = await client.query<{ id: string }>(
+          `SELECT id FROM customers WHERE id = $1 AND organization_id = $2 FOR SHARE`,
+          [customerId, organizationId]
+        );
+        if (customerRows.length === 0) {
+          throw new VehicleValidationError(
+            "O cliente indicado não pertence a esta organização."
+          );
+        }
+      }
+      await client.query(
+        `UPDATE vehicle_customer_links
+         SET is_current = FALSE, ended_at = NOW()
+         WHERE vehicle_id = $1 AND organization_id = $2 AND is_current = TRUE`,
+        [vehicleId, organizationId]
+      );
+      if (customerId) {
+        await client.query(
+          `INSERT INTO vehicle_customer_links
+            (organization_id, vehicle_id, customer_id, relationship_type, is_current)
+           VALUES ($1,$2,$3,'owner',TRUE)`,
+          [organizationId, vehicleId, customerId]
+        );
+      }
+    }
+
+    await client.query(
+      `UPDATE vehicles
+       SET item_type = $3,
+           plate_display = $4,
+           plate_normalized = $5,
+           vin = $6,
+           make = $7,
+           model = $8,
+           generation_year = $9,
+           body_type = $10,
+           original_color_name = $11,
+           original_color_family = $12,
+           current_mileage = $13,
+           fuel_type = $14,
+           notes = $15,
+           updated_at = NOW()
+       WHERE organization_id = $1 AND id = $2`,
+      [
+        organizationId,
+        vehicleId,
+        itemType,
+        displayPlate,
+        plateNormalized,
+        vin ?? null,
+        make,
+        model,
+        generationYear,
+        bodyType,
+        originalColorName,
+        colorFamily,
+        currentMileage ?? null,
+        fuelType ?? null,
+        notes ?? null,
+      ]
+    );
+
+    await client.query("COMMIT");
+    const updated =
+      (await getVehiclePassport(organizationId, vehicleId)) ??
+      (await getVehicleById(organizationId, vehicleId));
+    if (!updated) {
+      throw new VehicleValidationError("Não foi possível confirmar a viatura atualizada.");
+    }
+    return updated;
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function addVehicleNote(
+  organizationId: string,
+  vehicleId: string,
+  input: {
+    category: "technical" | "bodywork" | "general";
+    content: string;
+    authorId?: string;
+    authorName?: string;
+  }
+): Promise<VehicleNote> {
+  assertUuid(organizationId, "Organização");
+  assertUuid(vehicleId, "Viatura");
+
+  if (!NOTE_CATEGORIES.has(input.category)) {
+    throw new VehicleValidationError("Categoria de nota inválida.");
+  }
+  const content = requiredText(input.content, "O conteúdo da nota", 3000);
+  const authorId = input.authorId?.trim() || undefined;
+  if (authorId) {
+    assertUuid(authorId, "Autor");
+  }
+
+  const existing = await getVehicleById(organizationId, vehicleId);
+  if (!existing) {
+    throw new VehicleValidationError("Viatura não encontrada.");
+  }
+
+  const { rows } = await getDb().query<Row>(
+    `INSERT INTO vehicle_notes (vehicle_id, author_id, category, content)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [vehicleId, authorId ?? null, input.category, content]
+  );
+
+  const row = rows[0];
+  if (!row) {
+    throw new VehicleValidationError("Não foi possível registar a nota da viatura.");
+  }
+
+  return {
+    id: String(row.id),
+    vehicleId: String(row.vehicle_id),
+    authorName: input.authorName?.trim() || "Sistema",
+    category: row.category as VehicleNote["category"],
+    content: String(row.content),
+    createdAt: iso(row.created_at),
+  };
+}
+
+export async function deleteVehicleNote(
+  organizationId: string,
+  vehicleId: string,
+  noteId: string
+): Promise<void> {
+  assertUuid(organizationId, "Organização");
+  assertUuid(vehicleId, "Viatura");
+  assertUuid(noteId, "Nota");
+
+  const { rowCount } = await getDb().query(
+    `DELETE FROM vehicle_notes
+     WHERE id = $1
+       AND vehicle_id = $2
+       AND EXISTS (
+         SELECT 1 FROM vehicles v WHERE v.id = $2 AND v.organization_id = $3
+       )`,
+    [noteId, vehicleId, organizationId]
+  );
+  if (!rowCount) {
+    throw new VehicleValidationError("Nota técnica não encontrada.");
   }
 }

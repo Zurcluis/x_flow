@@ -4,7 +4,14 @@ import React, { useState } from "react";
 import { X, Building2, User, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DuplicateWarningAlert } from "./DuplicateWarningAlert";
-import { Customer, CustomerDraft, CustomerType, PreferredChannel } from "@/domains/crm/types";
+import {
+  CUSTOMER_SOURCE_LABELS,
+  Customer,
+  CustomerDraft,
+  CustomerStatus,
+  CustomerType,
+  PreferredChannel,
+} from "@/domains/crm/types";
 import { detectDuplicateCustomer, DuplicateMatch } from "@/domains/crm/duplicate-detector";
 
 export type CustomerSaveResult = { ok: true } | { ok: false; error: string };
@@ -33,6 +40,8 @@ export function CustomerFormModal({
   const [preferredChannel, setPreferredChannel] = useState<PreferredChannel>(
     initialData?.preferredChannel || "whatsapp"
   );
+  const [source, setSource] = useState<string>(initialData?.source || "direct");
+  const [status, setStatus] = useState<CustomerStatus>(initialData?.status || "active");
   const [notes, setNotes] = useState(initialData?.notes || "");
   const [discountRate, setDiscountRate] = useState(
     initialData?.b2bDetails?.discountRate?.toString() || "10"
@@ -43,6 +52,25 @@ export function CustomerFormModal({
 
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  const currentSyncKey = `${isOpen}-${initialData?.id ?? "new"}-${initialData?.updatedAt ?? ""}`;
+  const [syncKey, setSyncKey] = useState(currentSyncKey);
+  if (syncKey !== currentSyncKey) {
+    setSyncKey(currentSyncKey);
+    setType(initialData?.type || "individual");
+    setName(initialData?.name || "");
+    setLegalName(initialData?.legalName || "");
+    setNif(initialData?.nif || "");
+    setEmail(initialData?.email || "");
+    setPhone(initialData?.phone || "");
+    setPreferredChannel(initialData?.preferredChannel || "whatsapp");
+    setSource(initialData?.source || "direct");
+    setStatus(initialData?.status || "active");
+    setNotes(initialData?.notes || "");
+    setDiscountRate(initialData?.b2bDetails?.discountRate?.toString() || "10");
+    setPaymentTerms(initialData?.b2bDetails?.paymentTermsDays?.toString() || "30");
+    setError(null);
+  }
 
   const duplicateMatches: DuplicateMatch[] = detectDuplicateCustomer(
     { email, phone, nif, excludeId: initialData?.id },
@@ -76,13 +104,15 @@ export function CustomerFormModal({
         phoneNormalized: phone.replace(/\D/g, ""),
         preferredChannel,
         notes: notes.trim() || undefined,
-        status: initialData?.status || "active",
+        status,
+        source,
         b2bDetails:
           type === "business"
             ? {
                 discountRate: Number(discountRate) || 0,
                 paymentTermsDays: Number(paymentTerms) || 30,
-                priorityLevel: "standard",
+                priorityLevel: initialData?.b2bDetails?.priorityLevel || "standard",
+                commercialNotes: initialData?.b2bDetails?.commercialNotes,
               }
             : undefined,
       });
@@ -224,6 +254,43 @@ export function CustomerFormModal({
                 placeholder="ex: cliente@email.pt"
                 className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[#a9adae]">Origem do Cliente</label>
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+              >
+                {Object.entries(CUSTOMER_SOURCE_LABELS).map(([key, label]) => (
+                  <option key={key} value={key} className="bg-[#15191a] text-[#f1ede5]">
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[#a9adae]">Estado</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as CustomerStatus)}
+                className="h-10 px-3.5 rounded-sm bg-[#15191a] border border-white/[0.08] focus:border-[#d3a548] text-sm text-[#f1ede5]"
+              >
+                <option value="active" className="bg-[#15191a] text-[#f1ede5]">
+                  Cliente Ativo
+                </option>
+                <option value="lead" className="bg-[#15191a] text-[#f1ede5]">
+                  Lead / Em Prospeção
+                </option>
+                {initialData?.status === "archived" && (
+                  <option value="archived" className="bg-[#15191a] text-[#f1ede5]">
+                    Arquivado
+                  </option>
+                )}
+              </select>
             </div>
           </div>
 

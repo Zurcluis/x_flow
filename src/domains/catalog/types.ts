@@ -38,6 +38,12 @@ export const VEHICLE_SEGMENT_MULTIPLIERS: Record<BodyType, number> = {
   cabrio: 1.05,
   motorcycle: 0.6,
   van: 1.4,
+  boat: 1.8,
+  motorhome: 1.6,
+  truck: 1.5,
+  helmet: 0.3,
+  part: 0.4,
+  other: 1.0,
 };
 
 export const FINISH_MULTIPLIERS: Record<string, number> = {

@@ -172,7 +172,33 @@ export async function getDashboardData(
       FROM work_orders
       WHERE organization_id = $1 AND status = 'in_progress' AND actual_hours_spent > estimated_hours * 0.5
       HAVING count(*) > 0
-    ) alerts LIMIT 5`,
+      UNION ALL
+      SELECT 'd7-' || d.id::text, 'warning',
+        'Follow-up D+7 pendente — ' || COALESCE(NULLIF(v.plate_display, ''), v.make || ' ' || v.model),
+        c.name || ' · Enviar inquérito / Google Review em /deliveries (Abrir Pós-Venda)',
+        '/deliveries'
+      FROM deliveries d
+      JOIN vehicles v ON v.id = d.vehicle_id AND v.organization_id = d.organization_id
+      JOIN customers c ON c.id = d.customer_id AND c.organization_id = d.organization_id
+      WHERE d.organization_id = $1
+        AND d.delivered_at <= NOW() - INTERVAL '7 days'
+        AND d.followup_d7_sent_at IS NULL
+        AND d.satisfaction_submitted_at IS NULL
+      UNION ALL
+      SELECT 'd30-' || d.id::text, 'info',
+        'Revisão D+30 — ' || COALESCE(NULLIF(v.plate_display, ''), v.make || ' ' || v.model),
+        c.name || ' · Revisão gratuita de 30 dias · Agendar / Concluir D+30',
+        '/deliveries'
+      FROM deliveries d
+      JOIN vehicles v ON v.id = d.vehicle_id AND v.organization_id = d.organization_id
+      JOIN customers c ON c.id = d.customer_id AND c.organization_id = d.organization_id
+      WHERE d.organization_id = $1
+        AND d.review_d30_completed_at IS NULL
+        AND (
+          d.review_d30_scheduled_at <= NOW() + INTERVAL '3 days'
+          OR d.delivered_at <= NOW() - INTERVAL '27 days'
+        )
+    ) alerts LIMIT 8`,
     [organizationId]
   );
 
@@ -233,25 +259,55 @@ export async function getDashboardData(
         : 0;
   }
 
-  const qcRes = await db.query<{ passed: number; total: number }>(
-    `SELECT count(*) FILTER (WHERE q.status = 'passed')::int AS passed,
-            count(*)::int AS total
-     FROM qc_inspections q
-     JOIN work_orders w ON w.id = q.work_order_id
-     WHERE w.organization_id = $1`,
-    [organizationId]
-  );
+  const [qcRes, satisfactionRes, occupancyRes] = await Promise.all([
+    db.query<{ passed: number; total: number }>(
+      `SELECT count(*) FILTER (WHERE q.status = 'passed')::int AS passed,
+              count(*)::int AS total
+       FROM qc_inspections q
+       JOIN work_orders w ON w.id = q.work_order_id
+       WHERE w.organization_id = $1`,
+      [organizationId]
+    ),
+    db.query<{ avg_rating: string | null; reviews_count: number }>(
+      `SELECT AVG(satisfaction_rating)::numeric(4,2) AS avg_rating,
+              COUNT(*)::int AS reviews_count
+       FROM deliveries
+       WHERE organization_id = $1
+         AND satisfaction_rating IS NOT NULL`,
+      [organizationId]
+    ),
+    db.query<{ week: Date; booked: string }>(
+      `SELECT date_trunc('week', start_time AT TIME ZONE 'Europe/Lisbon') AS week,
+              SUM(estimated_hours) AS booked
+       FROM appointments WHERE organization_id = $1
+         AND start_time >= NOW() - interval '8 weeks'
+       GROUP BY 1 ORDER BY 1`,
+      [organizationId]
+    ),
+  ]);
+
   const qcTotal = qcRes.rows[0].total;
   const qcScore = qcTotal > 0 ? qcRes.rows[0].passed / qcTotal : 0;
 
-  const occupancyRes = await db.query<{ week: Date; booked: string }>(
-    `SELECT date_trunc('week', start_time AT TIME ZONE 'Europe/Lisbon') AS week,
-            SUM(estimated_hours) AS booked
-     FROM appointments WHERE organization_id = $1
-       AND start_time >= NOW() - interval '8 weeks'
-     GROUP BY 1 ORDER BY 1`,
-    [organizationId]
-  );
+  const reviewsCount = Number(satisfactionRes.rows[0]?.reviews_count ?? 0);
+  const avgRating = Number(satisfactionRes.rows[0]?.avg_rating ?? 0);
+  const customerSatisfaction =
+    reviewsCount > 0
+      ? {
+          score: Math.round((avgRating / 5) * 100),
+          maxScore: 100,
+          changeScore: 0,
+          reviewsCount,
+          stars: Math.round(avgRating),
+        }
+      : {
+          score: Math.round(qcScore * 100),
+          maxScore: 100,
+          changeScore: 0,
+          reviewsCount: qcTotal,
+          stars: Math.round(qcScore * 5),
+        };
+
   const occupancyBars = occupancyRes.rows.map((r) =>
     weeklyCapacityHours > 0
       ? Math.round((Number(r.booked) / weeklyCapacityHours) * 100)
@@ -365,13 +421,7 @@ export async function getDashboardData(
         hoursDetail: capacityDetail,
         barChart: occupancyBars,
       },
-      customerSatisfaction: {
-        score: Math.round(qcScore * 100),
-        maxScore: 100,
-        changeScore: 0,
-        reviewsCount: qcTotal,
-        stars: Math.round(qcScore * 5),
-      },
+      customerSatisfaction,
     },
   };
 }

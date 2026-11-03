@@ -13,6 +13,9 @@ import {
   FileText,
   Plus,
   MessageSquare,
+  Pencil,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,11 +25,23 @@ import {
   VehicleFormModal,
   VehicleSaveResult,
 } from "@/components/xflow/vehicles/VehicleFormModal";
+import {
+  CustomerFormModal,
+  CustomerSaveResult,
+} from "@/components/xflow/customers/CustomerFormModal";
 import { formatCurrency } from "@/lib/formatting";
 import { formatCheckinDate } from "@/domains/checkins/presentation";
 import { Vehicle } from "@/domains/vehicles/types";
-import { Customer } from "@/domains/crm/types";
+import {
+  CUSTOMER_SOURCE_LABELS,
+  Customer,
+  CustomerDraft,
+} from "@/domains/crm/types";
 import { createVehicleAction } from "@/app/actions/vehicles";
+import {
+  archiveCustomerAction,
+  updateCustomerAction,
+} from "@/app/actions/customers";
 
 interface CustomerDetailViewProps {
   customer: Customer;
@@ -36,19 +51,28 @@ interface CustomerDetailViewProps {
 }
 
 export function CustomerDetailView({
-  customer,
+  customer: initialCustomer,
   vehicles: initialVehicles,
   customers,
   showFinancials,
 }: CustomerDetailViewProps) {
   const router = useRouter();
+  const [customer, setCustomer] = useState<Customer>(initialCustomer);
+  const [lastSyncedCustomer, setLastSyncedCustomer] = useState(initialCustomer);
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [lastSynced, setLastSynced] = useState(initialVehicles);
   const [activeTab, setActiveTab] = useState<"overview" | "vehicles" | "communications">("vehicles");
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [archivePending, setArchivePending] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
     null
   );
+
+  if (lastSyncedCustomer !== initialCustomer) {
+    setLastSyncedCustomer(initialCustomer);
+    setCustomer(initialCustomer);
+  }
 
   if (lastSynced !== initialVehicles) {
     setLastSynced(initialVehicles);
@@ -76,7 +100,64 @@ export function CustomerDetailView({
     return { ok: true };
   };
 
+  const handleUpdateCustomer = async (
+    draft: CustomerDraft
+  ): Promise<CustomerSaveResult> => {
+    setFeedback(null);
+    const result = await updateCustomerAction(customer.id, draft);
+    if (!result.ok) {
+      return { ok: false, error: result.error };
+    }
+    setCustomer((prev) => ({
+      ...prev,
+      ...result.customer,
+      contacts: prev.contacts,
+      communications: prev.communications,
+    }));
+    setFeedback({
+      tone: "success",
+      message: "Dados do cliente atualizados com sucesso.",
+    });
+    router.refresh();
+    return { ok: true };
+  };
+
+  const handleToggleArchive = async () => {
+    if (archivePending) return;
+    setFeedback(null);
+    setArchivePending(true);
+    try {
+      if (customer.status === "archived") {
+        const result = await updateCustomerAction(customer.id, { status: "active" });
+        if (!result.ok) {
+          setFeedback({ tone: "error", message: result.error });
+          return;
+        }
+        setCustomer((prev) => ({ ...prev, status: "active" }));
+        setFeedback({ tone: "success", message: "Cliente restaurado com sucesso." });
+      } else {
+        const result = await archiveCustomerAction(customer.id);
+        if (!result.ok) {
+          setFeedback({
+            tone: "error",
+            message: result.error || "Não foi possível arquivar o cliente.",
+          });
+          return;
+        }
+        setCustomer((prev) => ({ ...prev, status: "archived" }));
+        setFeedback({ tone: "success", message: "Cliente arquivado com sucesso." });
+      }
+      router.refresh();
+    } finally {
+      setArchivePending(false);
+    }
+  };
+
   const isBusiness = customer.type === "business";
+  const sourceLabel =
+    CUSTOMER_SOURCE_LABELS[customer.source || "direct"] ||
+    customer.source ||
+    "Balcão / Direto";
 
   return (
     <div className="flex flex-col gap-6">
@@ -110,6 +191,9 @@ export function CustomerDetailView({
               <Badge variant={customer.status === "active" ? "success" : "in_progress"} className="text-xs">
                 {customer.status === "active" ? "Cliente Ativo" : customer.status === "lead" ? "Lead" : "Arquivado"}
               </Badge>
+              <Badge variant="outline" className="text-xs">
+                Origem: {sourceLabel}
+              </Badge>
             </div>
             {customer.legalName && (
               <span className="text-xs text-[#8a9092] mt-0.5">
@@ -129,7 +213,7 @@ export function CustomerDetailView({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {showFinancials && (
             <div className="flex flex-col items-end pr-4 border-r border-white/[0.08]">
               <span className="text-[11px] uppercase text-[#8a9092] font-semibold">Total Faturado</span>
@@ -138,6 +222,32 @@ export function CustomerDetailView({
               </span>
             </div>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditModalOpen(true)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Editar Cliente</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={archivePending}
+            onClick={handleToggleArchive}
+          >
+            {customer.status === "archived" ? (
+              <>
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Restaurar</span>
+              </>
+            ) : (
+              <>
+                <Archive className="h-3.5 w-3.5" />
+                <span>Arquivar</span>
+              </>
+            )}
+          </Button>
           <Button variant="primary" onClick={() => setIsVehicleModalOpen(true)} size="sm">
             <Plus className="h-4 w-4" />
             <span>Associar Viatura</span>
@@ -329,6 +439,15 @@ export function CustomerDetailView({
         onSave={handleSaveVehicle}
         customers={customers}
         initialCustomerId={customer.id}
+      />
+
+      <CustomerFormModal
+        key={`edit-${customer.id}-${isEditModalOpen ? "open" : "closed"}`}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleUpdateCustomer}
+        existingCustomers={customers}
+        initialData={customer}
       />
     </div>
   );

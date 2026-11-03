@@ -24,7 +24,11 @@ export default async function SettingsPage() {
   const auth = await requireRole(["admin"]);
   let organization: OrganizationRow | null = null;
   let location: LocationRow | null = null;
+  let orgSettings: import("@/server/settings").OrganizationSettings | null = null;
   try {
+    const { getOrganizationSettings } = await import("@/server/settings");
+    orgSettings = await getOrganizationSettings(auth.organizationId);
+
     const { rows: orgRows } = await getDb().query<OrganizationRow>(
       `SELECT name, timezone, locale, currency FROM organizations WHERE id = $1 LIMIT 1`,
       [auth.organizationId]
@@ -42,7 +46,14 @@ export default async function SettingsPage() {
   } catch {
     organization = null;
     location = null;
+    orgSettings = null;
   }
 
-  return <SettingsView organization={organization} location={location} />;
+  return (
+    <SettingsView
+      organization={organization}
+      location={location}
+      initialSettings={orgSettings}
+    />
+  );
 }

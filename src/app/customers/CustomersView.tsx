@@ -1,27 +1,71 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Users, Building2, User, Search, UserPlus } from "lucide-react";
+import {
+  Users,
+  Building2,
+  User,
+  Search,
+  UserPlus,
+  Globe,
+  Archive,
+  Car,
+  Mail,
+  Phone,
+  ArrowRight,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CustomerCard } from "@/components/xflow/customers/CustomerCard";
 import {
   CustomerFormModal,
   CustomerSaveResult,
 } from "@/components/xflow/customers/CustomerFormModal";
-import { createCustomerAction } from "@/app/actions/customers";
+import {
+  createCustomerAction,
+  convertWebsiteLeadAction,
+} from "@/app/actions/customers";
 import { Customer, CustomerDraft } from "@/domains/crm/types";
+import type { WebsiteLeadItem } from "@/server/website-leads";
+
+const WEBSITE_SERVICE_LABELS: Record<string, string> = {
+  advice: "Aconselhamento",
+  ppf: "PPF (Paint Protection Film)",
+  car_wrap: "Car Wrap",
+  color_ppf: "Color PPF",
+  details: "Detalhes & Óticas",
+  motorcycle: "Mota",
+};
 
 interface CustomersViewProps {
   initialCustomers: Customer[];
+  initialWebsiteLeads?: WebsiteLeadItem[];
   showFinancials: boolean;
 }
 
-export function CustomersView({ initialCustomers, showFinancials }: CustomersViewProps) {
+type CustomersTab =
+  | "all"
+  | "individual"
+  | "business"
+  | "lead"
+  | "website_leads"
+  | "archived";
+
+export function CustomersView({
+  initialCustomers,
+  initialWebsiteLeads = [],
+  showFinancials,
+}: CustomersViewProps) {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [lastSynced, setLastSynced] = useState(initialCustomers);
-  const [activeTab, setActiveTab] = useState<"all" | "individual" | "business" | "lead">("all");
+  const [websiteLeads, setWebsiteLeads] = useState<WebsiteLeadItem[]>(initialWebsiteLeads);
+  const [lastSyncedLeads, setLastSyncedLeads] = useState(initialWebsiteLeads);
+  const [convertingLeadId, setConvertingLeadId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<CustomersTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
@@ -33,10 +77,20 @@ export function CustomersView({ initialCustomers, showFinancials }: CustomersVie
     setCustomers(initialCustomers);
   }
 
+  if (lastSyncedLeads !== initialWebsiteLeads) {
+    setLastSyncedLeads(initialWebsiteLeads);
+    setWebsiteLeads(initialWebsiteLeads);
+  }
+
   const filteredCustomers = customers.filter((customer) => {
-    if (activeTab === "individual" && customer.type !== "individual") return false;
-    if (activeTab === "business" && customer.type !== "business") return false;
-    if (activeTab === "lead" && customer.status !== "lead") return false;
+    if (activeTab === "archived") {
+      if (customer.status !== "archived") return false;
+    } else {
+      if (customer.status === "archived") return false;
+      if (activeTab === "individual" && customer.type !== "individual") return false;
+      if (activeTab === "business" && customer.type !== "business") return false;
+      if (activeTab === "lead" && customer.status !== "lead") return false;
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -50,6 +104,18 @@ export function CustomersView({ initialCustomers, showFinancials }: CustomersVie
     }
 
     return true;
+  });
+
+  const filteredWebsiteLeads = websiteLeads.filter((lead) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (
+      lead.name.toLowerCase().includes(q) ||
+      lead.email.toLowerCase().includes(q) ||
+      lead.phone.toLowerCase().includes(q) ||
+      lead.reference.toLowerCase().includes(q) ||
+      lead.vehicleText.toLowerCase().includes(q)
+    );
   });
 
   const handleSaveCustomer = async (
@@ -69,9 +135,47 @@ export function CustomersView({ initialCustomers, showFinancials }: CustomersVie
     return { ok: true };
   };
 
-  const individualCount = customers.filter((c) => c.type === "individual").length;
-  const businessCount = customers.filter((c) => c.type === "business").length;
-  const leadCount = customers.filter((c) => c.status === "lead").length;
+  const handleConvertLead = async (lead: WebsiteLeadItem) => {
+    if (convertingLeadId) return;
+    setFeedback(null);
+    setConvertingLeadId(lead.id);
+    try {
+      const result = await convertWebsiteLeadAction(lead.id);
+      if (!result.ok) {
+        setFeedback({ tone: "error", message: result.error });
+        return;
+      }
+      setCustomers((prev) => {
+        const exists = prev.some((c) => c.id === result.customer.id);
+        return exists ? prev : [result.customer, ...prev];
+      });
+      setWebsiteLeads((prev) =>
+        prev.map((item) =>
+          item.id === lead.id
+            ? {
+                ...item,
+                status: "converted",
+                convertedCustomerId: result.customer.id,
+              }
+            : item
+        )
+      );
+      setFeedback({
+        tone: "success",
+        message: `Pedido ${lead.reference} convertido no cliente ${result.customer.name}.`,
+      });
+      router.refresh();
+    } finally {
+      setConvertingLeadId(null);
+    }
+  };
+
+  const activeCustomers = customers.filter((c) => c.status !== "archived");
+  const individualCount = activeCustomers.filter((c) => c.type === "individual").length;
+  const businessCount = activeCustomers.filter((c) => c.type === "business").length;
+  const leadCount = activeCustomers.filter((c) => c.status === "lead").length;
+  const archivedCount = customers.filter((c) => c.status === "archived").length;
+  const newWebsiteLeadsCount = websiteLeads.filter((l) => l.status === "new").length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -135,7 +239,7 @@ export function CustomersView({ initialCustomers, showFinancials }: CustomersVie
                 : "text-[#a9adae] hover:text-[#f1ede5]"
             }`}
           >
-            Todos ({customers.length})
+            Todos ({activeCustomers.length})
           </button>
           <button
             onClick={() => setActiveTab("individual")}
@@ -172,10 +276,146 @@ export function CustomersView({ initialCustomers, showFinancials }: CustomersVie
           >
             Leads ({leadCount})
           </button>
+          <button
+            onClick={() => setActiveTab("website_leads")}
+            aria-pressed={activeTab === "website_leads"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "website_leads"
+                ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
+                : "text-[#a9adae] hover:text-[#f1ede5]"
+            }`}
+          >
+            <Globe className="h-3.5 w-3.5" />
+            <span>Leads do Site</span>
+            {newWebsiteLeadsCount > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center rounded-full bg-[#d3a548] px-1.5 py-0.5 text-[10px] font-bold text-[#0b0d0e]">
+                {newWebsiteLeadsCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("archived")}
+            aria-pressed={activeTab === "archived"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "archived"
+                ? "bg-[#1f1b14] text-[#f7d46d] border border-[#d3a548]/40 shadow-sm"
+                : "text-[#a9adae] hover:text-[#f1ede5]"
+            }`}
+          >
+            <Archive className="h-3.5 w-3.5" />
+            <span>Arquivados ({archivedCount})</span>
+          </button>
         </div>
       </div>
 
-      {customers.length === 0 ? (
+      {activeTab === "website_leads" ? (
+        filteredWebsiteLeads.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredWebsiteLeads.map((lead) => {
+              const isConverted = Boolean(lead.convertedCustomerId) || lead.status === "converted";
+              const serviceLabel =
+                WEBSITE_SERVICE_LABELS[lead.serviceRequested] ?? lead.serviceRequested;
+              const dateLabel = new Date(lead.createdAt).toLocaleDateString("pt-PT", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              });
+
+              return (
+                <div
+                  key={lead.id}
+                  className="flex flex-col justify-between gap-4 rounded-lg bg-[#101314] border border-white/[0.08] p-5 shadow-sm"
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono text-[#d3a548]">
+                            {lead.reference}
+                          </span>
+                          <span className="text-[11px] text-[#8a9092]">· {dateLabel}</span>
+                        </div>
+                        <h3 className="text-base font-bold text-[#f1ede5] mt-0.5">{lead.name}</h3>
+                      </div>
+                      <Badge variant={isConverted ? "success" : "gold"} className="text-[10px]">
+                        {isConverted ? "Convertida" : "Nova Lead"}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-[#a9adae]">
+                      {lead.phone && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Phone className="h-3.5 w-3.5 text-[#d3a548]" />
+                          {lead.phone}
+                        </span>
+                      )}
+                      {lead.email && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Mail className="h-3.5 w-3.5 text-[#d3a548]" />
+                          {lead.email}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 rounded-md bg-[#15191a] border border-white/[0.05] p-3 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-[#f1ede5]">
+                          <Car className="h-3.5 w-3.5 text-[#d3a548]" />
+                          {lead.vehicleText}
+                        </span>
+                        <span className="text-[11px] font-medium text-[#f7d46d]">
+                          {serviceLabel}
+                        </span>
+                      </div>
+                      {lead.message && (
+                        <p className="text-[#a9adae] leading-relaxed mt-1">{lead.message}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
+                    {isConverted && lead.convertedCustomerId ? (
+                      <Link
+                        href={`/customers/${lead.convertedCustomerId}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9ed3a0] hover:text-[#f7d46d] transition-colors"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Ver Ficha do Cliente</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={convertingLeadId === lead.id}
+                        onClick={() => handleConvertLead(lead)}
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        <span>
+                          {convertingLeadId === lead.id
+                            ? "A converter..."
+                            : "Converter em Cliente"}
+                        </span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 px-4 rounded-lg bg-[#101314] border border-white/[0.06] text-center">
+            <Globe className="h-10 w-10 text-[#8a9092] mb-3" />
+            <h3 className="text-base font-semibold text-[#f1ede5]">
+              Sem pedidos do site por tratar
+            </h3>
+            <p className="text-xs text-[#a9adae] mt-1 max-w-sm">
+              Os pedidos submetidos através do formulário público do website aparecerão aqui para
+              conversão rápida em cliente.
+            </p>
+          </div>
+        )
+      ) : customers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 px-4 rounded-lg bg-[#101314] border border-white/[0.06] text-center">
           <Users className="h-10 w-10 text-[#8a9092] mb-3" />
           <h3 className="text-base font-semibold text-[#f1ede5]">Ainda não há clientes</h3>

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/server/auth";
 import { SCHEDULING_ROLES } from "@/lib/roles";
-import { getWorkOrderDetail } from "@/server/production";
+import { getOrCreateQcInspection, getWorkOrderDetail } from "@/server/production";
 import { QcInspectionView } from "./QcInspectionView";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,17 @@ export default async function QualityControlPage({
   const detail = await getWorkOrderDetail(auth.organizationId, workOrderId);
   if (!detail) notFound();
 
+  const initialInspection = await getOrCreateQcInspection(
+    auth.organizationId,
+    workOrderId,
+    auth.name
+  );
+
   return (
-    <QcInspectionView workOrder={detail.workOrder} inspectorName={auth.name} />
+    <QcInspectionView
+      workOrder={detail.workOrder}
+      inspectorName={auth.name}
+      initialInspection={initialInspection}
+    />
   );
 }

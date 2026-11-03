@@ -9,6 +9,7 @@ const PUBLIC_PREFIXES = [
   "/checkins/report/",
   "/qc/certificate/",
   "/warranties/certificate/",
+  "/feedback/",
 ];
 
 function isPublicPath(pathname: string): boolean {

@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   ShieldCheck,
   FileCheck,
+  Scissors,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +23,17 @@ import {
   WorkOrderTimeEntry,
 } from "@/domains/production/types";
 import { WorkOrder } from "@/domains/checkins/types";
+import { calculateRemnantAreaM2, type Material } from "@/domains/materials/types";
 import {
   addTimeEntryAction,
   completePhaseAction,
   startPhaseAction,
   toggleChecklistItemAction,
 } from "@/app/actions/production";
+import {
+  listMaterialsAction,
+  registerMaterialCutAction,
+} from "@/app/actions/materials";
 
 interface WorkOrderDetailViewProps {
   workOrder: WorkOrder;
@@ -45,27 +52,160 @@ export function WorkOrderDetailView({
 }: WorkOrderDetailViewProps) {
   const router = useRouter();
   const [phases, setPhases] = useState<WorkOrderPhase[]>(initialPhases);
-  const firstActive = initialPhases.find((p) => p.status === "in_progress") ?? initialPhases.find((p) => p.status !== "completed");
+  const firstActive =
+    initialPhases.find((p) => p.status === "in_progress") ??
+    initialPhases.find((p) => p.status !== "completed");
   const [activePhaseKey, setActivePhaseKey] = useState<PhaseKey>(
     firstActive?.phaseKey ?? initialPhases[0]?.phaseKey ?? "application"
   );
-  const [timeEntries, setTimeEntries] = useState<WorkOrderTimeEntry[]>(initialTimeEntries);
-  const [lastSynced, setLastSynced] = useState({ phases: initialPhases, timeEntries: initialTimeEntries });
+  const [timeEntries, setTimeEntries] =
+    useState<WorkOrderTimeEntry[]>(initialTimeEntries);
+  const [usages, setUsages] = useState<MaterialUsage[]>(materialUsage);
+  const [lastSynced, setLastSynced] = useState({
+    phases: initialPhases,
+    timeEntries: initialTimeEntries,
+    materialUsage,
+  });
   if (
     lastSynced.phases !== initialPhases ||
-    lastSynced.timeEntries !== initialTimeEntries
+    lastSynced.timeEntries !== initialTimeEntries ||
+    lastSynced.materialUsage !== materialUsage
   ) {
-    setLastSynced({ phases: initialPhases, timeEntries: initialTimeEntries });
+    setLastSynced({
+      phases: initialPhases,
+      timeEntries: initialTimeEntries,
+      materialUsage,
+    });
     setPhases(initialPhases);
     setTimeEntries(initialTimeEntries);
+    setUsages(materialUsage);
   }
   const [pending, setPending] = useState(false);
-  const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(
-    null
-  );
+  const [feedback, setFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const [showCutModal, setShowCutModal] = useState(false);
+  const [stockMaterials, setStockMaterials] = useState<Material[]>([]);
+  const [cutForm, setCutForm] = useState({
+    materialId: materialUsage[0]?.materialId ?? "",
+    metersCut: "3.0",
+    estimatedMeters: "3.0",
+    notes: "",
+    saveRemnant: false,
+    remnantWidthCm: "60",
+    remnantLengthCm: "120",
+    remnantLocation: "Estante A · Tubo 2",
+  });
 
   const activePhase =
     phases.find((p) => p.phaseKey === activePhaseKey) || phases[0];
+
+  const openMaterialCutModal = async (preferredMaterialId?: string) => {
+    let loaded = stockMaterials;
+    if (loaded.length === 0) {
+      try {
+        const res = await listMaterialsAction();
+        if (res.ok) {
+          loaded = res.materials;
+          setStockMaterials(res.materials);
+        }
+      } catch {
+        // fallback if offline
+      }
+    }
+    const chosenId =
+      preferredMaterialId ||
+      cutForm.materialId ||
+      loaded[0]?.id ||
+      usages[0]?.materialId ||
+      "";
+    setCutForm((prev) => ({
+      ...prev,
+      materialId: chosenId,
+    }));
+    setShowCutModal(true);
+  };
+
+  const handleRegisterWorkOrderCut = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pending || !cutForm.materialId) return;
+    setPending(true);
+    setFeedback(null);
+
+    const metersCut = Number(cutForm.metersCut);
+    const estimatedMeters = Number(cutForm.estimatedMeters) || metersCut;
+
+    try {
+      const result = await registerMaterialCutAction({
+        materialId: cutForm.materialId,
+        metersCut,
+        estimatedMeters,
+        workOrderId: workOrder.id,
+        notes: cutForm.notes || undefined,
+        createRemnant: cutForm.saveRemnant
+          ? {
+              widthCm: Number(cutForm.remnantWidthCm),
+              lengthCm: Number(cutForm.remnantLengthCm),
+              location: cutForm.remnantLocation,
+              notes: cutForm.notes || undefined,
+            }
+          : undefined,
+      });
+
+      if (!result.ok) {
+        setFeedback({
+          tone: "error",
+          message: result.error || "Não foi possível registar o consumo de película.",
+        });
+        return;
+      }
+
+      const mat = stockMaterials.find((m) => m.id === cutForm.materialId);
+      const scrapPercentage =
+        estimatedMeters > 0 && metersCut > estimatedMeters
+          ? Math.round(((metersCut - estimatedMeters) / estimatedMeters) * 10000) /
+            100
+          : 0;
+
+      const optimisticUsage: MaterialUsage = {
+        id: `mu-${Date.now()}`,
+        workOrderId: workOrder.id,
+        materialId: cutForm.materialId,
+        materialName: mat
+          ? `${mat.brand} ${mat.name}`
+          : usages[0]?.materialName || "Película Registada",
+        batchNumber:
+          mat?.batches?.[0]?.batchNumber ||
+          usages[0]?.batchNumber ||
+          "LOTE-OFICINA",
+        estimatedMeters,
+        actualMeters: metersCut,
+        scrapPercentage,
+        rollWidthMeters: mat?.rollWidthMeters ?? 1.52,
+        costPerMeter: mat?.costPerMeter ?? 0,
+      };
+
+      setUsages((prev) => [optimisticUsage, ...prev]);
+      setShowCutModal(false);
+      setFeedback({
+        tone: "success",
+        message: `Consumo de ${metersCut} m registado na obra e descontado do stock.`,
+      });
+      router.refresh();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Erro ao registar consumo de película.",
+      });
+    } finally {
+      setPending(false);
+    }
+  };
 
   const handleToggleChecklistItem = async (itemId: string) => {
     const item = phases.flatMap((p) => p.checklist).find((c) => c.id === itemId);
@@ -86,7 +226,9 @@ export function WorkOrderDetailView({
                   ...entry,
                   isCompleted: nextState,
                   completedByName: nextState ? currentUserName : undefined,
-                  completedAt: nextState ? new Date().toISOString().slice(0, 16) : undefined,
+                  completedAt: nextState
+                    ? new Date().toISOString().slice(0, 16)
+                    : undefined,
                 }
               : entry
           ),
@@ -95,12 +237,17 @@ export function WorkOrderDetailView({
     );
 
     try {
-      const result = await toggleChecklistItemAction(workOrder.id, itemId, nextState);
+      const result = await toggleChecklistItemAction(
+        workOrder.id,
+        itemId,
+        nextState
+      );
       if (!result.ok) {
         setPhases(previousPhases);
         setFeedback({
           tone: "error",
-          message: result.error || "Não foi possível atualizar o item de checklist.",
+          message:
+            result.error || "Não foi possível atualizar o item de checklist.",
         });
         return;
       }
@@ -110,7 +257,9 @@ export function WorkOrderDetailView({
       setFeedback({
         tone: "error",
         message:
-          error instanceof Error ? error.message : "Não foi possível atualizar o item de checklist.",
+          error instanceof Error
+            ? error.message
+            : "Não foi possível atualizar o item de checklist.",
       });
     } finally {
       setPending(false);
@@ -128,7 +277,11 @@ export function WorkOrderDetailView({
     setPhases((prev) =>
       prev.map((p) =>
         p.phaseKey === phaseKey
-          ? { ...p, status: "completed" as const, completedAt: new Date().toISOString().slice(0, 16) }
+          ? {
+              ...p,
+              status: "completed" as const,
+              completedAt: new Date().toISOString().slice(0, 16),
+            }
           : p
       )
     );
@@ -144,7 +297,9 @@ export function WorkOrderDetailView({
         return;
       }
 
-      const currentIndex = previousPhases.findIndex((p) => p.phaseKey === phaseKey);
+      const currentIndex = previousPhases.findIndex(
+        (p) => p.phaseKey === phaseKey
+      );
       if (currentIndex >= 0 && currentIndex < previousPhases.length - 1) {
         const next = previousPhases[currentIndex + 1];
         setActivePhaseKey(next.phaseKey);
@@ -152,7 +307,9 @@ export function WorkOrderDetailView({
         if (!startResult.ok) {
           setFeedback({
             tone: "error",
-            message: startResult.error || "Fase concluída, mas não foi possível iniciar a seguinte.",
+            message:
+              startResult.error ||
+              "Fase concluída, mas não foi possível iniciar a seguinte.",
           });
         }
       }
@@ -161,7 +318,10 @@ export function WorkOrderDetailView({
       setPhases(previousPhases);
       setFeedback({
         tone: "error",
-        message: error instanceof Error ? error.message : "Não foi possível concluir a fase.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível concluir a fase.",
       });
     } finally {
       setPending(false);
@@ -205,7 +365,10 @@ export function WorkOrderDetailView({
     } catch (error) {
       setFeedback({
         tone: "error",
-        message: error instanceof Error ? error.message : "Não foi possível registar as horas.",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível registar as horas.",
       });
     } finally {
       setPending(false);
@@ -265,16 +428,33 @@ export function WorkOrderDetailView({
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-[#a9adae] mt-1">
-            <span>Cliente: <strong className="text-[#f1ede5]">{workOrder.customerName}</strong></span>
+            <span>
+              Cliente: <strong className="text-[#f1ede5]">{workOrder.customerName}</strong>
+            </span>
             <span>·</span>
-            <span>Serviço: <strong className="text-[#f1ede5]">{workOrder.serviceTitle}</strong></span>
+            <span>
+              Serviço: <strong className="text-[#f1ede5]">{workOrder.serviceTitle}</strong>
+            </span>
             <span>·</span>
-            <span>Técnico Principal: <strong className="text-[#f1ede5]">{workOrder.primaryTechnicianName}</strong></span>
+            <span>
+              Técnico Principal:{" "}
+              <strong className="text-[#f1ede5]">{workOrder.primaryTechnicianName}</strong>
+            </span>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => openMaterialCutModal()}
+          >
+            <Scissors className="h-4 w-4 text-[#d3a548]" />
+            <span>Registar Corte de Película (m)</span>
+          </Button>
+
           <Link href={`/checkins/${workOrder.checkinId}`}>
             <Button variant="outline" size="sm" className="bg-[#15191a]">
               <FileCheck className="h-4 w-4 text-[#d3a548]" />
@@ -283,7 +463,11 @@ export function WorkOrderDetailView({
           </Link>
 
           <Link href={`/production/${workOrder.id}/qc`}>
-            <Button variant="primary" size="sm" className="bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-extrabold">
+            <Button
+              variant="primary"
+              size="sm"
+              className="bg-gradient-to-r from-[#d3a548] to-[#f7d46d] text-[#050606] font-extrabold"
+            >
               <ShieldCheck className="h-4 w-4" />
               <span>Controlo de Qualidade (QC)</span>
             </Button>
@@ -320,13 +504,222 @@ export function WorkOrderDetailView({
             onAddTimeEntry={handleAddTimeEntry}
           />
 
-          {materialUsage.length > 0 ? (
-            materialUsage.map((mu) => <MaterialUsageWidget key={mu.id} materialUsage={mu} />)
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#a9adae]">
+              Consumo de Película na Obra
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => openMaterialCutModal()}
+              className="text-[11px]"
+            >
+              <Scissors className="h-3.5 w-3.5 text-[#d3a548]" />
+              <span>Registar Corte (m)</span>
+            </Button>
+          </div>
+
+          {usages.length > 0 ? (
+            usages.map((mu) => (
+              <MaterialUsageWidget
+                key={mu.id}
+                materialUsage={mu}
+                onRegisterCut={(matId) => openMaterialCutModal(matId)}
+              />
+            ))
           ) : (
-            <p className="text-xs text-[#8a9092]">Sem consumo de material registado.</p>
+            <p className="text-xs text-[#8a9092]">
+              Sem consumo de material registado.
+            </p>
           )}
         </div>
       </div>
+
+      {/* Modal de registo de corte/consumo de película na Ordem de Trabalho */}
+      {showCutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+          <div className="w-full max-w-md rounded-xl bg-[#101314] border border-white/15 p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <h2 className="text-base font-bold text-[#f1ede5]">
+                Registar Consumo / Corte na Obra ({workOrder.workOrderNumber})
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowCutModal(false)}
+                className="text-[#8a9092] hover:text-[#f1ede5] cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleRegisterWorkOrderCut}
+              className="flex flex-col gap-3 mt-4 text-xs"
+            >
+              <label className="flex flex-col gap-1">
+                <span className="text-[#a9adae]">Película / Material</span>
+                <select
+                  value={cutForm.materialId}
+                  onChange={(e) =>
+                    setCutForm({ ...cutForm, materialId: e.target.value })
+                  }
+                  className="h-9 px-3 rounded-md bg-[#0c0f10] border border-white/10 text-[#f1ede5]"
+                  required
+                >
+                  {stockMaterials.length > 0 ? (
+                    stockMaterials.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.brand} {m.name} ({m.currentStockMeters} m disp.)
+                      </option>
+                    ))
+                  ) : (
+                    usages.map((u) => (
+                      <option key={u.id} value={u.materialId}>
+                        {u.materialName} ({u.batchNumber})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[#a9adae]">Metros Cortados (m)</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={cutForm.metersCut}
+                    onChange={(e) =>
+                      setCutForm({ ...cutForm, metersCut: e.target.value })
+                    }
+                    className="h-9 px-3 rounded-md bg-[#0c0f10] border border-white/10 text-[#f1ede5]"
+                    required
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[#a9adae]">Metros Orçamentados (m)</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={cutForm.estimatedMeters}
+                    onChange={(e) =>
+                      setCutForm({ ...cutForm, estimatedMeters: e.target.value })
+                    }
+                    className="h-9 px-3 rounded-md bg-[#0c0f10] border border-white/10 text-[#f1ede5]"
+                    required
+                  />
+                </label>
+              </div>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-[#a9adae]">Peças Aplicadas / Notas</span>
+                <input
+                  type="text"
+                  value={cutForm.notes}
+                  onChange={(e) =>
+                    setCutForm({ ...cutForm, notes: e.target.value })
+                  }
+                  placeholder="Ex: Frente Integral (Capot + Para-choques)"
+                  className="h-9 px-3 rounded-md bg-[#0c0f10] border border-white/10 text-[#f1ede5]"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 pt-1 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={cutForm.saveRemnant}
+                  onChange={(e) =>
+                    setCutForm({ ...cutForm, saveRemnant: e.target.checked })
+                  }
+                  className="h-4 w-4 accent-[#d3a548]"
+                />
+                <span className="font-semibold text-[#f7d46d]">
+                  Guardar sobra aproveitável como Retalho
+                </span>
+              </label>
+
+              {cutForm.saveRemnant && (
+                <div className="flex flex-col gap-2 p-3 rounded-md bg-[#15191a] border border-[#d3a548]/30">
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[#a9adae]">Largura (cm)</span>
+                      <input
+                        type="number"
+                        min="5"
+                        value={cutForm.remnantWidthCm}
+                        onChange={(e) =>
+                          setCutForm({
+                            ...cutForm,
+                            remnantWidthCm: e.target.value,
+                          })
+                        }
+                        className="h-8 px-2 rounded bg-[#0c0f10] border border-white/10 text-[#f1ede5]"
+                        required
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[#a9adae]">Comprimento (cm)</span>
+                      <input
+                        type="number"
+                        min="5"
+                        value={cutForm.remnantLengthCm}
+                        onChange={(e) =>
+                          setCutForm({
+                            ...cutForm,
+                            remnantLengthCm: e.target.value,
+                          })
+                        }
+                        className="h-8 px-2 rounded bg-[#0c0f10] border border-white/10 text-[#f1ede5]"
+                        required
+                      />
+                    </label>
+                  </div>
+                  <span className="text-[11px] text-[#a9adae]">
+                    Área da sobra:{" "}
+                    <strong className="text-[#f7d46d]">
+                      {calculateRemnantAreaM2(
+                        Number(cutForm.remnantWidthCm),
+                        Number(cutForm.remnantLengthCm)
+                      )}{" "}
+                      m²
+                    </strong>
+                  </span>
+                  <input
+                    type="text"
+                    value={cutForm.remnantLocation}
+                    onChange={(e) =>
+                      setCutForm({
+                        ...cutForm,
+                        remnantLocation: e.target.value,
+                      })
+                    }
+                    placeholder="Estante A · Tubo 2"
+                    className="h-8 px-2 rounded bg-[#0c0f10] border border-white/10 text-[#f1ede5]"
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.08]">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCutModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" variant="primary" size="sm" disabled={pending}>
+                  Confirmar Consumo
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
