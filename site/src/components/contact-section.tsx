@@ -1,9 +1,18 @@
 "use client";
 
-import { AlertCircle, ArrowRight, ArrowUpRight, Camera, CheckCircle2, MapPin } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  ArrowUpRight,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Phone,
+} from "lucide-react";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { proposalServices } from "@/lib/proposal";
+import { FacebookIcon, InstagramIcon } from "@/components/brand-icons";
+import { proposalServices, type ProposalService } from "@/lib/proposal";
 import { siteConfig } from "@/lib/site-config";
 
 type FormState = "idle" | "submitting" | "success" | "error";
@@ -17,10 +26,18 @@ function createIdempotencyKey() {
 }
 
 type ContactSectionProps = {
-  standalone?: boolean;
+  defaultService?: ProposalService;
+  defaultMessage?: string;
+  eyebrow?: string;
+  showHeading?: boolean;
 };
 
-export function ContactSection({ standalone = false }: ContactSectionProps) {
+export function ContactSection({
+  defaultService = "Preciso de aconselhamento",
+  defaultMessage,
+  eyebrow = "07 / O SEU PRÓXIMO PROJETO",
+  showHeading = true,
+}: ContactSectionProps) {
   const [state, setState] = useState<FormState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [reference, setReference] = useState("");
@@ -74,41 +91,71 @@ export function ContactSection({ standalone = false }: ContactSectionProps) {
   }
 
   return (
-    <section
-      id="proposta"
-      className={`contact section-pad${standalone ? " contact-standalone" : ""}`}
-    >
+    <section id="proposta" className="contact section-pad">
       <div className="contact-copy">
-        <span className="eyebrow">07 / O SEU PRÓXIMO PROJETO</span>
-        <h2>
-          Começa
-          <br />
-          com o
-          <br />
-          <em>seu carro.</em>
-        </h2>
-        <p>
-          Diga-nos o que tem em mente.
-          <br />
-          Nós ajudamos a dar-lhe forma.
-        </p>
+        {showHeading ? (
+          <>
+            <span className="eyebrow">{eyebrow}</span>
+            <h2>
+              Começa
+              <br />
+              com o
+              <br />
+              <em>seu carro.</em>
+            </h2>
+            <p>
+              Diga-nos o que tem em mente.
+              <br />
+              Nós ajudamos a dar-lhe forma.
+            </p>
+          </>
+        ) : null}
         <div className="contact-location">
           <MapPin size={19} aria-hidden="true" />
           <span>
             Atelier X-Motion
             <br />
-            <strong>Barcelos, Portugal</strong>
+            <strong>{siteConfig.address.street}</strong>
+            <br />
+            {siteConfig.address.postalCode} {siteConfig.address.locality}
+            <br />
+            {siteConfig.address.city}, Portugal
           </span>
         </div>
-        <a
-          className="text-link"
-          href={siteConfig.instagram}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Camera size={17} aria-hidden="true" /> Falar pelo Instagram
-          <ArrowUpRight size={16} aria-hidden="true" />
-        </a>
+        <div className="contact-hours">
+          <Clock size={19} aria-hidden="true" />
+          <span>
+            {siteConfig.hours.map((item, index) => (
+              <span key={item.days}>
+                <strong>{item.days}</strong> {item.time}
+                {index < siteConfig.hours.length - 1 ? <br /> : null}
+              </span>
+            ))}
+          </span>
+        </div>
+        <div className="contact-direct">
+          <a className="text-link" href={siteConfig.phoneHref}>
+            <Phone size={16} aria-hidden="true" /> {siteConfig.phone}
+          </a>
+          <a
+            className="text-link"
+            href={siteConfig.instagram}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <InstagramIcon size={16} /> Instagram
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </a>
+          <a
+            className="text-link"
+            href={siteConfig.facebook}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <FacebookIcon size={16} /> Facebook
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </a>
+        </div>
       </div>
       <div className="contact-form-wrap">
         {state === "success" ? (
@@ -138,7 +185,7 @@ export function ContactSection({ standalone = false }: ContactSectionProps) {
             </div>
             <label>
               O que pretende fazer?
-              <select name="service" defaultValue="Preciso de aconselhamento">
+              <select name="service" defaultValue={defaultService}>
                 {proposalServices.map((service) => (
                   <option key={service}>{service}</option>
                 ))}
@@ -193,6 +240,7 @@ export function ContactSection({ standalone = false }: ContactSectionProps) {
               A sua ideia <span className="optional">opcional</span>
               <textarea
                 name="message"
+                defaultValue={defaultMessage}
                 placeholder="Cor, acabamento, zonas a proteger ou alguma dúvida…"
                 rows={3}
                 maxLength={2000}

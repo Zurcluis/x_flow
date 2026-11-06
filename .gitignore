@@ -47,3 +47,13 @@ next-env.d.ts
 .next-dev.err.log
 .vercel
 .env*
+
+
+# Local visual test screenshots and reference dumps
+site-*.png
+reference-*
+screens/
+
+# Confidential business & customer invoices
+docs/X-motion/Faturação/
+docs/X-motion/Faturacao/

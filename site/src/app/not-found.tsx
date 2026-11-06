@@ -30,7 +30,7 @@ export default function NotFound() {
             Voltar ao início
             <ArrowUpRight size={18} aria-hidden="true" />
           </Link>
-          <Link href="/portfolio" className="text-link">
+          <Link href="/projetos" className="text-link">
             <ArrowLeft size={17} aria-hidden="true" /> Ver projetos
           </Link>
         </div>

@@ -2,6 +2,7 @@
 
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const slides = [
@@ -105,10 +106,10 @@ export function Hero() {
           O cuidado está em cada detalhe.
         </p>
         <div className="hero-actions">
-          <a href="#proposta" className="button gold">
+          <Link href="/contactos#proposta" className="button gold">
             Criar o meu projeto
             <ArrowUpRight size={18} aria-hidden="true" />
-          </a>
+          </Link>
           <a href="#projetos" className="text-link">
             Explorar trabalhos
             <ArrowRight size={18} aria-hidden="true" />

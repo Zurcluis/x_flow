@@ -33,11 +33,22 @@ const questions = [
   },
 ];
 
-export function FAQSection() {
+type FAQSectionProps = {
+  eyebrow?: string;
+  limit?: number;
+};
+
+export function FAQSection({
+  eyebrow = "06 / ANTES DE DECIDIR",
+  limit,
+}: FAQSectionProps = {}) {
+  const visibleQuestions =
+    typeof limit === "number" ? questions.slice(0, limit) : questions;
+
   return (
     <section className="faq-section light-section section-pad">
       <div>
-        <span className="eyebrow">06 / ANTES DE DECIDIR</span>
+        <span className="eyebrow">{eyebrow}</span>
         <h2>
           Boas perguntas.
           <br />
@@ -50,7 +61,7 @@ export function FAQSection() {
         </p>
       </div>
       <div className="faq-list">
-        {questions.map((item) => (
+        {visibleQuestions.map((item) => (
           <details key={item.question}>
             <summary>
               {item.question}

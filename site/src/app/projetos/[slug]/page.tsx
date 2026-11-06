@@ -3,11 +3,21 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ContactSection } from "@/components/contact-section";
 import { getNextProject, getProject, projects } from "@/lib/projects";
+import type { ProposalService } from "@/lib/proposal";
+import { siteConfig } from "@/lib/site-config";
 
 type ProjectPageProps = {
   params: Promise<{ slug: string }>;
 };
+
+function proposalServiceFor(project: (typeof projects)[number]): ProposalService {
+  if (project.categories.includes("PPF")) return "PPF";
+  if (project.categories.includes("Car Wrap")) return "Car Wrap";
+  if (project.categories.includes("Mota")) return "Mota";
+  return "Preciso de aconselhamento";
+}
 
 export function generateStaticParams() {
   return projects.map((project) => ({ slug: project.slug }));
@@ -25,10 +35,10 @@ export async function generateMetadata({ params }: ProjectPageProps): Promise<Me
     title: project.title,
     description: project.description,
     alternates: {
-      canonical: `/portfolio/${project.slug}`,
+      canonical: `/projetos/${project.slug}`,
     },
     openGraph: {
-      url: `/portfolio/${project.slug}`,
+      url: `/projetos/${project.slug}`,
       title: `${project.title} | X-Motion`,
       description: project.description,
       images: [
@@ -51,6 +61,31 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   const nextProject = getNextProject(project.slug);
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Início",
+        item: siteConfig.url,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Projetos",
+        item: `${siteConfig.url}/projetos`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: project.title,
+        item: `${siteConfig.url}/projetos/${project.slug}`,
+      },
+    ],
+  };
+
   return (
     <main id="conteudo">
       <section className="project-detail">
@@ -65,7 +100,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           />
         </div>
         <div className="project-detail-copy">
-          <Link href="/portfolio" className="text-link project-back">
+          <Link href="/projetos" className="text-link project-back">
             <ArrowLeft size={17} aria-hidden="true" /> Voltar aos projetos
           </Link>
           <span className="eyebrow">{project.tag}</span>
@@ -86,10 +121,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               <dd>Barcelos, Portugal</dd>
             </div>
           </dl>
-          <Link href="/#proposta" className="button gold">
+          <a href="#proposta" className="button gold">
             Pedir projeto semelhante
             <ArrowUpRight size={18} aria-hidden="true" />
-          </Link>
+          </a>
         </div>
       </section>
       <section className="project-gallery-wrap" aria-label={`Galeria de ${project.title}`}>
@@ -114,16 +149,25 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           ))}
         </div>
       </section>
+      <ContactSection
+        eyebrow="O SEU PRÓXIMO PROJETO"
+        defaultService={proposalServiceFor(project)}
+        defaultMessage={`Inspiração: ${project.title} — ${project.subtitle}.`}
+      />
       <section className="project-next light-section section-pad">
         <div>
           <span className="eyebrow">PRÓXIMO PROJETO</span>
           <h2>{nextProject.title}</h2>
         </div>
-        <Link href={`/portfolio/${nextProject.slug}`} className="text-link">
+        <Link href={`/projetos/${nextProject.slug}`} className="text-link">
           Ver projeto
           <ArrowUpRight size={18} aria-hidden="true" />
         </Link>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
     </main>
   );
 }

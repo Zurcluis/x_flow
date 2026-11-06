@@ -7,17 +7,17 @@ export const metadata: Metadata = {
   description:
     "Uma seleção de trabalhos realizados no atelier X-Motion, em Barcelos: PPF, Car Wrap, Color PPF e personalização.",
   alternates: {
-    canonical: "/portfolio",
+    canonical: "/projetos",
   },
   openGraph: {
-    url: "/portfolio",
+    url: "/projetos",
     title: "Projetos | X-Motion",
     description:
       "Uma seleção de trabalhos realizados no atelier X-Motion, em Barcelos.",
   },
 };
 
-export default function PortfolioPage() {
+export default function ProjetosPage() {
   return (
     <main id="conteudo">
       <PageIntro
@@ -31,7 +31,7 @@ export default function PortfolioPage() {
         }
         description="Cada projeto tem a sua expressão. Estas são algumas das nossas."
       />
-      <PortfolioSection showHeading={false} showAllLink={false} eagerFirst />
+      <PortfolioSection showHeading={false} showAllLink={false} />
     </main>
   );
 }

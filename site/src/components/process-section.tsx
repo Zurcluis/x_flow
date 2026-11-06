@@ -24,12 +24,16 @@ const steps = [
   },
 ];
 
-export function ProcessSection() {
+type ProcessSectionProps = {
+  eyebrow?: string;
+};
+
+export function ProcessSection({ eyebrow = "05 / DO PRIMEIRO CONTACTO À ENTREGA" }: ProcessSectionProps = {}) {
   return (
     <section className="process section-pad">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">05 / DO PRIMEIRO CONTACTO À ENTREGA</span>
+          <span className="eyebrow">{eyebrow}</span>
           <h2>
             Um projeto.
             <br />

@@ -211,7 +211,7 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
             ))}
           </div>
         </fieldset>
-        <Link className="text-link" href="/#proposta">
+          <Link className="text-link" href="/contactos#proposta">
           Pedir proposta com esta inspiração
           <ArrowUpRight size={17} aria-hidden="true" />
         </Link>

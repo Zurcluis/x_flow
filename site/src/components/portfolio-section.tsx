@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowUpRight, Camera, Plus } from "lucide-react";
+import { ArrowUpRight, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { InstagramIcon } from "@/components/brand-icons";
 import {
   projectFilters,
   projects,
@@ -66,7 +67,7 @@ export function PortfolioSection({
         {visibleProjects.map((project, projectIndex) => (
           <Link
             key={project.slug}
-            href={`/portfolio/${project.slug}`}
+            href={`/projetos/${project.slug}`}
             className={`project-card${project.wide ? " wide" : ""}`}
           >
             <div className="project-image">
@@ -97,7 +98,7 @@ export function PortfolioSection({
         ))}
       </div>
       {showAllLink ? (
-        <Link href="/portfolio" className="button outline load-more">
+        <Link href="/projetos" className="button outline load-more">
           Ver todos os projetos
           <Plus size={17} aria-hidden="true" />
         </Link>
@@ -105,7 +106,7 @@ export function PortfolioSection({
       <div className="portfolio-footer">
         <span>Fotografias de trabalhos realizados no atelier.</span>
         <a href={siteConfig.instagram} target="_blank" rel="noopener noreferrer">
-          Mais no Instagram <Camera size={17} aria-hidden="true" />
+          Mais no Instagram <InstagramIcon size={17} />
         </a>
       </div>
     </section>

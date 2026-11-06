@@ -28,9 +28,12 @@ import {
   Box,
   Palette,
   Monitor,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/xflow/Logo";
+import { publicSiteUrl } from "@/lib/site-link";
 import { cn } from "@/lib/utils";
 
 export interface NavItem {
@@ -190,6 +193,26 @@ export function Sidebar({
 
       {/* Pinned Settings + Collapse Action */}
       <div className="pt-3 border-t border-white/[0.06] shrink-0 flex flex-col gap-1">
+        {publicSiteUrl && (
+          <a
+            href={publicSiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-xs font-medium text-[#8a9092] hover:bg-white/[0.04] hover:text-[#f1ede5] transition-colors cursor-pointer",
+              collapsed && "justify-center"
+            )}
+            title={collapsed ? "Abrir o site público" : undefined}
+          >
+            <Globe className="h-4 w-4 shrink-0" />
+            {!collapsed && (
+              <>
+                <span className="flex-1 text-left">Site público</span>
+                <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+              </>
+            )}
+          </a>
+        )}
         {role === "admin" && (
           <Link
             href="/settings?tab=sidebar"

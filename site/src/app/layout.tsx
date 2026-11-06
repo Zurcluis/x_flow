@@ -1,9 +1,17 @@
-﻿import type { Metadata, Viewport } from "next";
+import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
 import "./site.css";
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
 
 function getMetadataBase() {
   try {
@@ -62,22 +70,31 @@ const structuredData = {
   description: siteConfig.description,
   url: siteConfig.url,
   image: `${siteConfig.url}/images/og-xmotion.webp`,
+  telephone: siteConfig.phone,
   areaServed: {
     "@type": "City",
     name: siteConfig.locality,
   },
   address: {
     "@type": "PostalAddress",
-    addressLocality: siteConfig.locality,
-    addressRegion: siteConfig.region,
-    addressCountry: siteConfig.country,
+    streetAddress: siteConfig.address.street,
+    postalCode: siteConfig.address.postalCode,
+    addressLocality: siteConfig.address.city,
+    addressRegion: siteConfig.address.region,
+    addressCountry: siteConfig.address.country,
   },
-  sameAs: [siteConfig.instagram],
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: siteConfig.geo.latitude,
+    longitude: siteConfig.geo.longitude,
+  },
+  hasMap: siteConfig.maps,
+  sameAs: [siteConfig.instagram, siteConfig.facebook],
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-PT">
+    <html lang="pt-PT" className={plusJakartaSans.variable}>
       <body>
         <a className="skip-link" href="#conteudo">
           Saltar para o conteúdo

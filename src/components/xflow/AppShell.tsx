@@ -11,6 +11,8 @@ import {
   Menu,
   Sparkles,
   X,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import {
   Sidebar,
@@ -23,6 +25,7 @@ import { Logo } from "@/components/xflow/Logo";
 import { AssistantPanel } from "@/components/xflow/ai/AssistantPanel";
 import type { ShellUser } from "@/components/xflow/Topbar";
 import { canUseAssistant } from "@/lib/roles";
+import { publicSiteUrl } from "@/lib/site-link";
 import { cn } from "@/lib/utils";
 
 function DrawerLink({ item, onNavigate }: { item: NavItem; onNavigate: () => void }) {
@@ -142,6 +145,21 @@ export function AppShell({
                   ))}
                 </div>
               ))}
+              {publicSiteUrl && (
+                <a
+                  href={publicSiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] px-4 py-3 text-base font-medium text-[#a9adae] hover:bg-white/[0.04] hover:text-[#f1ede5] transition-colors"
+                >
+                  <span className="flex items-center gap-4">
+                    <Globe className="h-5 w-5 text-[#d3a548]" />
+                    Site público
+                  </span>
+                  <ExternalLink className="h-4 w-4 opacity-60" />
+                </a>
+              )}
             </nav>
           </div>
         )}

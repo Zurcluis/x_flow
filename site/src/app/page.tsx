@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { AtelierSection } from "@/components/atelier-section";
-import { ColorStudio } from "@/components/color-studio";
-import { ContactSection } from "@/components/contact-section";
 import { FAQSection } from "@/components/faq-section";
+import { FeaturedProjects } from "@/components/featured-projects";
 import { Hero } from "@/components/hero";
-import { PortfolioSection } from "@/components/portfolio-section";
+import { HomeContactCta } from "@/components/home-contact-cta";
+import { HomeServices } from "@/components/home-services";
 import { ProcessSection } from "@/components/process-section";
-import { ServicesSection } from "@/components/services-section";
+import { StudioTeaser } from "@/components/studio-teaser";
 
 export const metadata: Metadata = {
   alternates: {
@@ -18,13 +18,13 @@ export default function HomePage() {
   return (
     <main id="conteudo">
       <Hero />
-      <ServicesSection />
-      <PortfolioSection />
-      <ColorStudio />
-      <AtelierSection />
+      <HomeServices />
+      <FeaturedProjects />
+      <StudioTeaser />
+      <AtelierSection teaser ctaHref="/atelier" ctaLabel="Conhecer o atelier" />
       <ProcessSection />
-      <FAQSection />
-      <ContactSection />
+      <FAQSection limit={4} />
+      <HomeContactCta />
     </main>
   );
 }

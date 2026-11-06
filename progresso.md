@@ -1,15 +1,32 @@
 # Progresso — X-Flow
 
-_Última atualização: 03/11/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 06/11/2026. Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
 - X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada; **363/363 testes em 54 ficheiros**, 62 tabelas com RLS)
-- Health: typecheck OK, lint OK, **354/354 testes (52 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada; endpoint público de propostas do site e Fases 1–3 dos cenários 3D commitados e enviados
+- Health: typecheck OK, lint OK, **363/363 testes (54 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada; endpoint público de propostas do site e Fases 1–3 dos cenários 3D commitados e enviados
 - **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `55266c7` (`feat: luz do dia e pôr do sol no simulador 3D`), sincronizado, com `b8131bb` (`feat: endpoint público de propostas do site`) imediatamente antes. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
 - **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas; **quatro cenários completos** (Estúdio Dark, Oficina X-Motion, Luz do Dia e Pôr do Sol) com sombras reais no exterior, céu/chão procedurais e seletor compacto; Fase 3 commitada (`55266c7`)
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
+- **Site público publicado**: `site/` em https://x-flow-b8rt.vercel.app (projeto Vercel `x-flow-b8rt`, Root Directory `site`); ERP em https://x-flow-roan.vercel.app com botão "Site público" e formulário ligado a `/api/proposals` (leads em Clientes → Leads do Site)
+- **Site público multi-página**: `/servicos` + quatro serviços, `/projetos`, `/atelier` e `/contactos` com mapa e horário; `/portfolio` e `/portfolio/[slug]` redirecionam com 308 para as novas rotas. A home passou a ser um hub curto (quatro serviços, três projetos, teasers do estúdio/atelier, processo, quatro FAQ e CTA para `/contactos`), sem o formulário duplicado. Conteúdo limitado ao já confirmado (sem claims, preços, garantias ou marcas por confirmar).
+
+## Sessão 06/11/2026 — Site público: plano multi-páginas (serviços, projetos e atelier)
+
+- **Âmbito**: executar a Fase 3 do Plano Site (§6.3) sem inventar claims, preços, garantias, prazos, materiais ou marcas. O conteúdo novo reutiliza apenas o que já estava publicado; onde não há confirmação, a página diz isso de forma explícita.
+- **Novas rotas**: `/servicos` (índice), `/servicos/ppf`, `/servicos/car-wrap`, `/servicos/color-ppf`, `/servicos/detalhes`, `/projetos`, `/projetos/[slug]` e `/atelier`.
+- **Serviços**: `ServiceDetail` ganhou imagem, serviço de proposta, categorias relacionadas e descrição SEO; cada página mostra descrição, inclusões, processo, FAQ, trabalhos relacionados e formulário pré-preenchido com o serviço. O Color PPF assume que ainda não há projeto publicado com essa classificação, em vez de inventar um caso.
+- **Projetos**: `/projetos` é a rota canónica; `/portfolio` e `/portfolio/[slug]` passam a `308` em `next.config.ts`. Links internos, 404 e `sitemap.xml` atualizados. A ficha de projeto inclui formulário com a inspiração pré-preenchida (`Inspiração: <projeto> — <acabamento>`).
+- **Atelier**: página própria com o texto e a fotografia já existentes, processo e formulário.
+- **Navegação**: header e footer apontam para as novas páginas, com estado ativo (`aria-current="page"`); CTA "Pedir proposta" para `/contactos#proposta`.
+- **Home como hub**: a página inicial passou a ser uma montra curta — hero, quatro serviços em cartões, três projetos em destaque, teaser do estúdio, teaser do atelier, processo, quatro FAQ e CTA final para `/contactos`. O formulário completo saiu da home e `ServicesSection` foi removido; o conteúdo completo vive em `/servicos/*`, `/projetos`, `/estudio`, `/atelier` e `/contactos`.
+- **Contactos**: `/contactos` foi reorganizada com uma entrada própria (`h1`), detalhes de contacto e formulário, e uma secção de mapa que carrega automaticamente o Google Maps, com botão direto «Abrir no Google Maps». Horário: segunda a sexta 08:00–17:00, sábado 09:00–13:00, mostrado junto aos contactos e no CTA da home. A morada e o horário deixaram de estar repetidos na secção do mapa; a página de privacidade explica o mapa automático e os cookies do Google. «Contactos» foi adicionado ao cabeçalho e ao rodapé, sem duplicação.
+- **SEO**: metadata/canonical/OpenGraph por página; JSON-LD `Service` + `BreadcrumbList` nos serviços e `BreadcrumbList` em projetos/atelier; sitemap com todas as rotas novas.
+- **Verificação**: `npm run typecheck`, `npm run lint` e `npm run build` na app `site/` OK (24 rotas geradas); produção local em `:3100` — todas as rotas `200`, `/portfolio*` `308`, 0 erros/avisos de consola; validação visual da home, das novas páginas e do mapa automático a 1536, 1100, 820 e 390 px; cabeçalho com «Contactos» sem overflow.
+- **Pendente**: confirmar com a X-Motion claims técnicos, garantias, marcas autorizadas e fotografias originais antes de acrescentar detalhe técnico; `/cuidados` e `/parceiros` continuam por fazer; deploy para produção com `npx vercel deploy --prod --project x-flow-b8rt` a partir da raiz.
+- **Skills/agentes**: `design-de-interfaces` e `vercel-react-best-practices`; execução direta e verificação com browser MCP (modo extension), sem subagentes.
 
 ## Sessão 03/11/2026 — Execução Completa Go-Live (Blocos 1 a 4 — Ciclo Operacional de 13 Passos)
 
@@ -423,7 +440,7 @@ _Última atualização: 03/11/2026. Ficheiro de continuação de sessão — diz
 - Git: commitar + push no fim de cada sessão (a pedido de Luís). docs/X-motion/ com 130 ficheiros de negócio fica SEM commit por decisão do Luís.
 
 ## Retomar
-Dizer ao agente: "Lê `progresso.md` e continua pela caixa interna de leads do site." O endpoint já grava os pedidos; falta o ecrã no ERP para os ver, a notificação interna e só depois o token unificado de passaporte. O site em `site/` fica local até nova decisão de publicação.
+Dizer ao agente: "Lê `progresso.md` e continua pelo plano multi-páginas do site." As páginas `/servicos`, `/servicos/*`, `/projetos`, `/projetos/[slug]` e `/atelier` já estão criadas, sem claims novos; `/portfolio*` redireciona 308. O próximo passo é fechar com a X-Motion os claims técnicos, garantias, marcas autorizadas e fotografias originais para enriquecer essas páginas e avançar `/cuidados` e `/parceiros`. O site está publicado em https://x-flow-b8rt.vercel.app e o formulário grava leads no ERP (Clientes → Leads do Site). Nota: na app `site/`, o build/deploy tem de ser feito a partir da raiz do repo com `npx vercel deploy --prod --project x-flow-b8rt` (o projeto Vercel tem Root Directory `site`).
 
 ## Sessão 25/10/2026 — Simulador 3D: catálogo limpo e seis modelos novos
 - **Catálogo**: removidos `sedan`, `buggy`, `furgao` e `miniatura` do registry, dos GLBs e do `CREDITS.md`; mantidos `458 Desportivo` e `Car Concept`. O seletor ficou com 13 modelos: BMW M4 Competition, Car Concept, Audi R8, Porsche Carrera GT, Mercedes-AMG G63, Golf GTI Clubsport, Lamborghini Huracán EVO, McLaren 720S Spider, Corvette C8 Stingray, Ford Mustang RTR, RAM 1500 TRX, Rolls-Royce Ghost e 458 Desportivo.
@@ -464,3 +481,15 @@ Dizer ao agente: "Lê `progresso.md` e continua pela caixa interna de leads do s
 - **Pipeline**: glTF Transform com simplificação de geometria, texturas WebP até 1024 px, nomes de materiais/nós preservados e sem compressão de geometria. Créditos em `public/models/cars/*/ATTRIBUTION.md` e `public/models/CREDITS.md`.
 - **Validação**: orientação e escala corretas, pintura integral (Gloss Black e Brushed Aluminium), cobertura parcial no capô do Porsche, viewport mobile 390 px, GLBs com 200 e 0 erros de consola; typecheck, lint e build OK.
 - **Decisão**: commit local sem push. O repositório é público e os assets do Audi (sem licença) e Mercedes/VW (NC) não são redistribuídos; uso previsto é pessoal/não comercial.
+
+## Sessão 06/11/2026 — Site público: botão no ERP, NAP e ligação do formulário
+- **ERP**: botão "Site público" no rodapé da sidebar e no menu mobile, aberto em nova aba a partir de `NEXT_PUBLIC_SITE_URL` (`src/lib/site-link.ts`); fallback local em dev para `http://localhost:3001`. Script `npm run dev:site` corre o site em `:3001`. Deploy de produção do ERP feito.
+- **Site**: morada completa (R. Odete Hermenegildo 1286, Pavilhão 4 D, 4750-841 Vila Frescainha), telefone +351 934 644 142 e links para Google Maps, Instagram e Facebook em `site/src/lib/site-config.ts`.
+- `ContactSection` e rodapé mostram morada/telefone e ligam a `tel:`, Google Maps, Instagram e Facebook; JSON-LD `AutoBodyShop` passou a incluir `streetAddress`, `postalCode`, `telephone`, `geo` e `hasMap`, com `sameAs` para Instagram e Facebook.
+- Sem horários (o perfil Google não tem) e sem `aggregateRating` (avaliações do Google não devem ser marcadas como próprias).
+- **Formulário em produção**: faltavam variáveis. Criadas no site `x-flow-b8rt` (`XFLOW_PROPOSALS_URL=https://x-flow-roan.vercel.app/api/proposals`, `XFLOW_SITE_SECRET`, `NEXT_PUBLIC_SITE_URL=https://x-flow-b8rt.vercel.app`) e no ERP `x-flow` (`XFLOW_SITE_SECRET`, `XFLOW_SITE_ORIGIN=https://x-flow-b8rt.vercel.app`); ambos redeployados.
+- **Verificação segura do endpoint** (sem criar leads): segredo errado → 401; origem errada → 403; segredo+origem corretos sem idempotency → 400 (auth passou).
+- **Produção confirmada**: `/contactos` devolve 200 com morada, telefone e links; JSON-LD com `url`, `telephone`, `streetAddress`, `geo`, `hasMap` e `sameAs`.
+- Validação local: typecheck, lint e build do `site/` OK.
+- **Git**: alterações locais de 06/11 ainda por commitar (botão "Site público" no ERP, `dev:site`, `.env.example`, NAP do site).
+- **Pendente**: plano multi-páginas (serviços, projeto/[slug], claims, marcas, garantias) continua bloqueado pela confirmação da X-Motion.

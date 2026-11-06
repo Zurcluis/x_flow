@@ -77,11 +77,19 @@ export default function PrivacidadePage() {
           direitos, contacte-nos pelos canais acima. Tem também o direito de apresentar reclamação
           à Comissão Nacional de Proteção de Dados (CNPD).
         </p>
+        <h2>Mapa do Google</h2>
+        <p>
+          A página de contactos carrega automaticamente um mapa do Google para mostrar a localização
+          do atelier. Ao abrir essa página, o Google pode recolher dados técnicos e usar cookies
+          próprios, de acordo com as políticas do Google. Se preferir não usar o mapa incorporado,
+          contacte-nos por telefone ou abra a localização diretamente no Google Maps.
+        </p>
         <h2>Cookies</h2>
         <p>
-          Este site não usa cookies de análise, publicidade ou redes sociais. Apenas podem existir
-          cookies ou armazenamento estritamente necessários ao funcionamento e à segurança do
-          serviço.
+          Este site não usa cookies de análise, publicidade ou redes sociais. O mapa do Google é
+          carregado na página de contactos e pode usar cookies próprios; nesse caso aplicam-se as
+          políticas do Google. Fora disso, apenas podem existir cookies ou armazenamento estritamente
+          necessários ao funcionamento e à segurança do serviço.
         </p>
         <h2>Alterações</h2>
         <p>

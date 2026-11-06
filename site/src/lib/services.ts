@@ -1,3 +1,6 @@
+import type { ProjectCategory } from "@/lib/projects";
+import type { ProposalService } from "@/lib/proposal";
+
 export type ServiceId = "ppf" | "car-wrap" | "color-ppf" | "detalhes";
 
 export type ServiceDetail = {
@@ -7,6 +10,15 @@ export type ServiceDetail = {
   short: string;
   description: string;
   bullets: string[];
+  image: {
+    src: string;
+    width: number;
+    height: number;
+    alt: string;
+  };
+  proposalService: ProposalService;
+  relatedCategories: ProjectCategory[];
+  seoDescription: string;
 };
 
 export const services: ServiceDetail[] = [
@@ -22,6 +34,16 @@ export const services: ServiceDetail[] = [
       "Pack frontal ou cobertura total, após avaliação",
       "Acabamento e cuidados explicados na proposta",
     ],
+    image: {
+      src: "/images/services/ppf-process.webp",
+      width: 1200,
+      height: 800,
+      alt: "Aplicação de película PPF numa Ferrari 458 Speciale",
+    },
+    proposalService: "PPF",
+    relatedCategories: ["PPF"],
+    seoDescription:
+      "PPF em Barcelos: película de proteção para a pintura, adaptada às zonas expostas e ao uso de cada viatura. Peça uma avaliação na X-Motion.",
   },
   {
     id: "car-wrap",
@@ -35,6 +57,16 @@ export const services: ServiceDetail[] = [
       "Preparação da superfície",
       "Acabamento de contornos e detalhes",
     ],
+    image: {
+      src: "/images/hero/m3.webp",
+      width: 1600,
+      height: 1067,
+      alt: "BMW M3 em tom azul-violeta, trabalho X-Motion",
+    },
+    proposalService: "Car Wrap",
+    relatedCategories: ["Car Wrap"],
+    seoDescription:
+      "Car Wrap em Barcelos: mudança de cor ou textura com preparação da superfície e atenção aos contornos. Conheça trabalhos e peça proposta.",
   },
   {
     id: "color-ppf",
@@ -48,6 +80,16 @@ export const services: ServiceDetail[] = [
       "Opções de acabamento",
       "Avaliação da viatura e das zonas a cobrir",
     ],
+    image: {
+      src: "/images/hero/lambo.webp",
+      width: 1600,
+      height: 1067,
+      alt: "Lamborghini Huracán em preto profundo, trabalho X-Motion",
+    },
+    proposalService: "Color PPF",
+    relatedCategories: [],
+    seoDescription:
+      "Color PPF em Barcelos: mudança de cor com película de proteção, avaliada para cada viatura. Fale connosco sobre o seu projeto.",
   },
   {
     id: "detalhes",
@@ -62,5 +104,19 @@ export const services: ServiceDetail[] = [
       "Projetos em duas rodas",
       "Sujeito a avaliação",
     ],
+    image: {
+      src: "/images/projects/bmw-s1000rr/cover.webp",
+      width: 1000,
+      height: 1250,
+      alt: "BMW S1000RR com aplicações em carbono e azul, trabalho X-Motion",
+    },
+    proposalService: "Detalhes e óticas",
+    relatedCategories: ["Personalização", "Mota"],
+    seoDescription:
+      "Detalhes e aplicações em Barcelos: Chrome Delete, óticas, aplicações parciais e projetos em duas rodas, sujeitos a avaliação.",
   },
 ];
+
+export function getService(id: string) {
+  return services.find((service) => service.id === id);
+}
