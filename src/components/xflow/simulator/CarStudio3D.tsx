@@ -8,6 +8,7 @@
 import React, { Suspense, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import type { ThreeEvent } from "@react-three/fiber";
 import { Html, OrbitControls, useGLTF } from "@react-three/drei";
 import {
   Camera,
@@ -16,6 +17,8 @@ import {
   ChevronRight,
   RotateCw,
   Download,
+  Eraser,
+  Palette,
   ZoomIn,
   ZoomOut,
   ExternalLink,
@@ -26,6 +29,16 @@ import {
   DEFAULT_CAR_MODEL_ID,
 } from "@/lib/car-models";
 import {
+  BODY_PANEL_DEFS,
+  CarPartDef,
+  PART_COLOR_PRESETS,
+  classifyPart,
+  collectCarParts,
+  panelAtPoint,
+  partSwatchColor,
+  resolvePanelZone,
+} from "@/lib/car-parts";
+import {
   DEFAULT_ENVIRONMENT_ID,
   findEnvironment,
   type EnvironmentId,
@@ -35,6 +48,7 @@ import { EnvironmentSelector } from "@/components/xflow/simulator/EnvironmentSel
 import { EnvironmentStage } from "@/components/xflow/simulator/environments/EnvironmentStage";
 import {
   CarCoverage,
+  CarCoverageBounds,
   CarCoverageZone,
   CAR_COVERAGE_OPTIONS,
   CarFinish,
@@ -151,9 +165,43 @@ function filmPaintMaterial(film: CarStudioFilm) {
   return mat;
 }
 
-function meshMatches(meshName: string, patterns: string[] | undefined): boolean {
-  if (!patterns || patterns.length === 0) return false;
-  return patterns.some((p) => meshName === p || meshName.startsWith(p));
+function solidPaintFilm(film: CarStudioFilm, colorHex: string): CarStudioFilm {
+  return {
+    ...film,
+    name: "Personalizado",
+    colorHex,
+    textureEffect: "paint",
+    metallic: 0,
+    transparent: false,
+  };
+}
+
+function recolorPartMaterial(material: THREE.Material, colorHex: string) {
+  if (!("color" in material)) return;
+  (material as THREE.MeshStandardMaterial).color = new THREE.Color(colorHex);
+}
+
+function markHighlighted(material: THREE.Material) {
+  if (!("emissive" in material)) return;
+  const lit = material as THREE.MeshStandardMaterial;
+  lit.emissive = new THREE.Color("#d3a548");
+  lit.emissiveIntensity = 0.2;
+}
+
+function clonePartMaterial(
+  material: THREE.Material,
+  colorHex: string | null,
+  highlighted: boolean
+) {
+  const clone = material.clone();
+  clone.userData.xflowCreated = true;
+  if (colorHex) recolorPartMaterial(clone, colorHex);
+  if (highlighted) markHighlighted(clone);
+  return clone;
+}
+
+function carBounds(box: THREE.Box3): CarCoverageBounds {
+  return { min: box.min, max: box.max };
 }
 
 /**
@@ -277,13 +325,77 @@ function applyCoverageMask(
   material.needsUpdate = true;
 }
 
+function applyHighlightMask(material: THREE.Material, zone: CarCoverageZone) {
+  material.customProgramCacheKey = () => "xflow-highlight-zone";
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uXflowZoneMin = {
+      value: new THREE.Vector3(zone.minX, zone.minY, zone.minZ),
+    };
+    shader.uniforms.uXflowZoneMax = {
+      value: new THREE.Vector3(zone.maxX, zone.maxY, zone.maxZ),
+    };
+    shader.uniforms.uXflowMinNormalY = { value: zone.minNormalY };
+
+    shader.vertexShader = ZONE_VERTEX_DECL + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      `#include <begin_vertex>
+      vXflowWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+      vXflowWorldNormal = normalize(mat3(modelMatrix) * normal);`
+    );
+
+    shader.fragmentShader = ZONE_FRAGMENT_DECL + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "void main() {",
+      `void main() {
+      if (!xflowInZone(vXflowWorldPos, vXflowWorldNormal)) discard;`
+    );
+  };
+  material.needsUpdate = true;
+}
+
+function createHighlightMaterial(zone: CarCoverageZone | null) {
+  const material = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("#d3a548"),
+    transparent: true,
+    opacity: 0.28,
+    depthWrite: false,
+    toneMapped: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
+  });
+  material.userData.xflowCreated = true;
+  if (zone) applyHighlightMask(material, zone);
+  return material;
+}
+
+function addOverlay(
+  target: THREE.Mesh,
+  material: THREE.Material,
+  partId: string,
+  renderOrder: number
+) {
+  const overlay = new THREE.Mesh(target.geometry, material);
+  overlay.name = `${target.name}-${partId}`;
+  overlay.userData.xflowPartId = partId;
+  overlay.userData.xflowPartIds = [partId];
+  overlay.castShadow = false;
+  overlay.receiveShadow = false;
+  overlay.renderOrder = renderOrder;
+  target.add(overlay);
+  return overlay;
+}
+
 /** Aplica os materiais da película conforme a estratégia do modelo */
 function applyModelMaterials(
   root: THREE.Object3D,
   def: CarModelDef,
   film: CarStudioFilm,
   coverage: CarCoverage,
-  bounds?: THREE.Box3
+  partColors: Record<string, string>,
+  selectedPart: string | null,
+  bounds: THREE.Box3
 ) {
   const glassMat = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color("#0e141a"),
@@ -298,10 +410,9 @@ function applyModelMaterials(
     envMapIntensity: 1.1,
   });
 
-  const zone =
-    bounds && coverage !== "full"
-      ? resolveCoverageZone(coverage, bounds)
-      : null;
+  const boundsData = carBounds(bounds);
+  const coverageZone =
+    coverage !== "full" ? resolveCoverageZone(coverage, boundsData) : null;
 
   // Superfícies da carroçaria que recebem a película
   const bodyTargets: THREE.Mesh[] = [];
@@ -316,34 +427,49 @@ function applyModelMaterials(
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    const matNames = mats.map((m) => (m && "name" in m ? m.name : ""));
-    const isBody =
-      def.paintBy === "mesh"
-        ? meshMatches(mesh.name, def.paint.body)
-        : matNames.some((n) => meshMatches(n, def.paint.body));
-    if (!isBody) {
-      // Nos modelos com preserveMaterials, vidros, pneus, jantes e restantes
-      // elementos mantêm exatamente os materiais originais do GLB.
-      if (!def.preserveMaterials) {
-        if (def.paintBy === "material") {
-          if (matNames.some((n) => meshMatches(n, def.paint.glass))) mesh.material = glassMat;
-          else if (matNames.some((n) => meshMatches(n, def.paint.metal))) mesh.material = metalMat;
-        } else {
-          if (meshMatches(mesh.name, def.paint.glass)) mesh.material = glassMat;
-          else if (meshMatches(mesh.name, def.paint.metal)) mesh.material = metalMat;
-        }
-      }
+    const isArray = Array.isArray(mesh.material);
+    const sources: THREE.Material[] = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    const partIds = sources.map(
+      (material) => classifyPart(mesh.name, material?.name ?? "", def).id
+    );
+    mesh.userData.xflowPartIds = partIds;
+    mesh.userData.xflowPartId = partIds[0];
+
+    if (partIds.includes("paint")) {
+      bodyTargets.push(mesh);
       return;
     }
 
-    bodyTargets.push(mesh);
+    const finalMaterials = sources.map((source, index) => {
+      const partId = partIds[index];
+      const partColor = partColors[partId];
+      const highlighted = selectedPart === partId;
+      let base = source;
+      if (!def.preserveMaterials) {
+        if (partId === "glass") base = glassMat;
+        else if (partId === "trim" || partId === "wheels") base = metalMat;
+      }
+      if (!partColor && !highlighted) return base;
+      return clonePartMaterial(base, partColor ?? null, highlighted && !partColor);
+    });
+
+    mesh.material = isArray ? finalMaterials : finalMaterials[0];
   });
+
+  const bodyFilm = partColors.paint
+    ? solidPaintFilm(film, partColors.paint)
+    : film;
 
   // PPF transparente: mantém a pintura e as riscas de fábrica do GLB.
   // Integral ajusta o brilho de toda a chapa; parcial altera só a zona.
-  if (film.transparent) {
-    const params = carPaintParams(film.finishOverride, film.glossGu, film.metallic ?? 0);
+  if (bodyFilm.transparent) {
+    const params = carPaintParams(
+      bodyFilm.finishOverride,
+      bodyFilm.glossGu,
+      bodyFilm.metallic ?? 0
+    );
     for (const mesh of bodyTargets) {
       const isArray = Array.isArray(mesh.material);
       const sources: THREE.Material[] = Array.isArray(mesh.material)
@@ -355,14 +481,14 @@ function applyModelMaterials(
         const mat: THREE.Material =
           "clearcoat" in m ? m.clone() : toPhysicalMaterial(m);
         mat.userData.xflowCreated = true;
-        if (zone) {
+        if (coverageZone) {
           if ("roughness" in mat) {
             const physical = mat as THREE.MeshPhysicalMaterial;
             const originalClearcoat = physical.clearcoat ?? 0;
             const originalClearcoatRoughness =
               physical.clearcoatRoughness ?? 0.0525;
             physical.clearcoat = 1;
-            applyCoverageMask(mat, zone, params.roughness, {
+            applyCoverageMask(mat, coverageZone, params.roughness, {
               target: params.clearcoat,
               roughness: params.clearcoatRoughness,
               original: originalClearcoat,
@@ -371,56 +497,88 @@ function applyModelMaterials(
           }
           return mat;
         }
-        if ("roughness" in mat) (mat as THREE.MeshStandardMaterial).roughness = params.roughness;
+        if ("roughness" in mat)
+          (mat as THREE.MeshStandardMaterial).roughness = params.roughness;
         if ("clearcoat" in mat) {
           const physical = mat as THREE.MeshPhysicalMaterial;
           physical.clearcoat = params.clearcoat;
           physical.clearcoatRoughness = params.clearcoatRoughness;
         }
         if ("envMapIntensity" in mat) {
-          (mat as THREE.MeshStandardMaterial).envMapIntensity = params.envMapIntensity;
+          (mat as THREE.MeshStandardMaterial).envMapIntensity =
+            params.envMapIntensity;
         }
         return mat;
       });
       mesh.material = isArray ? cloned : cloned[0];
     }
-    return;
-  }
-
-  // Película opaca parcial: mantém a pintura de fábrica e acrescenta uma
-  // segunda camada com a cor da película, recortada pela zona escolhida.
-  if (zone) {
-    const overlayMat = filmPaintMaterial(film);
+  } else if (coverageZone) {
+    // Película opaca parcial: mantém a pintura de fábrica e acrescenta uma
+    // segunda camada com a cor da película, recortada pela zona escolhida.
+    const overlayMat = filmPaintMaterial(bodyFilm);
     overlayMat.polygonOffset = true;
     overlayMat.polygonOffsetFactor = -2;
     overlayMat.polygonOffsetUnits = -2;
     overlayMat.userData.xflowCreated = true;
-    applyCoverageMask(overlayMat, zone);
+    applyCoverageMask(overlayMat, coverageZone);
 
     for (const mesh of bodyTargets) {
-      const overlay = new THREE.Mesh(mesh.geometry, overlayMat);
-      overlay.name = `${mesh.name}-xflow-film`;
-      overlay.castShadow = false;
-      overlay.receiveShadow = false;
-      overlay.renderOrder = 1;
-      mesh.add(overlay);
+      addOverlay(mesh, overlayMat, "paint", 1);
     }
-    return;
+  } else {
+    const paintMat = filmPaintMaterial(bodyFilm);
+    paintMat.userData.xflowCreated = true;
+    for (const mesh of bodyTargets) mesh.material = paintMat;
   }
 
-  const paintMat = filmPaintMaterial(film);
-  paintMat.userData.xflowCreated = true;
-  for (const mesh of bodyTargets) mesh.material = paintMat;
+  BODY_PANEL_DEFS.forEach((panel, index) => {
+    const color = partColors[panel.id];
+    const highlighted = selectedPart === panel.id;
+    if (!color && !highlighted) return;
+    const zone = resolvePanelZone(panel.id, boundsData);
+    if (!zone) return;
+
+    let material: THREE.Material;
+    if (color) {
+      material = filmPaintMaterial(solidPaintFilm(film, color));
+      material.userData.xflowCreated = true;
+      applyCoverageMask(material, zone);
+    } else {
+      material = createHighlightMaterial(zone);
+    }
+    material.polygonOffset = true;
+    material.polygonOffsetFactor = -(2 + index);
+    material.polygonOffsetUnits = -(2 + index);
+
+    for (const mesh of bodyTargets) {
+      addOverlay(mesh, material, panel.id, 1 + index);
+    }
+  });
+
+  if (selectedPart === "paint" && !partColors.paint) {
+    const material = createHighlightMaterial(null);
+    for (const mesh of bodyTargets) {
+      addOverlay(mesh, material, "paint", 20);
+    }
+  }
 }
 
 function Car({
   def,
   film,
   coverage,
+  partColors,
+  selectedPart,
+  onSelectPart,
+  onParts,
 }: {
   def: CarModelDef;
   film: CarStudioFilm;
   coverage: CarCoverage;
+  partColors: Record<string, string>;
+  selectedPart: string | null;
+  onSelectPart: (partId: string) => void;
+  onParts: (parts: CarPartDef[]) => void;
 }) {
   const { scene } = useGLTF(def.url);
 
@@ -428,10 +586,6 @@ function Car({
     const root = scene.clone(true);
 
     if (def.rotation) root.rotation.set(...def.rotation);
-
-    if (coverage === "full") {
-      applyModelMaterials(root, def, film, "full");
-    }
 
     // Normaliza dimensão e assenta no chão
     const box = new THREE.Box3().setFromObject(root);
@@ -444,20 +598,31 @@ function Car({
     root.position.z -= center.z;
     root.position.y -= after.min.y;
 
-    if (coverage !== "full") {
-      const finalBox = new THREE.Box3().setFromObject(root);
-      applyModelMaterials(root, def, film, coverage, finalBox);
-    }
+    const finalBox = new THREE.Box3().setFromObject(root);
+    const parts = collectCarParts(root, def);
+    applyModelMaterials(
+      root,
+      def,
+      film,
+      coverage,
+      partColors,
+      selectedPart,
+      finalBox
+    );
 
-    return root;
+    return { root, box: finalBox, parts };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene, def, coverage, film.colorHex, film.glossGu, film.metallic, film.transparent, film.textureEffect, film.name, film.finishOverride]);
+  }, [scene, def, coverage, film.colorHex, film.glossGu, film.metallic, film.transparent, film.textureEffect, film.name, film.finishOverride, partColors, selectedPart]);
+
+  React.useEffect(() => {
+    onParts(car.parts);
+  }, [car.parts, onParts]);
 
   // R3F não destrói <primitive>; liberta apenas os materiais criados aqui,
   // mantendo intactas as geometrias e texturas do GLB em cache.
   React.useEffect(() => {
     return () => {
-      car.traverse((o) => {
+      car.root.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (!mesh.isMesh) return;
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -466,9 +631,30 @@ function Car({
         }
       });
     };
-  }, [car]);
+  }, [car.root]);
 
-  return <primitive object={car} />;
+  const handleClick = (event: ThreeEvent<MouseEvent>) => {
+    const delta = (event as unknown as { delta?: number }).delta ?? 0;
+    if (delta > 6) return;
+
+    const mesh = event.object as THREE.Mesh;
+    const materialIndex = event.face?.materialIndex ?? 0;
+    const partIds = mesh.userData.xflowPartIds as string[] | undefined;
+    let partId =
+      partIds?.[materialIndex] ??
+      (mesh.userData.xflowPartId as string | undefined);
+    if (!partId) return;
+
+    if (partId === "paint") {
+      const panel = panelAtPoint(event.point, carBounds(car.box));
+      if (panel) partId = panel;
+    }
+
+    event.stopPropagation();
+    onSelectPart(partId);
+  };
+
+  return <primitive object={car.root} onClick={handleClick} />;
 }
 
 /** Anima a câmara até ao preset selecionado */
@@ -523,12 +709,53 @@ function CameraRig({
   return null;
 }
 
+function PartRow({
+  part,
+  active,
+  swatch,
+  onSelect,
+}: {
+  part: CarPartDef;
+  active: boolean;
+  swatch: string | null;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      title={part.label}
+      className={`flex w-full items-center gap-1.5 rounded border px-1.5 py-1 text-left transition-colors cursor-pointer ${
+        active
+          ? "border-[#d3a548]/70 bg-[#d3a548]/15"
+          : "border-transparent hover:border-white/15 hover:bg-white/[0.04]"
+      }`}
+    >
+      <span
+        className={`h-3 w-3 shrink-0 rounded-full border ${
+          swatch ? "border-white/25" : "border-dashed border-white/30"
+        }`}
+        style={swatch ? { backgroundColor: swatch } : undefined}
+        aria-hidden="true"
+      />
+      <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-[#d7dbdc]">
+        {part.label}
+      </span>
+    </button>
+  );
+}
+
 export function CarStudio3D({ film }: { film: CarStudioFilm }) {
   const [modelId, setModelId] = useState(DEFAULT_CAR_MODEL_ID);
   const [preset, setPreset] = useState<CameraPreset>("threeQuarter");
   const [zoom, setZoom] = useState(1);
   const [autoRotate, setAutoRotate] = useState(true);
   const [coverage, setCoverage] = useState<CarCoverage>("full");
+  const [partColors, setPartColors] = useState<Record<string, string>>({});
+  const [selectedPart, setSelectedPart] = useState<string | null>(null);
+  const [parts, setParts] = useState<CarPartDef[]>([]);
+  const [partsOpen, setPartsOpen] = useState(true);
   const [environmentId, setEnvironmentId] = useState(DEFAULT_ENVIRONMENT_ID);
   const [renderedEnvironmentId, setRenderedEnvironmentId] =
     useState<EnvironmentId>(DEFAULT_ENVIRONMENT_ID);
@@ -556,6 +783,32 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
   const finishLabel = film.finishOverride
     ? CAR_FINISH_OPTIONS.find((f) => f.id === film.finishOverride)?.label
     : "Película";
+  const selectedPartDef =
+    parts.find((part) => part.id === selectedPart) ?? null;
+  const currentPartColor = selectedPart ? partColors[selectedPart] : undefined;
+  const selectedColorValue =
+    currentPartColor ??
+    (selectedPartDef &&
+    (selectedPartDef.id === "paint" || selectedPartDef.kind === "panel")
+      ? film.colorHex
+      : "#d3a548");
+  const componentParts = parts.filter((part) => part.kind !== "panel");
+  const panelParts = parts.filter((part) => part.kind === "panel");
+
+  const handleSelectPart = React.useCallback((partId: string) => {
+    setAutoRotate(false);
+    setSelectedPart(partId);
+  }, []);
+
+  const applyPartColor = (color: string | null) => {
+    if (!selectedPart) return;
+    setPartColors((colors) => {
+      const next = { ...colors };
+      if (color) next[selectedPart] = color;
+      else delete next[selectedPart];
+      return next;
+    });
+  };
 
   const updateModelRailEdges = React.useCallback(() => {
     const rail = modelRailRef.current;
@@ -711,7 +964,16 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
             </Html>
           }
         >
-          <Car key={def.id} def={def} film={film} coverage={effectiveCoverage} />
+          <Car
+            key={def.id}
+            def={def}
+            film={film}
+            coverage={effectiveCoverage}
+            partColors={partColors}
+            selectedPart={selectedPart}
+            onSelectPart={handleSelectPart}
+            onParts={setParts}
+          />
 
           <EnvironmentStage key={environment.id} environment={environment} />
 
@@ -777,7 +1039,160 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
           onChange={changeEnvironment}
           busy={environmentChanging}
         />
+
+        <button
+          type="button"
+          onClick={() => setPartsOpen((value) => !value)}
+          aria-pressed={partsOpen}
+          title="Pintura por peça"
+          className={`flex w-full items-center gap-1.5 rounded-md border py-1.5 pl-2.5 pr-2 text-left backdrop-blur-md transition-colors cursor-pointer ${
+            partsOpen
+              ? "border-[#d3a548]/70 bg-[#d3a548]/15 text-[#f1ede5]"
+              : "border-white/[0.08] bg-[#050606]/85 text-[#d7dbdc] hover:border-white/25"
+          }`}
+        >
+          <Palette
+            className="h-3 w-3 shrink-0 text-[#d3a548]"
+            aria-hidden="true"
+          />
+          <span className="flex-1 text-[10px] font-bold uppercase tracking-wide">
+            Peças
+          </span>
+          <span className="font-mono text-[9px] text-[#8a9092]">
+            {parts.length}
+          </span>
+        </button>
       </div>
+
+      {partsOpen && (
+        <div
+          className="absolute right-2 top-2 z-20 flex h-[calc(100%-1rem)] w-[13rem] flex-col overflow-hidden rounded-md border border-white/[0.08] bg-[#050606]/90 backdrop-blur-md"
+          role="group"
+          aria-label="Pintura por peça"
+        >
+          <div className="flex items-center justify-between gap-2 border-b border-white/[0.06] px-2.5 py-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#d7dbdc]">
+              Peças
+            </span>
+            <span className="font-mono text-[9px] text-[#8a9092]">
+              {parts.length}
+            </span>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin]">
+            <p className="px-1 pb-1 text-[9px] font-mono uppercase tracking-wider text-[#747a7c]">
+              Clicar no carro
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {componentParts.map((part) => (
+                <PartRow
+                  key={part.id}
+                  part={part}
+                  active={selectedPart === part.id}
+                  swatch={partSwatchColor(part, partColors, film.colorHex)}
+                  onSelect={() => handleSelectPart(part.id)}
+                />
+              ))}
+            </div>
+
+            {panelParts.length > 0 && (
+              <>
+                <p className="px-1 pb-1 pt-2 text-[9px] font-mono uppercase tracking-wider text-[#747a7c]">
+                  Painéis
+                </p>
+                <div className="flex flex-col gap-0.5">
+                  {panelParts.map((part) => (
+                    <PartRow
+                      key={part.id}
+                      part={part}
+                      active={selectedPart === part.id}
+                      swatch={partSwatchColor(part, partColors, film.colorHex)}
+                      onSelect={() => handleSelectPart(part.id)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {parts.length === 0 && (
+              <p className="px-1 py-2 text-[10px] text-[#8a9092]">
+                a carregar peças…
+              </p>
+            )}
+          </div>
+
+          {selectedPartDef && selectedPart && (
+            <div className="shrink-0 border-t border-white/[0.06] p-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-[10px] font-bold text-[#f1ede5]">
+                  {selectedPartDef.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => applyPartColor(null)}
+                  className="shrink-0 rounded p-1 text-[#a9adae] transition-colors cursor-pointer hover:text-[#d3a548]"
+                  title="Repor original"
+                  aria-label={`Repor ${selectedPartDef.label}`}
+                >
+                  <Eraser className="h-3 w-3" />
+                </button>
+              </div>
+
+              <label className="mt-1.5 flex items-center gap-2 rounded border border-white/[0.08] bg-black/30 px-1.5 py-1">
+                <Palette
+                  className="h-3 w-3 text-[#d3a548]"
+                  aria-hidden="true"
+                />
+                <span className="text-[9px] uppercase tracking-wider text-[#8a9092]">
+                  Cor
+                </span>
+                <input
+                  type="color"
+                  value={selectedColorValue}
+                  onChange={(event) => applyPartColor(event.target.value)}
+                  aria-label={`Cor de ${selectedPartDef.label}`}
+                  className="ml-auto h-5 w-8 cursor-pointer rounded border border-white/15 bg-transparent p-0"
+                />
+              </label>
+
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {PART_COLOR_PRESETS.map((preset) => {
+                  const active = preset.color
+                    ? currentPartColor?.toLowerCase() === preset.color.toLowerCase()
+                    : !currentPartColor;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => applyPartColor(preset.color)}
+                      aria-pressed={active}
+                      title={preset.label}
+                      aria-label={preset.label}
+                      className={`flex h-5 w-5 items-center justify-center rounded-full border transition-transform cursor-pointer hover:scale-110 ${
+                        active
+                          ? "border-[#d3a548] ring-1 ring-[#d3a548]"
+                          : "border-white/20"
+                      }`}
+                      style={
+                        preset.color
+                          ? { backgroundColor: preset.color }
+                          : {
+                              background:
+                                "linear-gradient(135deg, #d3a548 0%, #121416 100%)",
+                            }
+                      }
+                    >
+                      {!preset.color && (
+                        <Eraser className="h-2.5 w-2.5 text-[#050606]" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Zona de aplicação — só nos modelos com wrap parcial */}
       {def.supportsPartialWrap && (
@@ -833,6 +1248,9 @@ export function CarStudio3D({ film }: { film: CarStudioFilm }) {
               onClick={() => {
                 setModelId(m.id);
                 setZoom(1);
+                setPartColors({});
+                setSelectedPart(null);
+                setParts([]);
               }}
               title={`${m.brand} · ${m.label}`}
               aria-pressed={modelId === m.id}

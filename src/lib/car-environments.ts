@@ -1,5 +1,6 @@
 export const ENVIRONMENT_IDS = [
   "dark-studio",
+  "showroom-white",
   "xmotion-workshop",
   "outdoor-sun",
   "golden-hour",
@@ -7,7 +8,12 @@ export const ENVIRONMENT_IDS = [
 
 export type EnvironmentId = (typeof ENVIRONMENT_IDS)[number];
 
-export type EnvironmentIconKey = "aperture" | "warehouse" | "sun" | "sunset";
+export type EnvironmentIconKey =
+  | "aperture"
+  | "lamp"
+  | "warehouse"
+  | "sun"
+  | "sunset";
 
 export type EnvironmentAvailability = "available" | "planned";
 
@@ -66,6 +72,31 @@ export const CAR_ENVIRONMENTS: readonly CarEnvironment[] = [
       far: 2.4,
       resolution: 512,
       color: "#000000",
+      positionY: 0,
+    },
+  },
+  {
+    id: "showroom-white",
+    name: "Showroom Claro",
+    icon: "lamp",
+    availability: "available",
+    background: "#eef1f3",
+    captureBackground: "#eef1f3",
+    exposure: 1.02,
+    quality: {
+      environmentResolution: 256,
+      dprMax: 1.75,
+      shadows: false,
+      shadowMapSize: 1024,
+    },
+    contactShadows: {
+      enabled: true,
+      opacity: 0.32,
+      scale: 16,
+      blur: 2.6,
+      far: 2.6,
+      resolution: 512,
+      color: "#1b1e20",
       positionY: 0,
     },
   },

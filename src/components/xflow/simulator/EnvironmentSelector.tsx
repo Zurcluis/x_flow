@@ -3,6 +3,7 @@
 import {
   Aperture,
   ChevronDown,
+  Lamp,
   Sun,
   Sunset,
   Warehouse,
@@ -17,6 +18,7 @@ import {
 
 const ENVIRONMENT_ICONS: Record<EnvironmentIconKey, LucideIcon> = {
   aperture: Aperture,
+  lamp: Lamp,
   warehouse: Warehouse,
   sun: Sun,
   sunset: Sunset,

@@ -18,3 +18,7 @@ Antes de escrever código novo ou implementar uma funcionalidade, faz um briefin
 4. **Briefing** — no caso simples, regista em 3-6 linhas: objetivo, skills escolhidas, agentes e respetivas tarefas, riscos e definição de done. Em tarefas complexas ou de alto risco, o briefing pode ser maior. Partilha-o com o utilizador sempre que houver ambiguidade ou decisão de alto impacto; caso contrário, avança.
 
 Ajusta a profundidade ao tamanho da tarefa: alterações triviais (typo, uma linha) dispensam briefing; funcionalidades novas, refactors e integrações exigem-no sempre. No resumo final, indica as skills e os agentes usados.
+
+# Atualização do progresso
+
+Sempre que pedires para reiniciar o opencode (por mudança de config, skills, MCP ou plugins), atualiza primeiro o `progresso.md` com a sessão em curso — âmbito, ficheiros alterados, verificação, pendentes e o motivo do reinício. O pedido de reinício só é feito depois de o `progresso.md` estar atualizado.

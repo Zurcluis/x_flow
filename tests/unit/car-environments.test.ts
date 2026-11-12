@@ -9,9 +9,10 @@ import {
 } from "@/lib/car-environments";
 
 describe("car environments presets", () => {
-  it("exposes four unique environments in the planned order", () => {
+  it("exposes five unique environments in the planned order", () => {
     expect(CAR_ENVIRONMENTS.map((environment) => environment.id)).toEqual([
       "dark-studio",
+      "showroom-white",
       "xmotion-workshop",
       "outdoor-sun",
       "golden-hour",
@@ -58,9 +59,25 @@ describe("car environments presets", () => {
     });
   });
 
-  it("makes all four scenarios available after phase 3", () => {
+  it("adds a light showroom without changing the default", () => {
+    const showroom = findEnvironment("showroom-white");
+
+    expect(DEFAULT_ENVIRONMENT_ID).toBe("dark-studio");
+    expect(showroom.availability).toBe("available");
+    expect(showroom.background).toBe("#eef1f3");
+    expect(showroom.captureBackground).toBe("#eef1f3");
+    expect(showroom.contactShadows.enabled).toBe(true);
+    expect(showroom.quality).toMatchObject({
+      environmentResolution: 256,
+      dprMax: 1.75,
+      shadows: false,
+    });
+  });
+
+  it("makes all five scenarios available", () => {
     expect(availableEnvironments().map((environment) => environment.id)).toEqual([
       "dark-studio",
+      "showroom-white",
       "xmotion-workshop",
       "outdoor-sun",
       "golden-hour",

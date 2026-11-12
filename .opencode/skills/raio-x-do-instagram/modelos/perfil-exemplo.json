@@ -1,0 +1,71 @@
+{
+  "perfil": "@studiolunapilates",
+  "nome_exibido": "Studio Luna",
+  "categoria": "Saúde/beleza",
+  "modo": "cliente",
+  "objetivo": "clientes-locais",
+  "nicho": "Studio de pilates para mulheres de 35 a 55 anos com dor nas costas ou que passam o dia sentadas",
+  "cidade": "Cambuí, Campinas (SP)",
+  "data_prints": "2026-09-27",
+  "seguidores": "2.340",
+  "seguindo": "512",
+  "publicacoes": "186",
+  "bio_atual": "✨ Movimento é vida ✨ / Pilates com amor 💜 / Agende já sua aula! 📲",
+  "link_atual": "linktr.ee/studioluna.cps (7 botões: WhatsApp, site, Google Maps, playlist, loja de meias, blog, trabalhe conosco)",
+  "destaques_atuais": ["✨", "Fotos", "Natal 2023", "Equipe", "Dicas"],
+  "stories_por_semana": "2 a 3",
+  "capacidade": "Dona grava 2 h por semana (terças de manhã); a social media edita e publica",
+  "oferta": "Aula experimental (existe, nunca divulgada). Preço não aparece no Instagram por decisão da dona.",
+  "insights": {
+    "periodo": "Últimos 30 dias (28/08 a 26/09/2026)",
+    "visualizacoes": "21.480",
+    "pct_nao_seguidores": "41,8",
+    "contas_alcancadas": "6.912",
+    "interacoes": "1.164",
+    "contas_com_engajamento": "402",
+    "novos_seguidores": "28",
+    "visitas_perfil": "512",
+    "toques_link": "23"
+  },
+  "concorrentes": [
+    {
+      "perfil": "@pilatesvivo.cps",
+      "seguidores": "5.120",
+      "publicacoes": "214",
+      "nome": "Pilates Vivo | Campinas",
+      "bio": "Pilates para dor nas costas em Campinas | Taquaral / Turmas de até 4 pessoas / Agende sua aula experimental",
+      "link": "WhatsApp direto",
+      "destaques": ["Aula grátis", "Preços", "Alunos", "Como chegar", "Dúvidas"],
+      "posts": [
+        {"formato": "Reels", "tema": "Dor lombar? Faça isso", "visualizacoes": "12,4 mil"},
+        {"formato": "Reels", "tema": "Pilates x academia", "visualizacoes": "3.210"},
+        {"formato": "Reels", "tema": "3 sinais de postura ruim", "visualizacoes": "8.905"},
+        {"formato": "Reels", "tema": "Tour pelo estúdio", "visualizacoes": "2.140"},
+        {"formato": "Reels", "tema": "Não ignore: dor no pescoço", "visualizacoes": "4.470"},
+        {"formato": "Reels", "tema": "Aula em trio", "visualizacoes": "1.980"},
+        {"formato": "Reels", "tema": "Antes e depois: postura", "visualizacoes": "6.300"},
+        {"formato": "Reels", "tema": "Pergunta de aluna", "visualizacoes": "2.760"},
+        {"formato": "Reels", "tema": "Sente dor ao acordar?", "visualizacoes": "3.050"}
+      ]
+    },
+    {
+      "perfil": "@espacoeixo.pilates",
+      "seguidores": "1.860",
+      "publicacoes": "97",
+      "nome": "Espaço Eixo Pilates",
+      "bio": "Pilates e fisioterapia / Barão Geraldo - Campinas / Agendamentos pelo WhatsApp",
+      "link": "WhatsApp direto",
+      "destaques": ["Espaço", "Aulas", "Recados"],
+      "posts": [
+        {"formato": "Reels", "tema": "Exercício do dia", "visualizacoes": "940"},
+        {"formato": "Reels", "tema": "Alongamento rápido", "visualizacoes": "1.210"},
+        {"formato": "Reels", "tema": "Nossa equipe", "visualizacoes": "610"},
+        {"formato": "Reels", "tema": "Dor no quadril?", "visualizacoes": "2.380"},
+        {"formato": "Reels", "tema": "Mobilidade", "visualizacoes": "880"},
+        {"formato": "Reels", "tema": "Respiração no pilates", "visualizacoes": "1.050"}
+      ]
+    }
+  ],
+  "preparado_por": {"nome": "Marina Costa", "funcao": "Social media", "contato": "marina@example.com"},
+  "cor": ""
+}

@@ -42,6 +42,20 @@ export function StudioDarkEnv({ resolution }: { resolution: number }) {
           scale={[8, 2, 1]}
           color="#dfe8ff"
         />
+        <Lightformer
+          intensity={0.9}
+          position={[-6, 1.8, -3]}
+          rotation-y={Math.PI / 2}
+          scale={[4, 1.2, 1]}
+          color="#f4c98a"
+        />
+        <Lightformer
+          intensity={0.8}
+          position={[6, 1.8, -3]}
+          rotation-y={-Math.PI / 2}
+          scale={[4, 1.2, 1]}
+          color="#bcd6ff"
+        />
       </Environment>
       <EnvironmentMapDisposer resolution={resolution} />
     </>

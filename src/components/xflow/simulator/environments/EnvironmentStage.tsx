@@ -7,6 +7,7 @@ import { ContactShadows } from "@react-three/drei";
 
 import type { CarEnvironment } from "@/lib/car-environments";
 import { StudioDarkEnv } from "./StudioDarkEnv";
+import { ShowroomEnv } from "./ShowroomEnv";
 import { XMotionWorkshopEnv } from "./XMotionWorkshopEnv";
 import { OutdoorSunEnv } from "./OutdoorSunEnv";
 import { GoldenHourEnv } from "./GoldenHourEnv";
@@ -72,6 +73,12 @@ export function EnvironmentStage({
 
       {environment.id === "dark-studio" ? (
         <StudioDarkEnv
+          resolution={environment.quality.environmentResolution}
+        />
+      ) : null}
+
+      {environment.id === "showroom-white" ? (
+        <ShowroomEnv
           resolution={environment.quality.environmentResolution}
         />
       ) : null}
