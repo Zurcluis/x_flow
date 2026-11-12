@@ -117,12 +117,12 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               <dd>{project.subtitle}</dd>
             </div>
             <div>
-              <dt>Atelier</dt>
+              <dt>Localização</dt>
               <dd>Barcelos, Portugal</dd>
             </div>
           </dl>
           <a href="#proposta" className="button gold">
-            Pedir projeto semelhante
+            Pedir orçamento semelhante
             <ArrowUpRight size={18} aria-hidden="true" />
           </a>
         </div>

@@ -21,7 +21,7 @@ const slides = [
     height: 1067,
     title: "BMW M4",
     finish: "Areia clara",
-    alt: "BMW M4 em tom areia clara, no atelier X-Motion",
+    alt: "BMW M4 em tom areia clara, no espaço X-Motion",
     position: "50% 50%",
   },
   {
@@ -30,7 +30,7 @@ const slides = [
     height: 1067,
     title: "Ferrari 458 Speciale",
     finish: "Proteção PPF",
-    alt: "Ferrari 458 Speciale com proteção PPF, no atelier X-Motion",
+    alt: "Ferrari 458 Speciale com proteção PPF, no espaço X-Motion",
     position: "50% 50%",
   },
   {
@@ -39,7 +39,7 @@ const slides = [
     height: 1067,
     title: "Lamborghini Huracán",
     finish: "Preto profundo",
-    alt: "Lamborghini Huracán em preto profundo, no atelier X-Motion",
+    alt: "Lamborghini Huracán em preto profundo, no espaço X-Motion",
     position: "50% 50%",
   },
 ];
@@ -81,8 +81,8 @@ export function Hero() {
             fill
             sizes="(max-width: 560px) 100vw, (max-width: 800px) 93vw, 75vw"
             className={slideIndex === index ? "active" : undefined}
-            loading="eager"
-            unoptimized
+            priority={slideIndex === initialIndex}
+            loading={slideIndex === initialIndex ? "eager" : "lazy"}
             fetchPriority={slideIndex === initialIndex ? "high" : "auto"}
             style={{ objectFit: "cover", objectPosition: slide.position }}
           />
@@ -106,8 +106,8 @@ export function Hero() {
           O cuidado está em cada detalhe.
         </p>
         <div className="hero-actions">
-          <Link href="/contactos#proposta" className="button gold">
-            Criar o meu projeto
+          <Link href="/orcamento" className="button gold">
+            Pedir orçamento
             <ArrowUpRight size={18} aria-hidden="true" />
           </Link>
           <a href="#projetos" className="text-link">

@@ -32,7 +32,7 @@ export const services: ServiceDetail[] = [
     bullets: [
       "Proteção de zonas expostas",
       "Pack frontal ou cobertura total, após avaliação",
-      "Acabamento e cuidados explicados na proposta",
+      "Acabamento e cuidados explicados no orçamento",
     ],
     image: {
       src: "/images/services/ppf-process.webp",
@@ -66,7 +66,7 @@ export const services: ServiceDetail[] = [
     proposalService: "Car Wrap",
     relatedCategories: ["Car Wrap"],
     seoDescription:
-      "Car Wrap em Barcelos: mudança de cor ou textura com preparação da superfície e atenção aos contornos. Conheça trabalhos e peça proposta.",
+      "Car Wrap em Barcelos: mudança de cor ou textura com preparação da superfície e atenção aos contornos. Conheça trabalhos e peça orçamento.",
   },
   {
     id: "color-ppf",

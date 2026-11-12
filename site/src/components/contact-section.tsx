@@ -6,13 +6,14 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Clock,
+  Loader2,
   MapPin,
   Phone,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { FacebookIcon, InstagramIcon } from "@/components/brand-icons";
-import { proposalServices, type ProposalService } from "@/lib/proposal";
+import { proposalServices, type ProposalErrors, type ProposalService } from "@/lib/proposal";
 import { siteConfig } from "@/lib/site-config";
 
 type FormState = "idle" | "submitting" | "success" | "error";
@@ -32,16 +33,37 @@ type ContactSectionProps = {
   showHeading?: boolean;
 };
 
+const orderedFields: Array<keyof ProposalErrors> = [
+  "service",
+  "vehicle",
+  "name",
+  "email",
+  "phone",
+  "message",
+  "consent",
+];
+
 export function ContactSection({
   defaultService = "Preciso de aconselhamento",
   defaultMessage,
   eyebrow = "07 / O SEU PRÓXIMO PROJETO",
   showHeading = true,
 }: ContactSectionProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [state, setState] = useState<FormState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<ProposalErrors>({});
   const [reference, setReference] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
+
+  function clearFieldError(field: keyof ProposalErrors) {
+    if (!fieldErrors[field]) return;
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,6 +72,7 @@ export function ContactSection({
 
     setState("submitting");
     setErrorMessage("");
+    setFieldErrors({});
 
     try {
       const response = await fetch("/api/proposals", {
@@ -60,6 +83,7 @@ export function ContactSection({
         },
         body: JSON.stringify({
           service: data.get("service"),
+          source: "contactos-site",
           vehicle: data.get("vehicle"),
           name: data.get("name"),
           email: data.get("email"),
@@ -71,10 +95,20 @@ export function ContactSection({
       });
 
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string; reference?: string }
+        | { error?: string; reference?: string; fields?: ProposalErrors }
         | null;
 
       if (!response.ok) {
+        if (payload?.fields) {
+          setFieldErrors(payload.fields);
+          const firstBad = orderedFields.find((key) => payload.fields?.[key]);
+          if (firstBad && formRef.current) {
+            const el = formRef.current.elements.namedItem(firstBad);
+            if (el instanceof HTMLElement) {
+              el.focus();
+            }
+          }
+        }
         throw new Error(payload?.error ?? "Não foi possível enviar o pedido.");
       }
 
@@ -113,7 +147,7 @@ export function ContactSection({
         <div className="contact-location">
           <MapPin size={19} aria-hidden="true" />
           <span>
-            Atelier X-Motion
+            X-Motion · O Nosso Espaço
             <br />
             <strong>{siteConfig.address.street}</strong>
             <br />
@@ -159,13 +193,13 @@ export function ContactSection({
       </div>
       <div className="contact-form-wrap">
         {state === "success" ? (
-          <div className="success-panel" role="status">
+          <div className="success-panel" role="status" aria-live="polite">
             <CheckCircle2 size={42} aria-hidden="true" />
             <span className="eyebrow">PEDIDO RECEBIDO</span>
             <h3>Obrigado. Vamos analisar o que nos contou.</h3>
             <p>
-              O envio não confirma uma marcação nem um preço. Se preferir, fale connosco pelo
-              Instagram.
+              O envio não confirma uma marcação nem um preço. Responderemos para o seu e-mail até
+              24h úteis.
             </p>
             {reference ? (
               <p className="form-note">
@@ -178,80 +212,134 @@ export function ContactSection({
             </button>
           </div>
         ) : (
-          <form onSubmit={onSubmit}>
+          <form ref={formRef} onSubmit={onSubmit}>
             <div className="form-heading">
-              <span>Peça uma proposta.</span>
+              <span>Peça um orçamento.</span>
               <small>Sem compromisso.</small>
             </div>
             <label>
               O que pretende fazer?
-              <select name="service" defaultValue={defaultService}>
+              <select
+                name="service"
+                defaultValue={defaultService}
+                aria-invalid={Boolean(fieldErrors.service)}
+                onChange={() => clearFieldError("service")}
+              >
                 {proposalServices.map((service) => (
                   <option key={service}>{service}</option>
                 ))}
               </select>
+              {fieldErrors.service ? (
+                <span className="field-error" role="alert">
+                  {fieldErrors.service}
+                </span>
+              ) : null}
             </label>
             <label>
               Qual é o seu carro?
               <input
-                placeholder="Marca, modelo e ano"
+                placeholder="Ex.: Porsche 911 (2023), BMW M3…"
                 required
                 minLength={2}
                 maxLength={160}
                 autoComplete="off"
                 name="vehicle"
+                aria-invalid={Boolean(fieldErrors.vehicle)}
+                onChange={() => clearFieldError("vehicle")}
               />
+              {fieldErrors.vehicle ? (
+                <span className="field-error" role="alert">
+                  {fieldErrors.vehicle}
+                </span>
+              ) : null}
             </label>
             <div className="form-row">
               <label>
                 O seu nome
                 <input
-                  placeholder="Nome"
+                  placeholder="Ex.: João Silva…"
                   required
                   minLength={2}
                   maxLength={100}
                   autoComplete="name"
                   name="name"
+                  aria-invalid={Boolean(fieldErrors.name)}
+                  onChange={() => clearFieldError("name")}
                 />
+                {fieldErrors.name ? (
+                  <span className="field-error" role="alert">
+                    {fieldErrors.name}
+                  </span>
+                ) : null}
               </label>
               <label>
                 E-mail
                 <input
                   placeholder="nome@exemplo.pt"
                   type="email"
+                  inputMode="email"
+                  spellCheck={false}
                   required
                   maxLength={200}
                   autoComplete="email"
                   name="email"
+                  aria-invalid={Boolean(fieldErrors.email)}
+                  onChange={() => clearFieldError("email")}
                 />
+                {fieldErrors.email ? (
+                  <span className="field-error" role="alert">
+                    {fieldErrors.email}
+                  </span>
+                ) : null}
               </label>
             </div>
             <label>
-              Telefone <span className="optional">opcional</span>
+              Telemóvel <span className="optional">opcional</span>
               <input
                 type="tel"
-                placeholder="O seu contacto telefónico"
+                inputMode="tel"
+                placeholder="Ex.: 912 345 678…"
                 maxLength={30}
                 autoComplete="tel"
                 name="phone"
+                aria-invalid={Boolean(fieldErrors.phone)}
+                onChange={() => clearFieldError("phone")}
               />
+              {fieldErrors.phone ? (
+                <span className="field-error" role="alert">
+                  {fieldErrors.phone}
+                </span>
+              ) : null}
             </label>
             <label>
               A sua ideia <span className="optional">opcional</span>
               <textarea
                 name="message"
                 defaultValue={defaultMessage}
-                placeholder="Cor, acabamento, zonas a proteger ou alguma dúvida…"
+                placeholder="Ex.: Cor, acabamento, zonas a proteger ou alguma dúvida…"
                 rows={3}
                 maxLength={2000}
+                aria-invalid={Boolean(fieldErrors.message)}
+                onChange={() => clearFieldError("message")}
               />
+              {fieldErrors.message ? (
+                <span className="field-error" role="alert">
+                  {fieldErrors.message}
+                </span>
+              ) : null}
             </label>
             <label className="honeypot" aria-hidden="true">
               Website
               <input tabIndex={-1} autoComplete="off" name="website" />
             </label>
             <label className="consent">
-              <input type="checkbox" required name="consent" />
+              <input
+                type="checkbox"
+                required
+                name="consent"
+                aria-invalid={Boolean(fieldErrors.consent)}
+                onChange={() => clearFieldError("consent")}
+              />
               <span>
                 Autorizo o uso dos dados para responder a este pedido.{" "}
                 <Link href="/privacidade" target="_blank">
@@ -260,12 +348,25 @@ export function ContactSection({
                 .
               </span>
             </label>
-            <button type="submit" className="button gold submit-button" disabled={state === "submitting"}>
-              {state === "submitting" ? "A enviar…" : "Pedir proposta para o meu carro"}
-              <ArrowUpRight size={19} aria-hidden="true" />
+            {fieldErrors.consent ? (
+              <span className="field-error" role="alert">
+                {fieldErrors.consent}
+              </span>
+            ) : null}
+            <button
+              type="submit"
+              className="button gold submit-button"
+              disabled={state === "submitting"}
+            >
+              {state === "submitting" ? "A enviar…" : "Pedir orçamento para o meu carro"}
+              {state === "submitting" ? (
+                <Loader2 size={19} className="spin" aria-hidden="true" />
+              ) : (
+                <ArrowUpRight size={19} aria-hidden="true" />
+              )}
             </button>
             {state === "error" ? (
-              <p className="form-error" role="alert">
+              <p className="form-error" role="alert" aria-live="polite">
                 <AlertCircle size={14} aria-hidden="true" /> {errorMessage}
               </p>
             ) : null}

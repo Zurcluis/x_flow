@@ -20,8 +20,8 @@ export function HomeContactCta() {
           <br />
           Nós ajudamos a dar-lhe forma.
         </p>
-        <Link href="/contactos#proposta" className="button gold">
-          Pedir proposta
+        <Link href="/orcamento" className="button gold">
+          Pedir orçamento
           <ArrowUpRight size={18} aria-hidden="true" />
         </Link>
       </div>

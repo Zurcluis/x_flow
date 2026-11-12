@@ -57,8 +57,8 @@ export default function ServicosPage() {
         description="Quatro formas de trabalhar o seu carro, sempre a partir de uma conversa e de uma avaliação."
       >
         <div className="page-intro-actions">
-          <Link href="/contactos#proposta" className="button gold">
-            Pedir proposta
+          <Link href="/orcamento" className="button gold">
+            Pedir orçamento
             <ArrowUpRight size={18} aria-hidden="true" />
           </Link>
           <Link href="/projetos" className="text-link">

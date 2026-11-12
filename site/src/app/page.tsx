@@ -21,7 +21,7 @@ export default function HomePage() {
       <HomeServices />
       <FeaturedProjects />
       <StudioTeaser />
-      <AtelierSection teaser ctaHref="/atelier" ctaLabel="Conhecer o atelier" />
+      <AtelierSection teaser ctaHref="/sobre" ctaLabel="Sobre nós e o nosso espaço" />
       <ProcessSection />
       <FAQSection limit={4} />
       <HomeContactCta />

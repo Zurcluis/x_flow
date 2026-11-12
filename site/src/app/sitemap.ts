@@ -15,6 +15,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
+      url: `${base}/orcamento`,
+      lastModified,
+      changeFrequency: "monthly",
+      priority: 0.95,
+    },
+    {
       url: `${base}/servicos`,
       lastModified,
       changeFrequency: "monthly",
@@ -27,7 +33,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
-      url: `${base}/atelier`,
+      url: `${base}/sobre`,
       lastModified,
       changeFrequency: "monthly",
       priority: 0.8,

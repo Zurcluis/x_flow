@@ -1,4 +1,4 @@
-﻿export const projectFilters = ["Todos", "PPF", "Car Wrap", "Personalização", "Mota"] as const;
+export const projectFilters = ["Todos", "PPF", "Car Wrap", "Personalização", "Mota"] as const;
 
 export type ProjectFilter = (typeof projectFilters)[number];
 export type ProjectCategory = Exclude<ProjectFilter, "Todos">;
@@ -67,7 +67,7 @@ export const projects: Project[] = [
     image: "/images/projects/ferrari-458-speciale/cover.webp",
     width: 1000,
     height: 1250,
-    alt: "Ferrari 458 Speciale com proteção PPF, no atelier X-Motion",
+    alt: "Ferrari 458 Speciale com proteção PPF, no espaço X-Motion",
     categories: ["PPF"],
     description:
       "Proteção PPF aplicada com atenção às zonas expostas e aos contornos da carroçaria. O brilho original mantém-se, com uma camada de cuidado adicional.",
@@ -76,7 +76,7 @@ export const projects: Project[] = [
         src: "/images/projects/ferrari-458-speciale/02.webp",
         width: 1000,
         height: 1250,
-        alt: "Frente da Ferrari 458 Speciale no atelier",
+        alt: "Frente da Ferrari 458 Speciale no espaço X-Motion",
       },
       {
         src: "/images/projects/ferrari-458-speciale/03.webp",
@@ -127,7 +127,7 @@ export const projects: Project[] = [
         src: "/images/projects/bmw-m4/04.webp",
         width: 1000,
         height: 1250,
-        alt: "Traseira do BMW M4 no atelier X-Motion",
+        alt: "Traseira do BMW M4 no espaço X-Motion",
       },
     ],
   },
@@ -148,7 +148,7 @@ export const projects: Project[] = [
         src: "/images/projects/lamborghini-huracan/02.webp",
         width: 1000,
         height: 1250,
-        alt: "Frente do Lamborghini Huracán no atelier",
+        alt: "Frente do Lamborghini Huracán no espaço X-Motion",
       },
       {
         src: "/images/projects/lamborghini-huracan/03.webp",
@@ -199,7 +199,7 @@ export const projects: Project[] = [
         src: "/images/projects/mercedes-maybach/04.webp",
         width: 1000,
         height: 1250,
-        alt: "Mercedes-Maybach no espaço do atelier",
+        alt: "Mercedes-Maybach no espaço X-Motion",
       },
     ],
   },
@@ -232,7 +232,7 @@ export const projects: Project[] = [
         src: "/images/projects/bmw-s1000rr/04.webp",
         width: 1000,
         height: 1250,
-        alt: "Vista traseira da BMW S1000RR no atelier",
+        alt: "Vista traseira da BMW S1000RR no espaço X-Motion",
       },
     ],
   },
@@ -244,16 +244,16 @@ export const projects: Project[] = [
     image: "/images/projects/mercedes-cle300/cover-wide.webp",
     width: 2400,
     height: 800,
-    alt: "Mercedes CLE 300 branco no atelier X-Motion",
+    alt: "Mercedes CLE 300 branco no espaço X-Motion",
     categories: ["Personalização"],
     description:
-      "Um coupé preparado no atelier, com acabamento limpo e atenção aos detalhes que definem o conjunto.",
+      "Um coupé preparado no nosso espaço, com acabamento limpo e atenção aos detalhes que definem o conjunto.",
     gallery: [
       {
         src: "/images/projects/mercedes-cle300/02.webp",
         width: 1000,
         height: 1250,
-        alt: "Frente do Mercedes CLE 300 no atelier X-Motion",
+        alt: "Frente do Mercedes CLE 300 no espaço X-Motion",
       },
       {
         src: "/images/projects/mercedes-cle300/03.webp",

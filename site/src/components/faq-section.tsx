@@ -9,17 +9,17 @@ const questions = [
   {
     question: "Quanto custa um projeto?",
     answer:
-      "O valor depende da viatura, material, zonas abrangidas, preparação e desmontagem necessárias. Envie-nos o modelo e o que pretende fazer: preparamos uma proposta com as inclusões e condições explicadas.",
+      "O valor depende da viatura, material, zonas abrangidas, preparação e desmontagem necessárias. Envie-nos o modelo e o que pretende fazer: preparamos um orçamento com as inclusões e condições explicadas.",
   },
   {
-    question: "Quanto tempo fica o carro no atelier?",
+    question: "Quanto tempo fica o carro nas instalações?",
     answer:
-      "Depende do serviço e da complexidade. A preparação, a aplicação e o controlo final fazem parte do planeamento. O prazo é acordado na proposta antes da marcação.",
+      "Depende do serviço e da complexidade. A preparação, a aplicação e o controlo final fazem parte do planeamento. O prazo é acordado no orçamento antes da marcação.",
   },
   {
     question: "A cor do simulador é igual à película?",
     answer:
-      "O simulador é uma aproximação visual. O ecrã, a iluminação e o acabamento alteram a perceção da cor. A escolha final deve ser confirmada numa amostra física no atelier.",
+      "O simulador é uma aproximação visual. O ecrã, a iluminação e o acabamento alteram a perceção da cor. A escolha final deve ser confirmada numa amostra física no nosso espaço.",
   },
   {
     question: "É possível personalizar apenas alguns detalhes?",
@@ -29,7 +29,7 @@ const questions = [
   {
     question: "Como funciona a manutenção e a garantia?",
     answer:
-      "Os cuidados e as condições dependem do material e do serviço escolhido. A proposta deve identificar a cobertura aplicável, as exclusões e as recomendações de manutenção. Depois da entrega, contacte-nos se surgir alguma dúvida.",
+      "Os cuidados e as condições dependem do material e do serviço escolhido. O orçamento identifica a cobertura aplicável, as exclusões e as recomendações de manutenção. Depois da entrega, contacte-nos se surgir alguma dúvida.",
   },
 ];
 

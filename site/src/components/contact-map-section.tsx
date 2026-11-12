@@ -13,7 +13,7 @@ export function ContactMapSection() {
       <div className="contact-map-copy">
         <span className="eyebrow">ONDE ESTAMOS</span>
         <h2 id="contact-map-title">
-          Atelier em
+          O nosso espaço em
           <br />
           <em>Barcelos.</em>
         </h2>
@@ -32,7 +32,7 @@ export function ContactMapSection() {
         <iframe
           className="map-iframe"
           src={mapSrc}
-          title="Mapa do atelier X-Motion em Barcelos"
+          title="Mapa do espaço X-Motion em Barcelos"
           loading="lazy"
           allowFullScreen
           referrerPolicy="no-referrer-when-downgrade"

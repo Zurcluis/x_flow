@@ -72,6 +72,7 @@ export default async function ServicePage({ params }: ServicePageProps) {
           "@type": "AutoBodyShop",
           name: siteConfig.name,
           url: siteConfig.url,
+          email: siteConfig.email,
           telephone: siteConfig.phone,
           address: {
             "@type": "PostalAddress",
@@ -128,7 +129,7 @@ export default async function ServicePage({ params }: ServicePageProps) {
       >
         <div className="page-intro-actions">
           <a href="#proposta" className="button gold">
-            Pedir proposta
+            Pedir orçamento
             <ArrowUpRight size={18} aria-hidden="true" />
           </a>
           <Link href="/projetos" className="text-link">
@@ -163,8 +164,8 @@ export default async function ServicePage({ params }: ServicePageProps) {
               ))}
             </ul>
             <p className="service-note">
-              Cada projeto é avaliado antes de confirmar a solução, o âmbito e as condições. A
-              proposta identifica o que está incluído.
+              Cada projeto é avaliado antes de confirmar a solução, o âmbito e as condições. O
+              orçamento identifica o que está incluído.
             </p>
           </div>
         </div>
@@ -214,7 +215,7 @@ export default async function ServicePage({ params }: ServicePageProps) {
           <p className="service-empty">
             Ainda não publicámos um projeto classificado especificamente como {service.name}. Isso
             não impede uma avaliação ao seu carro: envie o modelo e o objetivo no pedido de
-            proposta.
+            orçamento.
           </p>
         )}
       </section>

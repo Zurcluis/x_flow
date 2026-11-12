@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
+import { SiteChrome } from "@/components/site-chrome";
 import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
 import "./site.css";
@@ -70,6 +69,7 @@ const structuredData = {
   description: siteConfig.description,
   url: siteConfig.url,
   image: `${siteConfig.url}/images/og-xmotion.webp`,
+  email: siteConfig.email,
   telephone: siteConfig.phone,
   areaServed: {
     "@type": "City",
@@ -96,12 +96,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="pt-PT" className={plusJakartaSans.variable}>
       <body>
-        <a className="skip-link" href="#conteudo">
-          Saltar para o conteúdo
-        </a>
-        <SiteHeader />
-        {children}
-        <SiteFooter />
+        <SiteChrome>{children}</SiteChrome>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

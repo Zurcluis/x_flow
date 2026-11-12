@@ -9,7 +9,7 @@ const steps = [
     index: "02",
     title: "Definir",
     description:
-      "Material, cobertura, preparação, valor e prazo. Uma proposta com as condições do projeto.",
+      "Material, cobertura, preparação, valor e prazo. Um orçamento com as condições do projeto.",
   },
   {
     index: "03",

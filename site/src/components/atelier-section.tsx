@@ -16,7 +16,7 @@ export function AtelierSection({
   ctaLabel = "Vamos conhecer o seu carro",
 }: AtelierSectionProps = {}) {
   return (
-    <section id="atelier" className="atelier light-section section-pad">
+    <section id="sobre" className="atelier light-section section-pad">
       <div className="atelier-visual">
         <Image
           src="/images/atelier.webp"
@@ -31,7 +31,7 @@ export function AtelierSection({
       <div className="atelier-copy">
         {showHeading ? (
           <>
-            <span className="eyebrow">04 / O ATELIER</span>
+            <span className="eyebrow">04 / SOBRE NÓS</span>
             <h2>
               A diferença
               <br />
@@ -41,16 +41,16 @@ export function AtelierSection({
             </h2>
           </>
         ) : (
-          <span className="eyebrow">O ESPAÇO</span>
+          <span className="eyebrow">O NOSSO ESPAÇO</span>
         )}
         <p>
-          Um bom resultado começa antes da aplicação. Na escolha do material, na preparação da
-          viatura e na atenção que damos a cada pormenor.
+          Um bom resultado começa antes da aplicação: na escolha do material, na preparação limpa da
+          pintura e na atenção que damos a cada contorno.
         </p>
         {teaser ? null : (
           <p>
-            Na X-Motion, o projeto começa por uma conversa: perceber o que pretende, avaliar o carro
-            e definir uma solução consigo.
+            No nosso espaço em Barcelos, cada projeto começa por avaliar a viatura consigo e definir
+            a cobertura, o acabamento e o prazo adequados ao uso real do carro.
           </p>
         )}
         {ctaHref.startsWith("/") ? (

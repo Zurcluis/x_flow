@@ -24,7 +24,7 @@ export function StudioTeaser() {
         </h2>
         <p>
           Explore cores e acabamentos numa simulação aproximada. A escolha final confirma-se numa
-          amostra física no atelier.
+          amostra física no nosso espaço.
         </p>
         <Link href="/estudio" className="button gold">
           Abrir o estúdio de cor

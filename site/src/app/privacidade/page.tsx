@@ -37,9 +37,9 @@ export default function PrivacidadePage() {
         </div>
         <h2>Quem trata os dados</h2>
         <p>
-          A X-Motion, atelier em Barcelos, Portugal, é responsável pelo tratamento dos dados
-          enviados através deste site. Enquanto o contacto dedicado de privacidade não estiver
-          publicado, pode falar connosco através do{" "}
+          A X-Motion, em Barcelos, Portugal, é responsável pelo tratamento dos dados enviados
+          através deste site. Pode contactar-nos diretamente através do e-mail{" "}
+          <a href={siteConfig.emailHref}>{siteConfig.email}</a>, do{" "}
           <a href={siteConfig.instagram} target="_blank" rel="noopener noreferrer">
             Instagram oficial
           </a>{" "}
@@ -47,14 +47,14 @@ export default function PrivacidadePage() {
         </p>
         <h2>Dados que recolhemos</h2>
         <p>
-          No formulário de pedido de proposta, recolhemos o nome, o e-mail, o telefone (opcional),
+          No formulário de pedido de orçamento, recolhemos o nome, o e-mail, o telemóvel (opcional),
           o modelo da viatura, a descrição do projeto e o registo do consentimento. O site pode
           ainda gerar dados técnicos necessários ao funcionamento e à segurança do serviço, como
           registos de acesso.
         </p>
         <h2>Para que usamos os dados</h2>
         <p>
-          Usamos os dados para responder ao pedido, perceber o projeto e preparar uma proposta.
+          Usamos os dados para responder ao pedido, perceber o projeto e preparar um orçamento.
           Não vendemos dados pessoais nem tomamos decisões automatizadas com base no formulário.
         </p>
         <h2>Fundamento e conservação</h2>
@@ -80,9 +80,11 @@ export default function PrivacidadePage() {
         <h2>Mapa do Google</h2>
         <p>
           A página de contactos carrega automaticamente um mapa do Google para mostrar a localização
-          do atelier. Ao abrir essa página, o Google pode recolher dados técnicos e usar cookies
+          do nosso espaço. Ao abrir essa página, o Google pode recolher dados técnicos e usar cookies
           próprios, de acordo com as políticas do Google. Se preferir não usar o mapa incorporado,
-          contacte-nos por telefone ou abra a localização diretamente no Google Maps.
+          contacte-nos por telefone (<a href={siteConfig.phoneHref}>{siteConfig.phone}</a>), por
+          e-mail (<a href={siteConfig.emailHref}>{siteConfig.email}</a>) ou abra a localização
+          diretamente no Google Maps.
         </p>
         <h2>Cookies</h2>
         <p>

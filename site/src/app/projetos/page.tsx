@@ -5,7 +5,7 @@ import { PortfolioSection } from "@/components/portfolio-section";
 export const metadata: Metadata = {
   title: "Projetos",
   description:
-    "Uma seleção de trabalhos realizados no atelier X-Motion, em Barcelos: PPF, Car Wrap, Color PPF e personalização.",
+    "Uma seleção de trabalhos realizados pela X-Motion em Barcelos: PPF, Car Wrap, Color PPF e personalização.",
   alternates: {
     canonical: "/projetos",
   },
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     url: "/projetos",
     title: "Projetos | X-Motion",
     description:
-      "Uma seleção de trabalhos realizados no atelier X-Motion, em Barcelos.",
+      "Uma seleção de trabalhos realizados pela X-Motion em Barcelos.",
   },
 };
 

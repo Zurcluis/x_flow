@@ -3,64 +3,98 @@
 import { ArrowUpRight, Check, MoveHorizontal } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
+import {
+  studioColors as colors,
+  studioFinishes as finishes,
+  studioViews as views,
+} from "@/lib/studio";
 
-const views = [
-  { src: "/images/studio-0.webp", label: "Três quartos", alt: "vista três quartos" },
-  { src: "/images/studio-1.webp", label: "Frente", alt: "vista frente" },
-  { src: "/images/studio-2.webp", label: "Lateral", alt: "vista lateral" },
-  { src: "/images/studio-3.webp", label: "Traseira", alt: "vista traseira" },
-];
+const URL_CHANGE_EVENT = "xmotion:urlchange";
 
-const colors = [
-  {
-    name: "Azul profundo",
-    hex: "#1e3c69",
-    filter: "hue-rotate(195deg) saturate(.9) contrast(1.05)",
-  },
-  {
-    name: "Verde petróleo",
-    hex: "#24524b",
-    filter: "hue-rotate(-55deg) saturate(.65) contrast(1.06)",
-  },
-  {
-    name: "Bordeaux",
-    hex: "#6c2a3d",
-    filter: "hue-rotate(130deg) saturate(.8) contrast(1.05)",
-  },
-  {
-    name: "Grafite",
-    hex: "#505254",
-    filter: "grayscale(1) brightness(.82) contrast(1.08)",
-  },
-  {
-    name: "Prata",
-    hex: "#bec1c3",
-    filter: "grayscale(1) brightness(1.35) contrast(.95)",
-  },
-];
+function subscribeToSearch(callback: () => void) {
+  window.addEventListener("popstate", callback);
+  window.addEventListener(URL_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("popstate", callback);
+    window.removeEventListener(URL_CHANGE_EVENT, callback);
+  };
+}
 
-const finishes = [
-  { name: "Brilho", filter: "contrast(1.06)" },
-  { name: "Acetinado", filter: "saturate(.9) brightness(1.02)" },
-  { name: "Mate", filter: "saturate(.65) brightness(.94) contrast(.96)" },
-];
+function getSearchSnapshot() {
+  return window.location.search;
+}
+
+function getServerSearchSnapshot() {
+  return "";
+}
 
 type ColorStudioProps = {
   showHeading?: boolean;
 };
 
 export function ColorStudio({ showHeading = true }: ColorStudioProps) {
-  const [viewIndex, setViewIndex] = useState(0);
-  const [colorIndex, setColorIndex] = useState(1);
-  const [finishIndex, setFinishIndex] = useState(0);
   const [compare, setCompare] = useState(50);
+  const search = useSyncExternalStore(
+    subscribeToSearch,
+    getSearchSnapshot,
+    getServerSearchSnapshot,
+  );
+
+  const params = new URLSearchParams(search);
+  const corParam = params.get("cor")?.trim().toLowerCase();
+  const acabamentoParam = params.get("acabamento")?.trim().toLowerCase();
+  const vistaParam = params.get("vista")?.trim().toLowerCase();
+
+  const matchedColor = corParam
+    ? colors.findIndex((c) => c.name.toLowerCase() === corParam)
+    : -1;
+  const matchedFinish = acabamentoParam
+    ? finishes.findIndex((f) => f.name.toLowerCase() === acabamentoParam)
+    : -1;
+  const matchedView = vistaParam
+    ? views.findIndex((v) => v.label.toLowerCase() === vistaParam)
+    : -1;
+
+  const colorIndex = matchedColor !== -1 ? matchedColor : 1;
+  const finishIndex = matchedFinish !== -1 ? matchedFinish : 0;
+  const viewIndex = matchedView !== -1 ? matchedView : 0;
+
+  useEffect(() => {
+    views.forEach((view) => {
+      const image = new window.Image();
+      image.src = view.src;
+    });
+  }, []);
+
+  function syncUrl(nextView: number, nextColor: number, nextFinish: number) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("cor", colors[nextColor].name);
+    url.searchParams.set("acabamento", finishes[nextFinish].name);
+    url.searchParams.set("vista", views[nextView].label);
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+    window.dispatchEvent(new Event(URL_CHANGE_EVENT));
+  }
+
+  function selectView(next: number) {
+    syncUrl(next, colorIndex, finishIndex);
+  }
+
+  function selectColor(next: number) {
+    syncUrl(viewIndex, next, finishIndex);
+  }
+
+  function selectFinish(next: number) {
+    syncUrl(viewIndex, colorIndex, next);
+  }
 
   const activeView = views[viewIndex];
   const activeColor = colors[colorIndex];
   const activeFinish = finishes[finishIndex];
-  const filter = `${activeColor.filter} ${activeFinish.filter}`;
+  const baseFilter = "grayscale(1) contrast(1.05) brightness(.98)";
+  const simulatedFilter = `${baseFilter} ${activeFinish.filter}`;
   const originalClip = `inset(0 ${100 - compare}% 0 0)`;
+  const proposalHref = `/orcamento?servico=${encodeURIComponent("Car Wrap")}&cor=${encodeURIComponent(activeColor.name)}&acabamento=${encodeURIComponent(activeFinish.name)}&origem=estudio`;
 
   return (
     <section id="estudio" className="colour-studio section-pad">
@@ -85,7 +119,7 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
         <span>
           PORSCHE 911 <small>MODELO DEMONSTRATIVO</small>
         </span>
-        <span className="studio-view-label">
+        <span className="studio-view-label" aria-live="polite">
           {activeView.label} / {activeFinish.name}
         </span>
       </div>
@@ -93,11 +127,20 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
         <div className="studio-main">
           <div className="studio-frame">
             <Image
+              className="studio-sim"
               src={activeView.src}
               alt={`Porsche demonstrativo, ${activeView.alt}, ${activeColor.name.toLowerCase()}`}
               fill
               sizes="(max-width: 800px) 100vw, 70vw"
-              style={{ objectFit: "cover", filter }}
+              style={{ objectFit: "cover", filter: simulatedFilter }}
+            />
+            <span
+              className="studio-sim-tint"
+              style={{
+                backgroundColor: activeColor.hex,
+                opacity: activeFinish.tintOpacity,
+              }}
+              aria-hidden="true"
             />
             <Image
               className="studio-original"
@@ -109,7 +152,6 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
               style={{
                 objectFit: "cover",
                 clipPath: originalClip,
-                filter: "grayscale(1) brightness(.82)",
               }}
             />
             <span className="compare-line" style={{ left: `${compare}%` }}>
@@ -124,6 +166,8 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
               max="97"
               value={compare}
               aria-label="Comparar cor original e simulação em todas as vistas"
+              aria-valuetext={`${compare}% simulação`}
+              aria-describedby="studio-disclaimer"
               onChange={(event) => setCompare(Number(event.target.value))}
             />
           </div>
@@ -138,35 +182,27 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
               key={view.src}
               type="button"
               className={index === viewIndex ? "active" : undefined}
+              aria-label={`Ver vista ${view.label.toLowerCase()}`}
               aria-pressed={index === viewIndex}
-              onClick={() => setViewIndex(index)}
+              onClick={() => selectView(index)}
             >
               <div className="studio-frame">
                 <Image
+                  className="studio-sim"
                   src={view.src}
                   alt={`Porsche demonstrativo, ${view.alt}, ${activeColor.name.toLowerCase()}`}
                   fill
                   sizes="170px"
-                  style={{ objectFit: "cover", filter }}
+                  style={{ objectFit: "cover", filter: simulatedFilter }}
                 />
-                <Image
-                  className="studio-original"
-                  src={view.src}
-                  alt=""
-                  aria-hidden="true"
-                  fill
-                  sizes="170px"
+                <span
+                  className="studio-sim-tint"
                   style={{
-                    objectFit: "cover",
-                    clipPath: "inset(0 50% 0 0)",
-                    filter: "grayscale(1) brightness(.82)",
+                    backgroundColor: activeColor.hex,
+                    opacity: activeFinish.tintOpacity,
                   }}
+                  aria-hidden="true"
                 />
-                <span className="compare-line" style={{ left: "50%" }}>
-                  <span>
-                    <MoveHorizontal size={12} aria-hidden="true" />
-                  </span>
-                </span>
               </div>
               <span>
                 {view.label}
@@ -179,7 +215,7 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
       <div className="studio-options">
         <fieldset className="swatches">
           <legend>
-            Cor <span>{activeColor.name}</span>
+            Cor <span aria-live="polite">{activeColor.name}</span>
           </legend>
           {colors.map((color, index) => (
             <button
@@ -188,8 +224,9 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
               className={index === colorIndex ? "selected" : undefined}
               aria-label={color.name}
               aria-pressed={index === colorIndex}
+              title={color.name}
               style={{ "--swatch": color.hex } as CSSProperties}
-              onClick={() => setColorIndex(index)}
+              onClick={() => selectColor(index)}
             >
               {index === colorIndex ? <Check size={16} aria-hidden="true" /> : null}
             </button>
@@ -204,22 +241,26 @@ export function ColorStudio({ showHeading = true }: ColorStudioProps) {
                 type="button"
                 className={index === finishIndex ? "selected" : undefined}
                 aria-pressed={index === finishIndex}
-                onClick={() => setFinishIndex(index)}
+                onClick={() => selectFinish(index)}
               >
                 {finish.name}
               </button>
             ))}
           </div>
         </fieldset>
-          <Link className="text-link" href="/contactos#proposta">
-          Pedir proposta com esta inspiração
+        <Link
+          className="button gold studio-proposal"
+          href={proposalHref}
+          aria-label={`Pedir orçamento com a cor ${activeColor.name}, acabamento ${activeFinish.name}`}
+        >
+          Pedir orçamento com esta cor
           <ArrowUpRight size={17} aria-hidden="true" />
         </Link>
       </div>
-      <p className="studio-disclaimer">
+      <p className="studio-disclaimer" id="studio-disclaimer">
         <MoveHorizontal size={15} aria-hidden="true" /> A barra de comparação e a cor atualizam
-        todas as vistas. Imagens demonstrativas geradas; simulação 2D aproximada. Confirme a cor e
-        o acabamento em amostra física.
+        todas as vistas. Imagens demonstrativas; simulação 2D aproximada. A cor no ecrã pode variar
+        com o dispositivo. Confirme a cor e o acabamento em amostra física.
       </p>
     </section>
   );

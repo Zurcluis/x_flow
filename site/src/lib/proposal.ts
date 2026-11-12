@@ -9,6 +9,98 @@ export const proposalServices = [
 
 export type ProposalService = (typeof proposalServices)[number];
 
+export const coverageOptionsByService: Record<ProposalService, readonly string[]> = {
+  "Preciso de aconselhamento": [
+    "Proteção de pintura",
+    "Mudança de cor",
+    "Ambos / Quero orientação",
+  ],
+  PPF: [
+    "Frente completa",
+    "Carro completo",
+    "Zonas de desgaste / A definir",
+  ],
+  "Car Wrap": [
+    "Mudança de cor integral",
+    "Tejadilho / Detalhes",
+    "A definir",
+  ],
+  "Color PPF": [
+    "Carro completo",
+    "Frente / Painéis / A definir",
+  ],
+  "Detalhes e óticas": [
+    "Chrome Delete",
+    "Óticas / Pinças",
+    "Interior / A definir",
+  ],
+  Mota: [
+    "Proteção PPF",
+    "Personalização / Wrap",
+    "A definir",
+  ],
+};
+
+export const serviceDescriptions: Record<ProposalService, string> = {
+  PPF: "Película transparente de 200 microns autorregenerativa contra impactos e micro-riscos.",
+  "Color PPF": "Mudança de cor com a espessura protetora e acabamento do PPF.",
+  "Car Wrap": "Revestimento vinílico integral ou parcial em brilho, acetinado ou mate.",
+  "Detalhes e óticas": "Chrome delete, película de proteção de óticas e pormenores exteriores.",
+  Mota: "Proteção de depósito e carenagens ou personalização integral.",
+  "Preciso de aconselhamento": "Indicamos a melhor solução entre proteção, cor e orçamento.",
+};
+
+export function matchProposalService(raw?: string): ProposalService {
+  if (!raw) return "PPF";
+  const normalized = raw.trim().toLowerCase();
+  const exact = proposalServices.find((item) => item.toLowerCase() === normalized);
+  if (exact) return exact;
+
+  if (normalized.includes("color")) return "Color PPF";
+  if (normalized.includes("wrap")) return "Car Wrap";
+  if (normalized.includes("ppf")) return "PPF";
+  if (normalized.includes("detalhe") || normalized.includes("otica")) return "Detalhes e óticas";
+  if (normalized.includes("mota")) return "Mota";
+  if (normalized.includes("aconselha")) return "Preciso de aconselhamento";
+
+  return "PPF";
+}
+
+export function resolveBudgetInitialParams(
+  params: {
+    servico?: string | string[];
+    cor?: string | string[];
+    acabamento?: string | string[];
+    origem?: string | string[];
+  },
+  colors: ReadonlyArray<{ name: string }>,
+  finishes: ReadonlyArray<{ name: string }>,
+) {
+  const serviceParam = typeof params.servico === "string" ? params.servico : undefined;
+  const colorName = typeof params.cor === "string" ? params.cor : undefined;
+  const finishName = typeof params.acabamento === "string" ? params.acabamento : undefined;
+  const sourceParam = typeof params.origem === "string" ? params.origem : undefined;
+
+  const color = colors.find((item) => item.name === colorName);
+  const finish = finishes.find((item) => item.name === finishName);
+
+  const initialService: ProposalService =
+    color || finish ? "Car Wrap" : matchProposalService(serviceParam);
+
+  const initialMessage =
+    color || finish
+      ? `Interesse no estúdio de cor: ${color ? color.name : "cor a definir"}${
+          finish ? `, acabamento ${finish.name}` : ""
+        }. Gostaria de receber orçamento para o meu carro.`
+      : undefined;
+
+  return {
+    initialService,
+    initialMessage,
+    initialSource: sourceParam,
+  };
+}
+
 export type ProposalData = {
   service: ProposalService;
   vehicle: string;
@@ -16,6 +108,8 @@ export type ProposalData = {
   email: string;
   phone?: string;
   message?: string;
+  coverage?: string;
+  source?: string;
   consent: boolean;
 };
 
@@ -33,6 +127,23 @@ function readString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export function buildEnrichedMessage(data: ProposalData): string | undefined {
+  const parts: string[] = [];
+
+  if (data.coverage) {
+    parts.push(`Âmbito: ${data.coverage}`);
+  }
+  if (data.source) {
+    parts.push(`Origem: ${data.source}`);
+  }
+  if (data.message) {
+    parts.push(data.message);
+  }
+
+  const combined = parts.join("\n").trim();
+  return combined ? combined.slice(0, 2000) : undefined;
+}
+
 export function validateProposal(input: unknown): ProposalValidation {
   if (!isRecord(input)) {
     return { ok: false, errors: { name: "Não foi possível ler o pedido." } };
@@ -44,6 +155,8 @@ export function validateProposal(input: unknown): ProposalValidation {
   const email = readString(input.email);
   const phone = readString(input.phone);
   const message = readString(input.message);
+  const coverage = readString(input.coverage);
+  const source = readString(input.source);
   const website = readString(input.website);
   const consent = input.consent === true;
   const errors: ProposalErrors = {};
@@ -72,6 +185,14 @@ export function validateProposal(input: unknown): ProposalValidation {
     errors.message = "A mensagem não pode exceder 2000 caracteres.";
   }
 
+  if (coverage.length > 80) {
+    errors.coverage = "Âmbito inválido.";
+  }
+
+  if (source.length > 60) {
+    errors.source = "Origem inválida.";
+  }
+
   if (!consent) {
     errors.consent = "É necessário autorizar o uso dos dados.";
   }
@@ -93,6 +214,8 @@ export function validateProposal(input: unknown): ProposalValidation {
       email,
       phone: phone || undefined,
       message: message || undefined,
+      coverage: coverage || undefined,
+      source: source || undefined,
       consent,
     },
   };

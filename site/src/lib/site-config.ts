@@ -10,6 +10,8 @@ export const siteConfig = {
   instagram: "https://www.instagram.com/x_motion.wrap/",
   facebook: "https://www.facebook.com/people/X_Motion/100095184768697/",
   maps: "https://maps.app.goo.gl/cZEHfTZ9kZrhxm5Q8",
+  email: "xmotionwrap@gmail.com",
+  emailHref: "mailto:xmotionwrap@gmail.com",
   phone: "+351 934 644 142",
   phoneHref: "tel:+351934644142",
   address: {
@@ -38,8 +40,8 @@ export const navItems = [
   { href: "/servicos", label: "Serviços" },
   { href: "/projetos", label: "Projetos" },
   { href: "/estudio", label: "Estúdio de cor" },
-  { href: "/atelier", label: "O atelier" },
+  { href: "/sobre", label: "Sobre nós" },
   { href: "/contactos", label: "Contactos" },
 ] as const;
 
-export const proposalHref = "/contactos#proposta";
+export const proposalHref = "/orcamento";
