@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db";
-import { canUseAssistant, type OrganizationRole } from "@/lib/roles";
+import { canUseAssistant, MANAGEMENT_ROLES, type OrganizationRole } from "@/lib/roles";
 import {
   addCivilDays,
   civilDateFromKey,
@@ -499,11 +499,47 @@ export async function getAssistantBriefing(
   }
 
   const consultedAt = now.toISOString();
-  const [agenda, production, quotes, stock] = await Promise.all([
+  const canSeeInbox = MANAGEMENT_ROLES.includes(viewer.role as (typeof MANAGEMENT_ROLES)[number]);
+
+  async function loadInboxPending(): Promise<AssistantItem[] | undefined> {
+    if (!canSeeInbox) return undefined;
+    try {
+      const { rows } = await getDb().query<{
+        id: string;
+        channel: string;
+        participant_name: string | null;
+        participant_handle: string | null;
+        subject: string | null;
+      }>(
+        `SELECT id, channel, participant_name, participant_handle, subject
+         FROM inbox_threads
+         WHERE organization_id = $1
+           AND category = 'lead'
+           AND status IN ('unread', 'needs_reply')
+         ORDER BY last_message_at DESC
+         LIMIT 5`,
+        [viewer.organizationId]
+      );
+      return rows.map((row) => ({
+        id: String(row.id),
+        kind: "inbox" as const,
+        title: row.participant_name || row.participant_handle || "Contacto",
+        detail: `${row.channel === "gmail" ? "Gmail" : "Instagram"}${row.subject ? ` · ${row.subject}` : ""}`,
+        time: null,
+        href: `/inbox?thread=${row.id}`,
+        severity: "warning" as const,
+      }));
+    } catch {
+      return undefined;
+    }
+  }
+
+  const [agenda, production, quotes, stock, inboxMessages] = await Promise.all([
     loadAgenda(viewer, startIso, endIso, consultedAt),
     loadProduction(viewer, consultedAt),
     loadQuotes(viewer, consultedAt),
     loadStock(viewer, consultedAt),
+    loadInboxPending(),
   ]);
 
   const priorities = buildPriorities({
@@ -561,6 +597,7 @@ export async function getAssistantBriefing(
     deliveries: production.deliveries,
     quotes: quotes.items,
     stock: stock.items,
+    inboxMessages,
     narration,
     hasAnyData,
   };

@@ -92,6 +92,7 @@ export function NewQuoteView({
   customers: customersProp,
   pricingContext,
   initialVehicleId,
+  initialCustomerId,
   simRef,
   draftQuote,
   draftRequested,
@@ -100,6 +101,7 @@ export function NewQuoteView({
   customers: Customer[];
   pricingContext: PricingContextData;
   initialVehicleId?: string;
+  initialCustomerId?: string;
   simRef?: { finish: string; coverageLabel: string } | null;
   draftQuote?: DraftQuoteData | null;
   draftRequested?: boolean;
@@ -130,7 +132,7 @@ export function NewQuoteView({
   const draftFlexibleState = draftEdit?.kind === "flexible" ? draftEdit.state : null;
   const draftConfiguratorState = draftEdit?.kind === "configurator" ? draftEdit.state : null;
 
-  // Selected vehicle & customer — sincroniza quando a URL muda (ex.: "Refazer Proposta")
+  // Selected vehicle & customer — sincroniza quando a URL muda (ex.: "Refazer Proposta" ou /inbox)
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => {
     if (draft && vehicles.some((x) => x.id === draft.vehicleId)) {
       return draft.vehicleId;
@@ -138,9 +140,19 @@ export function NewQuoteView({
     if (initialVehicleId && vehicles.some((x) => x.id === initialVehicleId)) {
       return initialVehicleId;
     }
+    if (initialCustomerId) {
+      const customerVehicle = vehicles.find((x) => x.currentOwner?.customerId === initialCustomerId);
+      if (customerVehicle) return customerVehicle.id;
+    }
     return vehicles[0]?.id ?? "";
   });
-  const [draftCustomerId, setDraftCustomerId] = useState<string | null>(() => draft?.customerId ?? null);
+  const [draftCustomerId, setDraftCustomerId] = useState<string | null>(() => {
+    if (draft?.customerId) return draft.customerId;
+    if (initialCustomerId && customers.some((c) => c.id === initialCustomerId)) {
+      return initialCustomerId;
+    }
+    return null;
+  });
   const [appliedInit, setAppliedInit] = useState(initialVehicleId);
   if (initialVehicleId && initialVehicleId !== appliedInit && vehicles.some((x) => x.id === initialVehicleId)) {
     setAppliedInit(initialVehicleId);

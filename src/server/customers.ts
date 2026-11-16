@@ -71,6 +71,7 @@ function mapCustomer(row: CustomerRow, includeFinancials: boolean): Customer {
     email: String(row.email),
     phone: String(row.phone),
     phoneNormalized: String(row.phone_normalized),
+    instagramHandle: row.instagram_handle ? String(row.instagram_handle) : undefined,
     preferredChannel: (row.preferred_channel as PreferredChannel) ?? "whatsapp",
     notes: (row.notes as string) ?? undefined,
     status: (row.status as CustomerStatus) ?? "active",
@@ -148,6 +149,7 @@ export interface CustomerCreateInput {
   email: string;
   phone: string;
   phoneNormalized: string;
+  instagramHandle?: string;
   preferredChannel?: PreferredChannel;
   notes?: string;
   status?: CustomerStatus;
@@ -232,8 +234,14 @@ export async function createCustomer(
   const nif = parseOptionalText(input.nif, "O NIF", 50);
   const email = parseOptionalText(input.email, "O email", 255) ?? "";
   const phone = parseOptionalText(input.phone, "O telefone", 50) ?? "";
-  if (!email && !phone) {
-    throw new CustomerValidationError("Introduz pelo menos um contacto (telefone ou email).");
+  const rawInstagram = parseOptionalText(input.instagramHandle, "O Instagram", 100);
+  const instagramHandle = rawInstagram
+    ? `@${rawInstagram.replace(/^@+/, "").toLowerCase()}`
+    : undefined;
+  if (!email && !phone && !instagramHandle) {
+    throw new CustomerValidationError(
+      "Introduz pelo menos um contacto (telefone, email ou Instagram)."
+    );
   }
   if (email && !isValidCustomerEmail(email)) {
     throw new CustomerValidationError("O email indicado não é válido.");
@@ -276,8 +284,8 @@ export async function createCustomer(
     const { rows } = await client.query<CustomerRow>(
       `INSERT INTO customers
         (organization_id, type, name, legal_name, nif, email, phone, phone_normalized,
-         preferred_channel, notes, status, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         instagram_handle, preferred_channel, notes, status, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         organizationId,
@@ -288,6 +296,7 @@ export async function createCustomer(
         email,
         phone,
         phoneNormalized,
+        instagramHandle ?? null,
         preferredChannel,
         notes ?? null,
         status,

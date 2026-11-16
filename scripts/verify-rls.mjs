@@ -49,6 +49,18 @@ console.log(
   foreignLeads.rows[0].n,
   "(devia ser 0 — RLS isolou)"
 );
+const foreignInboxThreads = await client.query("SELECT count(*)::int AS n FROM inbox_threads");
+console.log(
+  "6d. SELECT inbox_threads com GUC de outra org:",
+  foreignInboxThreads.rows[0].n,
+  "(devia ser 0 — RLS isolou)"
+);
+const foreignInboxMessages = await client.query("SELECT count(*)::int AS n FROM inbox_messages");
+console.log(
+  "6e. SELECT inbox_messages com GUC de outra org:",
+  foreignInboxMessages.rows[0].n,
+  "(devia ser 0 — RLS isolou)"
+);
 await client.query(
   "SELECT set_config('app.current_organization_id', $1, false)",
   [org.rows[0].org_id]
@@ -73,6 +85,8 @@ const denied = await client.query("SELECT count(*)::int AS n FROM customers");
 console.log("10. SELECT customers SEM GUC org:", denied.rows[0].n, "(devia ser 0 — RLS bloqueou)");
 const deniedLeads = await client.query("SELECT count(*)::int AS n FROM website_leads");
 console.log("10b. SELECT website_leads SEM GUC org:", deniedLeads.rows[0].n, "(devia ser 0 — RLS bloqueou)");
+const deniedInboxThreads = await client.query("SELECT count(*)::int AS n FROM inbox_threads");
+console.log("10c. SELECT inbox_threads SEM GUC org:", deniedInboxThreads.rows[0].n, "(devia ser 0 — RLS bloqueou)");
 
 await client.end();
 console.log("\nRLS verificada com a role xflow_app.");

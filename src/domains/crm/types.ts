@@ -58,6 +58,7 @@ export interface Customer {
   email: string;
   phone: string;
   phoneNormalized: string;
+  instagramHandle?: string;
   preferredChannel: PreferredChannel;
   notes?: string;
   status: CustomerStatus;

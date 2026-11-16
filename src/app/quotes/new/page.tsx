@@ -25,6 +25,7 @@ export default async function NewQuotePage({
   ]);
 
   const vehicleParam = typeof sp.vehicle === "string" ? sp.vehicle : undefined;
+  const customerParam = typeof sp.customer === "string" ? sp.customer : undefined;
   const finishParam = typeof sp.finish === "string" ? sp.finish : undefined;
   const coverageParam = typeof sp.coverage === "string" ? sp.coverage : undefined;
 
@@ -34,6 +35,7 @@ export default async function NewQuotePage({
       customers={customers}
       pricingContext={pricingContext}
       initialVehicleId={vehicleParam}
+      initialCustomerId={customerParam}
       draftQuote={draftQuote}
       draftRequested={Boolean(draftParam)}
       simRef={

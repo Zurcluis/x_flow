@@ -221,6 +221,29 @@ function stockAnswer(briefing: AssistantBriefing): AssistantAnswer {
   };
 }
 
+function inboxAnswer(briefing: AssistantBriefing): AssistantAnswer {
+  if (!briefing.inboxMessages) {
+    return {
+      text: "A Caixa Unificada de mensagens está acessível apenas para administradores e gestores.",
+      references: [],
+    };
+  }
+  if (briefing.inboxMessages.length === 0) {
+    return {
+      text: "Não há leads por responder no Gmail ou no Instagram.",
+      references: [{ label: "Abrir Mensagens", href: "/inbox" }],
+    };
+  }
+  return {
+    text: `Há ${briefing.inboxMessages.length} ${
+      briefing.inboxMessages.length === 1
+        ? "conversa de lead por responder"
+        : "conversas de lead por responder"
+    }: ${listItems(briefing.inboxMessages)}.`,
+    references: referencesFrom(briefing.inboxMessages),
+  };
+}
+
 export function answerQuestion(
   rawQuestion: string,
   briefing: AssistantBriefing
@@ -238,6 +261,9 @@ export function answerQuestion(
   }
   if (/\b(bloquead\w*|bloqueio|pecas|parado|espera de material)\b/.test(question)) {
     return blockedAnswer(briefing);
+  }
+  if (/\b(mensag\w*|email\w*|instagram|dm|inbox)\b/.test(question)) {
+    return inboxAnswer(briefing);
   }
   if (/\b(orcamento|orcamentos|proposta|propostas|seguimento|sem resposta)\b/.test(question)) {
     return quotesAnswer(briefing);

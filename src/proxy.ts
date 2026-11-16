@@ -16,7 +16,8 @@ function isPublicPath(pathname: string): boolean {
   if (
     pathname === "/login" ||
     pathname === "/api/health" ||
-    pathname === "/api/proposals"
+    pathname === "/api/proposals" ||
+    pathname === "/api/cron/inbox-sync"
   ) {
     return true;
   }

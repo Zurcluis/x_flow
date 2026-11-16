@@ -24,7 +24,8 @@ export type AssistantItemKind =
   | "work_order"
   | "quote"
   | "stock"
-  | "task";
+  | "task"
+  | "inbox";
 
 export type AssistantSeverity = "danger" | "warning" | "info";
 
@@ -53,6 +54,7 @@ export interface AssistantBriefing {
   deliveries: AssistantItem[];
   quotes: AssistantItem[];
   stock: AssistantItem[];
+  inboxMessages?: AssistantItem[];
   narration: string;
   hasAnyData: boolean;
 }

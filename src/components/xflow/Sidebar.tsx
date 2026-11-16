@@ -30,6 +30,7 @@ import {
   Monitor,
   Globe,
   ExternalLink,
+  MessageSquare,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/xflow/Logo";
@@ -69,6 +70,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: "Negócio",
     items: [
+      { label: "Mensagens", href: "/inbox", icon: MessageSquare },
       { label: "Clientes", href: "/customers", icon: Users },
       { label: "Viaturas", href: "/vehicles", icon: Car },
       { label: "Orçamentos", href: "/quotes", icon: FileText },
@@ -97,7 +99,7 @@ export const NAV_SECTIONS: NavSection[] = [
 
 const FINANCIAL_HREFS = new Set(["/finance", "/reports"]);
 const ADMIN_HREFS = new Set(["/settings"]);
-const MANAGEMENT_HREFS = new Set(["/b2b"]);
+const MANAGEMENT_HREFS = new Set(["/b2b", "/inbox"]);
 
 export function navSectionsForRole(role?: string, hiddenHrefs?: string[] | Set<string>): NavSection[] {
   const hideFinancials = role !== "admin" && role !== "workshop_manager";

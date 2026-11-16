@@ -122,6 +122,9 @@ export function buildAssistantContext(briefing: AssistantBriefing): string {
     entregas: briefing.deliveries.map(compactItem),
     orcamentos: briefing.quotes.map(compactItem),
     stock: briefing.stock.map(compactItem),
+    mensagensPorResponder: briefing.inboxMessages
+      ? briefing.inboxMessages.map(compactItem)
+      : undefined,
   });
 }
 

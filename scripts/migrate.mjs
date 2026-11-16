@@ -347,6 +347,23 @@ if (
   console.log("20260828000032 já aplicada.");
 }
 
+// 000033 — caixa unificada (Gmail + Instagram Direct)
+if (
+  !(await hasTable("inbox_channel_accounts")) ||
+  !(await hasTable("inbox_threads")) ||
+  !(await hasTable("inbox_messages")) ||
+  !(await hasColumn("customers", "instagram_handle"))
+) {
+  const migration33 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000033_unified_inbox.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration33);
+  console.log("OK: 20260828000033");
+} else {
+  console.log("20260828000033 já aplicada.");
+}
+
 // Backfill de passwords demo (idempotente): só preenche password_hash IS NULL
 const teamEmails = [
   "luis@xmotion.pt",

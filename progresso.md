@@ -1,21 +1,108 @@
 # Progresso — X-Flow
 
-_Última atualização: 12/11/2026 (Instagram @x_motion.wrap ativo no Composio; reinício para carregar as ferramentas MCP). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 16/11/2026 (Caixa Unificada Fases 1–4 concluída: DB+RLS, /inbox split-view, resposta bidirecional Gmail+Instagram com confirmação humana, Vercel Cron e integração X-Flow AI). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
+_Última atualização: 14/11/2026 (Instalação da skill mestre-dos-sites; reinício do opencode para registar a skill). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
 ## Estado do projeto
-- X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada; **375/375 testes em 55 ficheiros**, 62 tabelas com RLS)
+- X-Flow: CRM/OS para oficina PPF/wrap (Next.js 16.4.2, React 19.2.8, TS strict, Tailwind v4, base de dados Neon Postgres ligada; **410/410 testes em 59 ficheiros em `tests/`**, 65 tabelas com RLS / 69 políticas RLS)
 - Health: typecheck OK, lint OK, **375/375 testes (55 ficheiros)**, build OK, `npm audit --omit=dev` 0 vulnerabilidades; assistente X-Flow AI (fases 1–3) commitado e integração Gemini implementada; endpoint público de propostas do site e Fases 1–3 dos cenários 3D commitados e enviados; **site**: typecheck/lint/build OK (24 rotas), 0 erros/avisos nas páginas testadas
-- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); `origin/main` em `f6a4bcd` (`feat(site): evolucao multi-paginas, integracao do logo oficial e redes sociais`), sincronizado; antes `c5c32ff` (UI/sidebar), `55266c7` (simulador 3D) e `b8131bb` (endpoint público de propostas). O working tree tem por commitar as melhorias do estúdio de cor, o pré-preenchimento do formulário e a nova seleção/cor por peça do simulador 3D. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
+- **Git a funcionar**: repo em `main` para `https://github.com/Zurcluis/x_flow.git` (remote `origin`, tracking ativo); commits `2e78754` (`feat(site): pagina /sobre, funil /ig e /orcamento, envio SMTP e auditoria UX/URL`) e `08b5d84` (`chore: simulador 3D por peca, kit marca X-Motion, criativos e skills`) enviados para `origin/main`. Documentos sensíveis em `docs/X-motion/` continuam fora do Git (faturas, plantas, proposta societária)
 - `README.md` atualizado (17/10): setup, scripts, deploy Vercel, RBAC; credenciais demo removidas do README/UI
 - **Simulador 3D**: 13 modelos no catálogo (genéricos removidos; seis modelos novos da Draxler), seletor em carril horizontal com setas; **cinco cenários completos** (Estúdio Dark, Showroom Claro, Oficina X-Motion, Luz do Dia e Pôr do Sol) com sombras reais no exterior, céu/chão procedurais e seletor compacto; **seleção de peças clicáveis com cor independente por peça** (componentes por material + seis painéis de carroçaria) e painel "Peças" no palco; Fase 3 commitada (`55266c7`)
 - Fonte de verdade do produto: `X-Flow_AntiGravity_Master_Blueprint.md` + ADRs em `docs/adr/`
 - Feed de progresso: `progresso.md` (este ficheiro)
 - **Site público publicado**: `site/` em https://x-flow-b8rt.vercel.app (projeto Vercel `x-flow-b8rt`, Root Directory `site`); ERP em https://x-flow-roan.vercel.app com botão "Site público" e formulário ligado a `/api/proposals` (leads em Clientes → Leads do Site)
-- **Site público multi-página**: `/servicos` + quatro serviços, `/projetos`, `/atelier` e `/contactos` com mapa e horário; `/portfolio` e `/portfolio/[slug]` redirecionam com 308 para as novas rotas. A home passou a ser um hub curto (quatro serviços, três projetos, teasers do estúdio/atelier, processo, quatro FAQ e CTA para `/contactos`), sem o formulário duplicado. O estúdio de cor compara a **cor original real** com a cor escolhida e o CTA pré-preenche `/contactos` com a cor e o acabamento. Conteúdo limitado ao já confirmado (sem claims, preços, garantias ou marcas por confirmar).
-- **Ferramentas**: Composio ligado como MCP global do opencode (`connect.composio.dev/mcp`, header `x-consumer-api-key` lido de `{env:COMPOSIO_API_KEY}`; chave em variável de ambiente do utilizador, não no ficheiro); ver sessão 08/11.
-- **Marca**: `marca/` da X-Motion em `C:\Projetos\x_flow\marca\` (`perfil.md`, `voz.md`, `identidade.md`, `LEIA.md`, `logo.png`) — pack canónico para os squads de marketing.
-- **Redes sociais / marketing**: conta Instagram **@x_motion.wrap** (id `29742029738736301`) ligada no Composio com estado **ACTIVE** (business/creator) — leitura de media, comentários e insights, e publicação; conta Facebook de Luís Cruz ligada com 4 ligações ativas; acesso confirmado à página **X_Motion** (`114610198384425`) — seguidores, insights, posts, comentários e DMs. `metaads` sem ligação ativa. (Histórico: em 08/11 o `instagram` estava sem ligação e a página não tinha conta IG business vinculada; situação resolvida.)
-- **Skills do projeto**: `.opencode/skills/` com `copy-de-oferta`, `roteiro-reels` e `raio-x-do-instagram` (instaladas na sessão 08/11; exigem reinício do opencode).
+- **Site público multi-página**: `/servicos` + quatro serviços, `/projetos`, `/sobre` (anterior `/atelier` com redirecionamento 308 permanente) e `/contactos` com mapa e horário. Funis de conversão dedicados `/orcamento` e `/ig` (este sem distrações nem links de saída).
+- **Ferramentas e Canais**:
+  - **Gmail**: conta **`xmotionwrap@gmail.com`** ativa com scopes completos no Composio (`gmail_ratti-unwarn`). Leitura de perfil, mensagens, threads e envio operacionais via MCP.
+  - **Instagram**: conta **@x_motion.wrap** (id `29742029738736301`) ativa no Composio (business/creator).
+  - **Facebook**: conta de Luís Cruz com 4 ligações e página **X_Motion** (`114610198384425`) ativa.
+- **Skills do projeto**: `.opencode/skills/` com `copy-de-oferta`, `roteiro-reels`, `raio-x-do-instagram` e `mestre-dos-sites`; `.agents/skills/` com `deploy-to-vercel`, `vercel-composition-patterns`, `vercel-optimize`, `vercel-react-best-practices`, `web-design-guidelines` e `mestre-dos-sites`.
+
+## Sessão 16/11/2026 — Fase 4 da Caixa Unificada (Cron Background + Camada X-Flow AI)
+
+- **Âmbito**: concluir a **Fase 4** (fase final) do plano aprovado — sincronização automática em background + resumos, extração de viatura/serviço, rascunhos assistidos por IA (sem envio automático) e alertas no X-Flow AI.
+- **Background Sync**:
+  - [`src/app/api/cron/inbox-sync/route.ts`](file:///c:/Projetos/x_flow/src/app/api/cron/inbox-sync/route.ts), [`src/domains/inbox/cron.ts`](file:///c:/Projetos/x_flow/src/domains/inbox/cron.ts), [`src/proxy.ts`](file:///c:/Projetos/x_flow/src/proxy.ts), [`vercel.json`](file:///c:/Projetos/x_flow/vercel.json) e [`.env.example`](file:///c:/Projetos/x_flow/.env.example): endpoint `/api/cron/inbox-sync` protegido por `CRON_SECRET` (`timingSafeEqual`) agendado diariamente no Vercel (`0 8 * * *`, compatível com Hobby e Pro — ajustável para `*/5 * * * *` em Pro), além de auto-sync em background ao abrir `/inbox` se o último sync tiver > 2 minutos.
+- **Camada X-Flow AI (`isGeminiConfigured()`)**:
+  - [`src/server/inbox/ai.ts`](file:///c:/Projetos/x_flow/src/server/inbox/ai.ts) e [`src/server/inbox/repository.ts`](file:///c:/Projetos/x_flow/src/server/inbox/repository.ts): resumo em 1 frase (`ai_summary`), extração de viatura/serviço (`ai_extracted_vehicle`, `ai_extracted_service`) e sugestão de minuta em `pt-PT` («Sugerir resposta (IA)» / «Analisar IA») respeitando limites de canal e confirmação humana em 2 passos.
+  - [`src/server/assistant.ts`](file:///c:/Projetos/x_flow/src/server/assistant.ts), [`src/domains/assistant/intents.ts`](file:///c:/Projetos/x_flow/src/domains/assistant/intents.ts), [`src/domains/assistant/types.ts`](file:///c:/Projetos/x_flow/src/domains/assistant/types.ts) e [`src/server/ai/gemini.ts`](file:///c:/Projetos/x_flow/src/server/ai/gemini.ts): alertas de leads por responder disponíveis no assistente apenas para `admin` e `workshop_manager`.
+- **Verificação**:
+  - `npm run db:verify` (65 tabelas com RLS), `npm run typecheck`, `npm run lint` (0 erros no código), `npx vitest run --dir tests` (**59/59 ficheiros, 410/410 testes**), `npm run build` (**OK**) e Playwright end-to-end em `1440px` e `390px`.
+- **Variáveis para produção (Vercel ERP `x-flow-roan`)**: confirmar `COMPOSIO_API_KEY` e `CRON_SECRET` nas Environment Variables do Vercel antes do deploy.
+
+## Sessão 16/11/2026 — Fase 3 da Caixa Unificada (Resposta Bidirecional Gmail + Instagram DM)
+
+- **Âmbito**: concluir a **Fase 3** do plano aprovado — envio direto de respostas por Gmail e Instagram DM com validação determinística da janela de 24h, confirmação humana em 2 passos, inserção de links públicos de orçamentos e auditoria na timeline CRM.
+- **Domínio & Provider**:
+  - [`src/domains/inbox/rules.ts`](file:///c:/Projetos/x_flow/src/domains/inbox/rules.ts): `validateInboxReplyDraft` valida limites (`5000` Gmail / `1000` IG DM), destinatário/PSID e bloqueio determinístico da janela 24h da Meta.
+  - [`src/server/inbox/providers/composio.ts`](file:///c:/Projetos/x_flow/src/server/inbox/providers/composio.ts): `sendGmailReply` (`GMAIL_REPLY_TO_THREAD`) e `sendInstagramReply` (`INSTAGRAM_SEND_TEXT_MESSAGE`), distinguindo erros `403` de janela 24h Meta (`subcode=2534022`/`2534037`) de falhas OAuth (`needs_reauth`).
+- **Orquestração & Compositor UI**:
+  - [`src/server/inbox/send.ts`](file:///c:/Projetos/x_flow/src/server/inbox/send.ts) e [`src/server/inbox/repository.ts`](file:///c:/Projetos/x_flow/src/server/inbox/repository.ts): proteção de duplicados em janela curta (30s), persistência de mensagens outbound com `sent_by_profile_id`, registo em `customer_communications` quando ligado ao CRM e `listCustomerShareableQuotes` (apenas orçamentos não-rascunho).
+  - [`InboxReplyComposer.tsx`](file:///c:/Projetos/x_flow/src/components/xflow/inbox/InboxReplyComposer.tsx), [`InboxView.tsx`](file:///c:/Projetos/x_flow/src/app/inbox/InboxView.tsx) e [`src/app/actions/inbox.ts`](file:///c:/Projetos/x_flow/src/app/actions/inbox.ts): confirmação explícita em 2 passos («Rever e enviar» → «Confirmar envio») + bloqueio visual claro quando a janela 24h do Instagram expirou.
+- **Verificação**:
+  - `npm run typecheck`, `npm run lint` (0 erros no código), `npx vitest run --dir tests` (**58/58 ficheiros, 406/406 testes**), `npm run build` (**OK**) e Playwright end-to-end (incluindo fluxo completo de confirmação em 2 passos sem disparo acidental externo).
+- **Pendente / Próxima fase**: aguardar confirmação do utilizador para avançar para a **Fase 4** (Cron de sincronização automática + resumos/minutas opcionais via X-Flow AI Gemini).
+
+## Sessão 16/11/2026 — Fase 2 da Caixa Unificada (/inbox, Navegação RBAC e Conversão CRM)
+
+- **Âmbito**: concluir a **Fase 2** do plano aprovado — vista `/inbox`, controlo de acesso RBAC (`admin`/`workshop_manager`), sincronização em tempo real otimizada e conversão para Cliente/Lead e Orçamento (`/quotes/new?customer=...`).
+- **Interface & Navegação**:
+  - [`src/components/xflow/Sidebar.tsx`](file:///c:/Projetos/x_flow/src/components/xflow/Sidebar.tsx): entrada **«Mensagens»** (`/inbox`) na secção Negócio, restrita a `MANAGEMENT_ROLES`.
+  - [`src/app/inbox/page.tsx`](file:///c:/Projetos/x_flow/src/app/inbox/page.tsx), [`InboxView.tsx`](file:///c:/Projetos/x_flow/src/app/inbox/InboxView.tsx), [`loading.tsx`](file:///c:/Projetos/x_flow/src/app/inbox/loading.tsx), [`error.tsx`](file:///c:/Projetos/x_flow/src/app/inbox/error.tsx) e [`inbox-labels.ts`](file:///c:/Projetos/x_flow/src/components/xflow/inbox/inbox-labels.ts): vista *split-view* escura e dourada responsiva (`1440px` desktop e `390px` mobile com botão voltar), filtros rápidos, pesquisa, janela determinística de 24h do Instagram e atalho para Leads do Site.
+- **CRM, Orçamentos & Otimizações**:
+  - [`src/app/actions/inbox.ts`](file:///c:/Projetos/x_flow/src/app/actions/inbox.ts) e [`src/server/inbox/repository.ts`](file:///c:/Projetos/x_flow/src/server/inbox/repository.ts): ações para sincronizar, filtrar, atualizar categoria/estado, associar cliente existente ou converter thread em Lead/Cliente (com suporte a `instagram_handle` em [`src/server/customers.ts`](file:///c:/Projetos/x_flow/src/server/customers.ts) e [`src/domains/crm/types.ts`](file:///c:/Projetos/x_flow/src/domains/crm/types.ts)).
+  - [`src/app/quotes/new/page.tsx`](file:///c:/Projetos/x_flow/src/app/quotes/new/page.tsx) e [`NewQuoteView.tsx`](file:///c:/Projetos/x_flow/src/app/quotes/new/NewQuoteView.tsx): pré-seleção do cliente via `?customer=<id>`.
+  - [`src/server/inbox/sync.ts`](file:///c:/Projetos/x_flow/src/server/inbox/sync.ts): concorrência em lotes de 5 nas conversas Instagram (eliminando gargalo sequencial) e melhoria do classificador base (`rules.ts` com fronteiras de palavra e exclusão de remetentes `no-reply@`).
+- **Verificação**:
+  - `npm run typecheck`, `npm run lint` (0 erros no código), `npx vitest run --dir tests` (**58/58 ficheiros, 399/399 testes**), `npm run build` (**OK**).
+  - Playwright real sobre `next start`: redirect anónimo, login gestão, sync real (**95 threads**: 45 Gmail + 50 Instagram), validação visual `1440px` e `390px` sem sobreposição nem overflow e bloqueio de `technician` confirmados com `0` erros de consola.
+- **Pendente / Próxima fase**: aguardar confirmação do utilizador para avançar para a **Fase 3** (envio direto bidirecional de respostas por Gmail e Instagram DM com validação determinística da janela de 24h e confirmação humana).
+
+## Sessão 16/11/2026 — Fase 1 da Caixa Unificada (Gmail + Instagram Direct)
+
+- **Âmbito**: concluir a **Fase 1** do plano aprovado — base de dados + RLS, domínio puro determinístico e adaptador/motor de sincronização de leitura via Composio (sem UI e sem envio externo ainda).
+- **Base de dados & RLS (`supabase/migrations/20260828000033_unified_inbox.sql`)**:
+  - Coluna `customers.instagram_handle` + índice por organização.
+  - Tabelas `inbox_channel_accounts`, `inbox_threads` e `inbox_messages` com `organization_id`, RLS ativa (`current_organization_id()`) e `GRANT` à role `xflow_app`.
+  - `scripts/migrate.mjs` e `scripts/verify-rls.mjs` atualizados e executados contra Neon Postgres (**65 tabelas com RLS**, isolamento confirmado a 0 linhas entre organizações e sem GUC).
+- **Domínio puro (`src/domains/inbox/`) & Motor (`src/server/inbox/`)**:
+  - Tipos (`types.ts`) e regras determinísticas (`rules.ts`): janela de resposta de 24h do Instagram, normalização de remetentes/handles, sanitização de texto/entidades HTML pt-PT, classificador base sem IA (`lead`, `supplier`, `admin`, `hr`, `security`, `other`) e máquina de estados da thread.
+  - `ComposioInboxProvider` (`src/server/inbox/providers/composio.ts`) ligado a `connect.composio.dev/mcp` (SSE stream parser, descoberta automática de contas ativas, fallback automático quando um batch Gmail sofre offload e deteção de erros OAuth `needs_reauth`).
+  - Repositório transacional (`repository.ts`) e orquestrador incremental (`sync.ts`: `historyId` no Gmail + `updated_time` no Instagram + associação automática a `customers`).
+- **Verificação**:
+  - `npm run db:migrate` e `npm run db:verify`: **OK** (`xflow_app` isolado em `inbox_threads` e `inbox_messages`).
+  - `npm run typecheck`, `npm run lint` (0 erros no projeto; apenas avisos pré-existentes em scripts de `.agents/`/`.opencode/`), `npx vitest run --dir tests` (**57/57 ficheiros, 395/395 testes** incluindo 20 novos testes de inbox) e `npm run build`: **OK**. *(Nota: `npm run test` sem filtro inclui 2 ficheiros experimentais pré-existentes em `site/tests/` com imports em falta em `site/src/app/api/generate/route.ts`, fora deste âmbito).*
+- **Pendente / Próxima fase**: aguardar aprovação do utilizador para arrancar com a **Fase 2** (ecrã `/inbox` split-view, barra lateral para `admin`/`workshop_manager`, conversão de thread em Cliente/Lead + Orçamento).
+
+## Sessão 16/11/2026 — Autorização e validação completa do Gmail da X-Motion via Composio
+
+- **Âmbito**: reativar a ligação do Gmail `xmotionwrap@gmail.com` no Composio com permissões (*scopes*) completas de leitura e gestão de emails.
+- **Ações**:
+  - Diagnóstico inicial: conta anterior `gmail_zinc-panto` devolvia `403 Forbidden: ACCESS_TOKEN_SCOPE_INSUFFICIENT`.
+  - Gerado link de autenticação via `COMPOSIO_MANAGE_CONNECTIONS`.
+  - Autorização concluída pelo utilizador com a conta `xmotionwrap@gmail.com` (Luís Cruz).
+  - Nova ligação ativa: `gmail_ratti-unwarn` (default).
+- **Verificação**:
+  - `GMAIL_GET_PROFILE` executado com sucesso: `emailAddress: "xmotionwrap@gmail.com"`, 77 mensagens no total.
+  - `GMAIL_FETCH_EMAILS` executado com sucesso: leitura das últimas mensagens da caixa de entrada em tempo real.
+- **Ficheiros**: `progresso.md`.
+
+## Sessão 14/11/2026 — Instalação da skill `mestre-dos-sites`
+
+- **Âmbito**: instalar a skill `mestre-dos-sites` a partir de `c:\Projetos\MPower\skill\mestre-dos-sites` nos ambientes de trabalho (OpenCode, Antigravity e Claude Code).
+- **Destinos instalados**:
+  - `.opencode/skills/mestre-dos-sites/` (OpenCode no projeto)
+  - `.agents/skills/mestre-dos-sites/` (Antigravity / Gemini no projeto)
+  - `C:\Users\User\.claude\skills\mestre-dos-sites/` (global Claude Code)
+- **Estrutura instalada**: `SKILL.md`, `COMECE-AQUI.md`, `kit/` (19 ficheiros com CSS de temas, componentes JS e estilos base) e `scripts/` (9 scripts Node.js: `capturar.mjs`, `montar.mjs`, `finalizar.mjs`, `navegador.mjs`, peças modulares e `recortar.swift`).
+- **Verificação**:
+  - Google Chrome detetado em `C:/Program Files/Google/Chrome/Application/chrome.exe` via CDP nativo (`navegador.mjs`).
+  - Execução validada com Node.js v24.12.0 (`capturar.mjs`, `montar.mjs`, `finalizar.mjs` testados e operacionais sem dependências externas adicionais).
+- **Ficheiros**: `progresso.md`, `.opencode/skills/mestre-dos-sites/**`, `.agents/skills/mestre-dos-sites/**`, `C:\Users\User\.claude\skills\mestre-dos-sites/**`.
+- **Git**: sem commit nesta sessão.
+- **Skills/agentes**: execução direta.
+- **Motivo do reinício**: recarregar o opencode para registrar a nova skill na lista de comandos e auto-descoberta.
 
 ## Sessão 12/11/2026 — Instagram @x_motion.wrap confirmado no Composio e reinício para carregar o MCP
 
@@ -568,3 +655,11 @@ Dizer ao agente: "Lê `progresso.md` e continua." O site multi-página está imp
 - Validação local: typecheck, lint e build do `site/` OK.
 - **Git**: as alterações de 06/11 (botão "Site público" no ERP, `dev:site`, `.env.example`, NAP do site) foram posteriormente commitadas em `f6a4bcd`.
 - **Pendente**: plano multi-páginas (serviços, projeto/[slug], claims, marcas, garantias) continua bloqueado pela confirmação da X-Motion.
+
+## Sessão 16/11/2026 — Diagnóstico de acesso ao email e browser MCP
+- **Âmbito**: verificar se há acesso ao email da X-Motion; nenhuma alteração de código de produto.
+- **Email**: Gmail ligado no Composio (`https://connect.composio.dev/mcp`), conta `xmotionwrap@gmail.com`, duas conexões ativas (`gmail_ratti-unwarn` default e `gmail_zinc-panto`). Leitura validada por JSON-RPC direto (`GMAIL_FETCH_EMAILS`, 3 mensagens, ~201 na inbox). As ferramentas `composio_*` não estão expostas nesta sessão porque a config com o MCP `composio` está em `C:\Users\User\.config\opencode\opencode.json`, enquanto a app usa `%APPDATA%\CulturaBuilder\opencode`.
+- **Produto**: `package.json` não tem lib de email (sem resend/nodemailer) e `.env.local` não define `EMAIL_PROVIDER`/`EMAIL_API_KEY` (só existem em `.env.example`), logo o X-Flow não envia email hoje.
+- **Browser MCP**: `browser-native` falhava por token da extensão Playwright. O ficheiro `%APPDATA%\CulturaBuilder\opencode\data\opencode\playwright-extension-token` tinha um token diferente do fornecido; foi substituído pelo token atual. O token é lido no arranque (`builder-ai-opencode/dist/index.js:453`), por isso é necessário reiniciar o opencode para o MCP o apanhar.
+- **Motivo do reinício**: recarregar o MCP `browser-native` com o novo token da extensão Playwright.
+- **Pendentes**: confirmar ligação do browser (Chrome, perfil "Profile 14", extensão Playwright instalada) e, se se quiser email nas ferramentas do agente, expor o MCP `composio` no config usado pela app.
