@@ -69,29 +69,75 @@ export function matchProposalService(raw?: string): ProposalService {
 export function resolveBudgetInitialParams(
   params: {
     servico?: string | string[];
+    revestimento?: string | string[];
     cor?: string | string[];
     acabamento?: string | string[];
+    oticas?: string | string[];
+    chrome?: string | string[];
+    chromeAcab?: string | string[];
     origem?: string | string[];
   },
   colors: ReadonlyArray<{ name: string }>,
-  finishes: ReadonlyArray<{ name: string }>,
+  finishes: ReadonlyArray<{ name: string; value?: string }>,
 ) {
   const serviceParam = typeof params.servico === "string" ? params.servico : undefined;
+  const coatingParam = typeof params.revestimento === "string" ? params.revestimento : undefined;
   const colorName = typeof params.cor === "string" ? params.cor : undefined;
   const finishName = typeof params.acabamento === "string" ? params.acabamento : undefined;
+  const headlightsName = typeof params.oticas === "string" ? params.oticas : undefined;
+  const chromeParam = typeof params.chrome === "string" ? params.chrome : undefined;
+  const chromeFinishParam = typeof params.chromeAcab === "string" ? params.chromeAcab : undefined;
   const sourceParam = typeof params.origem === "string" ? params.origem : undefined;
 
-  const color = colors.find((item) => item.name === colorName);
-  const finish = finishes.find((item) => item.name === finishName);
+  const color = colorName ? colors.find((item) => item.name === colorName) : undefined;
+  const finish = finishName
+    ? finishes.find((item) => item.name === finishName || item.value === finishName)
+    : undefined;
 
-  const initialService: ProposalService =
-    color || finish ? "Car Wrap" : matchProposalService(serviceParam);
+  const validHeadlights = ["Transparente", "Fumado leve", "Fumado médio", "Fumado escuro"];
+  const headlights =
+    headlightsName && validHeadlights.includes(headlightsName) ? headlightsName : undefined;
+
+  const chromeZoneMap = new Map([
+    ["frisos", "frisos das portas"],
+    ["frente", "frente"],
+    ["traseira", "traseira"],
+    ["espelhos", "espelhos"],
+  ]);
+  const chromeZones = chromeParam
+    ? chromeParam
+        .split(",")
+        .map((key) => chromeZoneMap.get(key.trim()))
+        .filter((value): value is string => Boolean(value))
+    : [];
+
+  let initialService: ProposalService = matchProposalService(serviceParam);
+  if (coatingParam === "ppf") {
+    initialService = "PPF";
+  } else if (coatingParam === "color-ppf") {
+    initialService = "Color PPF";
+  } else if (coatingParam === "vinil" || color || finish) {
+    initialService = "Car Wrap";
+  } else if (headlights || chromeZones.length > 0) {
+    initialService = "Detalhes e óticas";
+  }
+
+  const details: string[] = [];
+  if (coatingParam === "ppf") details.push("serviço PPF transparente");
+  else if (coatingParam === "color-ppf") details.push("serviço PPF de Cor");
+  else if (coatingParam === "vinil") details.push("serviço Vinil (Car Wrap)");
+  if (color) details.push(`cor ${color.name}`);
+  if (finish) details.push(`acabamento ${finish.name}`);
+  if (headlights) details.push(`óticas ${headlights}`);
+  if (chromeZones.length > 0) {
+    const finishText =
+      chromeFinishParam === "Preto mate" ? "Preto mate" : "Preto brilho";
+    details.push(`Chrome Delete (${chromeZones.join(", ")} · ${finishText})`);
+  }
 
   const initialMessage =
-    color || finish
-      ? `Interesse no estúdio de cor: ${color ? color.name : "cor a definir"}${
-          finish ? `, acabamento ${finish.name}` : ""
-        }. Gostaria de receber orçamento para o meu carro.`
+    details.length > 0
+      ? `Interesse no estúdio de cor: ${details.join(", ")}. Gostaria de receber orçamento para o meu carro.`
       : undefined;
 
   return {

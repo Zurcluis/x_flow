@@ -1,8 +1,10 @@
 import { ArrowUpRight, MapPin } from "lucide-react";
 import type { Metadata } from "next";
+import { WhatsAppIcon } from "@/components/brand-icons";
 import { ContactMapSection } from "@/components/contact-map-section";
 import { ContactSection } from "@/components/contact-section";
 import { PageIntro } from "@/components/page-intro";
+import { siteConfig } from "@/lib/site-config";
 import { studioColors, studioFinishes } from "@/lib/studio";
 
 export const metadata: Metadata = {
@@ -58,6 +60,15 @@ export default async function ContactosPage({ searchParams }: ContactosPageProps
           <a href="#proposta" className="button gold">
             Pedir orçamento
             <ArrowUpRight size={18} aria-hidden="true" />
+          </a>
+          <a
+            href={siteConfig.whatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="button outline whatsapp-button"
+          >
+            <WhatsAppIcon size={18} />
+            Falar no WhatsApp
           </a>
           <a href="#mapa" className="text-link">
             <MapPin size={17} aria-hidden="true" /> Ver no mapa

@@ -1,20 +1,21 @@
 import { ArrowUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ColorStudio } from "@/components/color-studio";
 import { PageIntro } from "@/components/page-intro";
+import { StudioExperience } from "@/components/studio-experience";
 
 export const metadata: Metadata = {
   title: "Estúdio de cor",
   description:
-    "Explore cores e acabamentos no estúdio de cor X-Motion. Uma simulação 2D aproximada, com confirmação em amostra física.",
+    "Personalize a fotografia do seu carro com IA ou explore cores e acabamentos no estúdio de cor X-Motion, com confirmação em amostra física.",
   alternates: {
     canonical: "/estudio",
   },
   openGraph: {
     url: "/estudio",
     title: "Estúdio de cor | X-Motion",
-    description: "Explore cores e acabamentos no estúdio de cor X-Motion.",
+    description:
+      "Personalize pintura, película nos vidros, jantes e kit aerodinâmico no estúdio de cor X-Motion.",
   },
 };
 
@@ -61,7 +62,7 @@ export default function EstudioPage() {
           </Link>
         </div>
       </PageIntro>
-      <ColorStudio showHeading={false} />
+      <StudioExperience />
       <section className="studio-steps light-section section-pad">
         <div className="section-heading">
           <div>

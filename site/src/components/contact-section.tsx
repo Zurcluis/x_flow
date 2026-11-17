@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, type FormEvent } from "react";
-import { FacebookIcon, InstagramIcon } from "@/components/brand-icons";
+import { FacebookIcon, InstagramIcon, WhatsAppIcon } from "@/components/brand-icons";
 import { proposalServices, type ProposalErrors, type ProposalService } from "@/lib/proposal";
 import { siteConfig } from "@/lib/site-config";
 
@@ -168,6 +168,15 @@ export function ContactSection({
           </span>
         </div>
         <div className="contact-direct">
+          <a
+            className="text-link"
+            href={siteConfig.whatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <WhatsAppIcon size={16} /> WhatsApp
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </a>
           <a className="text-link" href={siteConfig.phoneHref}>
             <Phone size={16} aria-hidden="true" /> {siteConfig.phone}
           </a>

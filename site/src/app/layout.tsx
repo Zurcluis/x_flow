@@ -4,6 +4,7 @@ import { SiteChrome } from "@/components/site-chrome";
 import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
 import "./site.css";
+import "./turbo-x.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -71,9 +72,61 @@ const structuredData = {
   image: `${siteConfig.url}/images/og-xmotion.webp`,
   email: siteConfig.email,
   telephone: siteConfig.phone,
-  areaServed: {
+  areaServed: siteConfig.serviceAreas.map((city) => ({
     "@type": "City",
-    name: siteConfig.locality,
+    name: city,
+  })),
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "08:00",
+      closes: "17:00",
+    },
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Saturday"],
+      opens: "09:00",
+      closes: "13:00",
+    },
+  ],
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "Serviços de Proteção e Personalização Automóvel",
+    itemListElement: [
+      {
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: "PPF (Paint Protection Film)",
+          url: `${siteConfig.url}/servicos/ppf`,
+        },
+      },
+      {
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: "Car Wrap (Mudança de cor em vinil)",
+          url: `${siteConfig.url}/servicos/car-wrap`,
+        },
+      },
+      {
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: "Color PPF (Película de proteção pigmentada)",
+          url: `${siteConfig.url}/servicos/color-ppf`,
+        },
+      },
+      {
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: "Chrome Delete, óticas e aplicações parciais",
+          url: `${siteConfig.url}/servicos/detalhes`,
+        },
+      },
+    ],
   },
   address: {
     "@type": "PostalAddress",

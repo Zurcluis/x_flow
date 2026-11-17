@@ -2,34 +2,34 @@ import { Plus } from "lucide-react";
 
 const questions = [
   {
-    question: "Qual é a diferença entre PPF e vinil?",
+    question: "Qual é a diferença entre PPF, Car Wrap e Color PPF?",
     answer:
-      "O PPF é uma película orientada para a proteção da pintura. O vinil é sobretudo uma solução de personalização de cor e textura. O Color PPF combina mudança de cor e proteção. A escolha depende do uso, do acabamento e do investimento pretendido.",
+      "O PPF (Paint Protection Film) é uma película transparente e autorreparável orientada para proteger a pintura original contra gravilha e pequenos riscos. O Car Wrap é uma película em vinil pensada para mudar a cor ou textura do carro. O Color PPF combina mudança estética de cor com proteção física mais espessa numa única aplicação.",
   },
   {
-    question: "Quanto custa um projeto?",
+    question: "O PPF ou o Car Wrap danificam a pintura original ao remover?",
     answer:
-      "O valor depende da viatura, material, zonas abrangidas, preparação e desmontagem necessárias. Envie-nos o modelo e o que pretende fazer: preparamos um orçamento com as inclusões e condições explicadas.",
+      "Não, desde que a pintura original esteja em bom estado e a remoção seja feita com técnica adequada. Tanto o PPF como o vinil de Car Wrap são soluções reversíveis que ajudam a preservar o verniz de origem durante o uso diário.",
   },
   {
-    question: "Quanto tempo fica o carro nas instalações?",
+    question: "Quanto custa e quanto tempo demora um projeto na X-Motion?",
     answer:
-      "Depende do serviço e da complexidade. A preparação, a aplicação e o controlo final fazem parte do planeamento. O prazo é acordado no orçamento antes da marcação.",
+      "O valor e o prazo dependem do modelo da viatura, material, zonas a cobrir (como Pack Frontal vs. Cobertura Integral) e preparação necessária. Trabalhos parciais ou Chrome Delete são concluídos em 1 a 2 dias; aplicações integrais são planeadas em vários dias úteis, com prazo e orçamento fechados antes da marcação.",
   },
   {
-    question: "A cor do simulador é igual à película?",
+    question: "Posso aplicar PPF apenas na frente do carro ou em partes interiores?",
     answer:
-      "O simulador é uma aproximação visual. O ecrã, a iluminação e o acabamento alteram a perceção da cor. A escolha final deve ser confirmada numa amostra física no nosso espaço.",
+      "Sim. Pode optar por um Pack Frontal (para-choques, capô, guarda-lamas, espelhos e óticas), Cobertura Integral ou aplicação específica em consolas e molduras interiores sensíveis, além de Chrome Delete e escurecimento de óticas.",
   },
   {
-    question: "É possível personalizar apenas alguns detalhes?",
+    question: "Como lavar e manter um carro com PPF ou Car Wrap?",
     answer:
-      "Sim. Podemos avaliar soluções para tejadilho, espelhos, frisos, interiores e proteção de óticas, entre outras zonas. Indique os detalhes pretendidos no pedido.",
+      "Recomenda-se lavagem manual com champô neutro e panos de microfibra macios, evitando rolos automáticos abrasivos e jatos de alta pressão encostados diretamente às bordas da película. Na entrega explicamos todos os cuidados específicos do material escolhido.",
   },
   {
-    question: "Como funciona a manutenção e a garantia?",
+    question: "Onde fica a X-Motion e atendem viaturas fora de Barcelos?",
     answer:
-      "Os cuidados e as condições dependem do material e do serviço escolhido. O orçamento identifica a cobertura aplicável, as exclusões e as recomendações de manutenção. Depois da entrega, contacte-nos se surgir alguma dúvida.",
+      "O nosso espaço fica em Barcelos (R. Odete Hermenegildo 1286, Pavilhão 4 D, 4750-841). Recebemos regularmente viaturas de Braga, Vila Nova de Famalicão, Guimarães, Viana do Castelo, Porto e de todo o Norte de Portugal mediante marcação.",
   },
 ];
 
@@ -44,6 +44,19 @@ export function FAQSection({
 }: FAQSectionProps = {}) {
   const visibleQuestions =
     typeof limit === "number" ? questions.slice(0, limit) : questions;
+
+  const faqStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: visibleQuestions.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
 
   return (
     <section className="faq-section light-section section-pad">
@@ -71,6 +84,10 @@ export function FAQSection({
           </details>
         ))}
       </div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+      />
     </section>
   );
 }

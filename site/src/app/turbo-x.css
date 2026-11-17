@@ -1,0 +1,1390 @@
+/* Estúdio IA Turbo X integrado na identidade visual X-Motion */
+:root {
+  --background: #101211;
+  --foreground: #f2f2ee;
+  --card: #171a18;
+  --card-foreground: #f2f2ee;
+  --popover: #171a18;
+  --popover-foreground: #f2f2ee;
+  --primary: #c5aa79;
+  --primary-foreground: #101211;
+  --secondary: #1d211e;
+  --secondary-foreground: #f2f2ee;
+  --muted: #1e221f;
+  --muted-foreground: #a7aaa6;
+  --accent: #242824;
+  --accent-foreground: #c5aa79;
+  --destructive: #bf3333;
+  --border: rgba(255, 255, 255, 0.15);
+  --input: #2d322e;
+  --ring: #c5aa79;
+  --radius: 0px;
+}
+
+.turbox-experience-wrap {
+  background: #171a18;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.turbox-mode-bar {
+  padding: 28px var(--pad);
+  border-bottom: 1px solid var(--line);
+  background: #101211;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.turbox-mode-copy .eyebrow {
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+
+.turbox-mode-copy p {
+  color: #aeb4a9;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.turbox-mode-tabs {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  background: #171a18;
+  padding: 4px;
+  gap: 4px;
+}
+
+.turbox-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 18px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #a7aaa6;
+  border: 1px solid transparent;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.turbox-mode-tab:hover {
+  color: var(--paper);
+}
+
+.turbox-mode-tab.active {
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.turbox-section {
+  padding-top: 64px;
+  padding-bottom: 92px;
+  background: #171a18;
+}
+
+.turbox-studio {
+  max-width: 1536px;
+  margin: 0 auto;
+}
+
+.turbox-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 26px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.turbox-steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #a7aaa6;
+  white-space: nowrap;
+}
+
+.turbox-steps > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.turbox-steps b {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #101211;
+  color: var(--paper);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.turbox-steps > span:first-child b {
+  color: var(--ink);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.turbox-steps > svg {
+  color: #676b64;
+}
+
+.turbox-help-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  background: #101211;
+  color: var(--paper);
+  padding: 10px 15px;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.turbox-help-button:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.turbox-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 28px;
+  align-items: start;
+}
+
+.turbox-preview-column {
+  min-width: 0;
+  position: sticky;
+  top: 24px;
+}
+
+.turbox-photo-panel {
+  background: #101211;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.turbox-photo-toolbar {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+
+.turbox-photo-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--paper);
+}
+
+.turbox-photo-title strong {
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.turbox-section-number {
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+}
+
+.turbox-quiet-button {
+  background: #171a18;
+  border: 1px solid #34392f;
+  padding: 9px 14px;
+  font-size: 12px;
+  color: var(--paper);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.turbox-quiet-button:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.turbox-car-stage {
+  height: clamp(320px, 34vw, 500px);
+  position: relative;
+  background: #0c0e0d;
+  isolation: isolate;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+}
+
+.turbox-car-stage.dragging {
+  outline: 2px dashed var(--gold);
+  outline-offset: -8px;
+}
+
+.turbox-stage-top {
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  right: 20px;
+  z-index: 2;
+  pointer-events: none;
+  gap: 8px;
+}
+
+.turbox-image-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  background: rgba(16, 18, 17, 0.85);
+  border: 1px solid rgba(197, 170, 121, 0.35);
+  padding: 6px 10px;
+}
+
+.turbox-example-label {
+  font-size: 11px;
+  color: #cbd1c2;
+  padding: 6px 10px;
+  background: rgba(16, 18, 17, 0.8);
+  border: 1px solid var(--line);
+}
+
+.turbox-image-expand {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  display: block;
+}
+
+.turbox-car-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.turbox-comparison-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #0c0e0d;
+  pointer-events: none;
+}
+
+.turbox-comparison-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--gold);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.turbox-comparison-line svg {
+  background: var(--gold);
+  color: var(--ink);
+  min-width: 34px;
+  height: 34px;
+  padding: 7px;
+  border-radius: 50%;
+  border: 3px solid #101211;
+}
+
+.turbox-drop-overlay,
+.turbox-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 18, 17, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 5;
+  color: var(--gold);
+  padding: 30px;
+  text-align: center;
+}
+
+.turbox-loading-overlay strong {
+  color: var(--paper);
+  font-weight: 400;
+  font-size: 18px;
+}
+
+.turbox-loading-overlay span {
+  font-size: 13px;
+  color: #a7aaa6;
+  max-width: 340px;
+}
+
+.turbox-loading-overlay button {
+  font-size: 12px;
+  color: var(--gold);
+  text-decoration: underline;
+  margin-top: 6px;
+}
+
+.turbox-stage-bottom {
+  position: absolute;
+  bottom: 16px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  pointer-events: none;
+  color: #aeb4a9;
+  z-index: 2;
+}
+
+.turbox-stage-bottom > span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  background: rgba(16, 18, 17, 0.78);
+  padding: 5px 9px;
+}
+
+.turbox-stage-bottom b {
+  font-weight: 400;
+  color: var(--gold);
+}
+
+.turbox-preview-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 64px;
+  padding: 0 20px;
+  position: relative;
+}
+
+.turbox-view-tabs {
+  background: #171a18 !important;
+  border: 1px solid var(--line);
+  border-radius: 0 !important;
+  height: auto !important;
+  padding: 4px !important;
+}
+
+.turbox-view-tabs button {
+  font-size: 12px;
+  padding: 7px 16px;
+  border-radius: 0 !important;
+  color: #a7aaa6;
+}
+
+.turbox-view-tabs button[data-state="active"] {
+  background: var(--gold) !important;
+  color: var(--ink) !important;
+}
+
+.turbox-download-button {
+  position: absolute;
+  right: 20px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  background: #171a18;
+  color: var(--paper);
+}
+
+.turbox-download-button:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.turbox-download-button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.turbox-comparison-slider {
+  display: flex;
+  gap: 18px;
+  padding: 6px 24px 20px;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a7aaa6;
+}
+
+.turbox-upload-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #101211;
+  border: 1px dashed rgba(197, 170, 121, 0.45);
+  padding: 20px;
+  margin-top: 18px;
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.turbox-upload-card:hover {
+  border-color: var(--gold);
+  background: #141715;
+}
+
+.turbox-upload-card > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.turbox-upload-card strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--paper);
+  margin-bottom: 4px;
+}
+
+.turbox-upload-card small {
+  font-size: 12px;
+  color: #8c9485;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.turbox-upload-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  background: rgba(197, 170, 121, 0.12);
+  border: 1px solid rgba(197, 170, 121, 0.28);
+  flex-shrink: 0;
+}
+
+.turbox-upload-card > svg {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.turbox-selection-summary {
+  margin-top: 20px;
+  padding: 22px;
+  background: #101211;
+  border: 1px solid var(--line);
+}
+
+.turbox-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--paper);
+}
+
+.turbox-summary-title > svg {
+  color: var(--gold);
+}
+
+.turbox-summary-title strong {
+  font-weight: 400;
+}
+
+.turbox-summary-title > span {
+  font-size: 11px;
+  color: #8c9485;
+  margin-left: auto;
+}
+
+.turbox-summary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.turbox-summary-chips > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #171a18;
+  border: 1px solid #2e332b;
+  padding: 7px 11px;
+  font-size: 12px;
+  color: #cbd1c2;
+}
+
+.turbox-summary-chips i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: inline-block;
+}
+
+.turbox-summary-cta {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.turbox-summary-cta .button {
+  width: 100%;
+  justify-content: space-between;
+  min-height: 48px;
+  font-size: 12px;
+}
+
+.turbox-photo-tip {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #8c9485;
+  line-height: 1.7;
+  margin-top: 16px;
+}
+
+.turbox-photo-tip > svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--gold);
+}
+
+.turbox-photo-tip strong {
+  font-weight: 500;
+  color: #cbd1c2;
+}
+
+.turbox-customizer {
+  background: #101211;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.turbox-customizer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.turbox-customizer-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.turbox-customizer-heading h2 {
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  font-weight: 400;
+  margin: 0;
+  color: var(--paper);
+}
+
+.turbox-customizer-heading > button {
+  color: #8c9485;
+  padding: 5px;
+  transition: color 0.2s;
+}
+
+.turbox-customizer-heading > button:hover {
+  color: var(--gold);
+}
+
+.turbox-option-section {
+  margin: 0 22px;
+  padding: 20px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+
+.turbox-option-section legend {
+  float: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--paper);
+  margin-bottom: 14px;
+}
+
+.turbox-option-section legend > svg {
+  color: var(--gold);
+}
+
+.turbox-option-section legend > span,
+.turbox-text-button {
+  font-size: 11px;
+  font-weight: 400;
+  margin-left: auto;
+  color: var(--gold);
+}
+
+.turbox-text-button:hover {
+  text-decoration: underline;
+}
+
+.turbox-color-grid {
+  clear: both;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 9px !important;
+}
+
+.turbox-choice-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  overflow: hidden;
+}
+
+.turbox-swatch-wrap {
+  position: relative;
+  cursor: pointer;
+  display: block;
+  border-radius: 50%;
+  padding: 3px;
+  border: 1px solid transparent;
+  width: 36px;
+  height: 36px;
+  justify-self: center;
+}
+
+.turbox-swatch-wrap.selected {
+  border-color: var(--gold);
+}
+
+.turbox-swatch {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.turbox-original-swatch {
+  background: conic-gradient(#7d8380, #f2f2ee, #7d8380, #323633, #7d8380);
+}
+
+.turbox-field-label {
+  font-size: 12px;
+  color: #a7aaa6;
+  margin: 16px 0 10px;
+}
+
+.turbox-finish-grid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px !important;
+}
+
+.turbox-finish-choice {
+  cursor: pointer;
+  border: 1px solid #34392f;
+  background: #171a18;
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 12px;
+  position: relative;
+  color: #cbd1c2;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.turbox-finish-choice.selected {
+  border-color: var(--gold);
+  background: rgba(197, 170, 121, 0.12);
+  color: var(--gold);
+}
+
+.turbox-finish-choice.inactive {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.turbox-finish-sample {
+  display: block;
+  height: 18px;
+  margin: 0 6px 6px;
+}
+
+.turbox-finish-0 {
+  background: linear-gradient(125deg, #5e656b, #eef2f5 40%, #8f989e 52%, #4a5055);
+}
+
+.turbox-finish-1 {
+  background: #6f777e;
+}
+
+.turbox-finish-2 {
+  background: linear-gradient(125deg, #98a0a5, #5e6870);
+}
+
+.turbox-finish-3 {
+  background: repeating-linear-gradient(60deg, #8b949b 0 1px, #687178 1px 2px);
+}
+
+.turbox-tint-grid {
+  clear: both;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px !important;
+}
+
+.turbox-tint-choice {
+  border: 1px solid #34392f;
+  background: #171a18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 5px 7px;
+  position: relative;
+  cursor: pointer;
+  gap: 5px;
+  font-size: 12px;
+  color: #cbd1c2;
+}
+
+.turbox-tint-choice.selected {
+  background: rgba(197, 170, 121, 0.12);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.turbox-tint-sample {
+  height: 24px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+
+.turbox-tint-sample > span {
+  position: absolute;
+  width: 22px;
+  height: 55px;
+  background: rgba(255, 255, 255, 0.22);
+  transform: rotate(30deg);
+  top: -15px;
+  left: 15px;
+}
+
+.turbox-tint-choice small {
+  font-size: 10px;
+  color: #8c9485;
+}
+
+.turbox-fineprint {
+  font-size: 11px;
+  color: #8c9485;
+  line-height: 1.55;
+  margin: 10px 0 0;
+}
+
+.turbox-service-grid {
+  clear: both;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px !important;
+  margin-bottom: 16px;
+}
+
+.turbox-service-choice {
+  position: relative;
+  cursor: pointer;
+  border: 1px solid #34392f;
+  background: #171a18;
+  padding: 11px 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.turbox-service-choice strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--paper);
+}
+
+.turbox-service-choice small {
+  font-size: 10px;
+  color: #8c9485;
+  line-height: 1.3;
+}
+
+.turbox-service-choice.selected {
+  border-color: var(--gold);
+  background: rgba(197, 170, 121, 0.12);
+}
+
+.turbox-service-choice.selected strong {
+  color: var(--gold);
+}
+
+.turbox-color-grid.inactive {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.turbox-chrome-grid {
+  clear: both;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.turbox-chrome-choice {
+  position: relative;
+  border: 1px solid #34392f;
+  background: #171a18;
+  padding: 10px 28px 10px 11px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.turbox-chrome-choice strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--paper);
+}
+
+.turbox-chrome-choice small {
+  font-size: 10px;
+  color: #8c9485;
+  line-height: 1.35;
+}
+
+.turbox-chrome-choice.selected {
+  border-color: var(--gold);
+  background: rgba(197, 170, 121, 0.1);
+}
+
+.turbox-chrome-choice.selected strong {
+  color: var(--gold);
+}
+
+.turbox-chrome-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #3c4237;
+  background: #101211;
+  color: transparent;
+}
+
+.turbox-chrome-choice.selected .turbox-chrome-check {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: var(--ink);
+}
+
+.turbox-chrome-finish-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px !important;
+  margin-top: 10px;
+}
+
+.turbox-chrome-finish-choice {
+  cursor: pointer;
+  border: 1px solid #34392f;
+  background: #171a18;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #cbd1c2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s;
+}
+
+.turbox-chrome-finish-choice.selected {
+  border-color: var(--gold);
+  background: rgba(197, 170, 121, 0.12);
+  color: var(--gold);
+}
+
+.turbox-chrome-finish-choice.inactive {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.turbox-chrome-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.turbox-chrome-dot.gloss {
+  background: linear-gradient(135deg, #1b1d1c, #596066 45%, #111312);
+}
+
+.turbox-chrome-dot.matte {
+  background: #232625;
+}
+
+.turbox-wheel-grid {
+  clear: both;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px !important;
+}
+
+.turbox-wheel-choice {
+  border: 1px solid #34392f;
+  background: #171a18;
+  text-align: center;
+  padding: 8px 4px 9px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.turbox-wheel-choice.selected {
+  border-color: var(--gold);
+  background: rgba(197, 170, 121, 0.1);
+}
+
+.turbox-wheel-choice img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  background: #f2f2ee;
+  padding: 4px;
+  border-radius: 50%;
+  margin-bottom: 6px;
+}
+
+.turbox-wheel-choice strong {
+  font-size: 12px;
+  color: var(--paper);
+  font-weight: 500;
+}
+
+.turbox-wheel-choice small {
+  font-size: 10px;
+  color: #8c9485;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.turbox-wheel-check {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: var(--gold);
+  color: var(--ink);
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.turbox-tuning-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.turbox-tuning-control label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--paper);
+  cursor: pointer;
+}
+
+.turbox-tuning-control label svg {
+  color: var(--gold);
+}
+
+.turbox-tuning-control p {
+  font-size: 12px;
+  color: #8c9485;
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+.turbox-tuning-active label {
+  color: var(--gold);
+}
+
+.turbox-studio [data-slot="switch"] {
+  width: 40px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #232824;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.turbox-studio [data-slot="switch"][data-state="checked"] {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.turbox-studio [data-slot="switch-thumb"] {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #f2f2ee;
+  display: block;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.turbox-studio [data-slot="switch"][data-state="checked"] [data-slot="switch-thumb"] {
+  transform: translateX(18px);
+  background: #101211;
+}
+
+.turbox-studio [data-slot="slider-track"] {
+  background: #2d322e;
+  height: 4px;
+}
+
+.turbox-studio [data-slot="slider-range"] {
+  background: var(--gold);
+}
+
+.turbox-studio [data-slot="slider-thumb"] {
+  width: 16px;
+  height: 16px;
+  background: var(--gold);
+  border: 2px solid #101211;
+}
+
+.turbox-model-choice [data-slot="radio-group-item"] {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 1px solid #676b64;
+  background: #101211;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.turbox-model-choice [data-slot="radio-group-item"][data-state="checked"] {
+  border-color: var(--gold);
+}
+
+.turbox-model-choice [data-slot="radio-group-indicator"] svg {
+  fill: var(--gold);
+  color: var(--gold);
+}
+
+.turbox-generation-section {
+  padding: 10px 22px 22px;
+  background: #0c0e0d;
+}
+
+.turbox-generation-section .turbox-field-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #cbd1c2;
+  font-size: 12px;
+}
+
+.turbox-generation-section .turbox-field-label svg {
+  color: var(--gold);
+}
+
+.turbox-model-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px !important;
+}
+
+.turbox-model-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  border: 1px solid #34392f;
+  padding: 10px 9px;
+  background: #171a18;
+}
+
+.turbox-model-choice.selected {
+  border-color: var(--gold);
+  background: rgba(197, 170, 121, 0.1);
+}
+
+.turbox-model-choice strong {
+  font-size: 12px;
+  display: block;
+  font-weight: 500;
+  color: var(--paper);
+}
+
+.turbox-model-choice small {
+  font-size: 11px;
+  color: #8c9485;
+  display: block;
+  margin-top: 2px;
+}
+
+.turbox-generate-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--gold);
+  color: var(--ink);
+  border: 1px solid var(--gold);
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 16px;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.turbox-generate-button:hover:not(:disabled) {
+  background: #d7be93;
+  transform: translateY(-1px);
+}
+
+.turbox-generate-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.turbox-generate-button > svg:last-child {
+  margin-left: auto;
+}
+
+.turbox-generate-button > svg:first-child {
+  margin-right: auto;
+}
+
+.turbox-generate-note {
+  font-size: 11px;
+  color: #8c9485;
+  text-align: center;
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
+.turbox-feedback {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 600px;
+  width: calc(100% - 36px);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: #171a18;
+  border: 1px solid var(--gold);
+  color: var(--paper);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  z-index: 60;
+}
+
+.turbox-feedback > svg {
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.turbox-feedback button {
+  margin-left: auto;
+  color: #a7aaa6;
+}
+
+.turbox-result-notice {
+  font-size: 12px;
+  padding: 12px 16px;
+  color: var(--gold);
+  background: rgba(197, 170, 121, 0.1);
+  border: 1px solid rgba(197, 170, 121, 0.35);
+  margin-top: 16px;
+}
+
+.turbox-dialog {
+  background: #171a18 !important;
+  color: var(--paper) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  padding: 28px !important;
+}
+
+.turbox-help-steps {
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 10px 0;
+}
+
+.turbox-help-steps li + li {
+  margin-top: 12px;
+}
+
+.turbox-help-steps b {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.turbox-help-steps p {
+  color: #aeb4a9;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.turbox-zoom-dialog {
+  max-width: min(1000px, calc(100% - 32px)) !important;
+}
+
+.turbox-zoom-dialog img {
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  background: #0c0e0d;
+}
+
+@media (max-width: 1150px) {
+  .turbox-steps {
+    display: none;
+  }
+  .turbox-workspace {
+    grid-template-columns: minmax(0, 1fr) 365px;
+    gap: 20px;
+  }
+  .turbox-option-section {
+    margin: 0 18px;
+  }
+  .turbox-generation-section {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+@media (max-width: 850px) {
+  .turbox-workspace {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .turbox-preview-column {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .turbox-mode-bar {
+    padding: 22px var(--pad);
+    gap: 16px;
+  }
+  .turbox-mode-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .turbox-mode-tab {
+    justify-content: center;
+    padding: 11px 10px;
+    font-size: 11px;
+  }
+  .turbox-section {
+    padding-top: 40px;
+    padding-bottom: 64px;
+  }
+  .turbox-photo-toolbar {
+    padding: 0 16px;
+  }
+  .turbox-car-stage {
+    height: clamp(250px, 58vw, 400px);
+  }
+  .turbox-stage-top {
+    left: 12px;
+    right: 12px;
+    top: 12px;
+  }
+  .turbox-stage-bottom {
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    font-size: 9px;
+    gap: 8px;
+  }
+  .turbox-stage-bottom > span {
+    white-space: nowrap;
+    padding: 4px 7px;
+  }
+  .turbox-example-label {
+    display: none;
+  }
+  .turbox-preview-footer {
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .turbox-view-tabs button {
+    padding: 6px 11px;
+    font-size: 11px;
+  }
+  .turbox-download-button {
+    position: static;
+    flex-shrink: 0;
+  }
+  .turbox-upload-card {
+    padding: 16px;
+  }
+  .turbox-selection-summary {
+    padding: 18px;
+  }
+  .turbox-summary-title > span {
+    display: none;
+  }
+}

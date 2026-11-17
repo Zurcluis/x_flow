@@ -1,0 +1,26 @@
+# X-Motion — PPF & Car Wrap em Barcelos (Norte de Portugal)
+
+> Oficina especializada em proteção de pintura (PPF), Car Wrap, Color PPF e personalização automóvel em Barcelos, Braga, Portugal.
+
+## Identificação e Contactos
+- **Nome:** X-Motion
+- **Morada:** R. Odete Hermenegildo 1286, Pavilhão 4 D, 4750-841 Vila Frescainha (São Pedro), Barcelos, Braga, Portugal
+- **Área servida:** Barcelos, Braga, Vila Nova de Famalicão, Guimarães, Viana do Castelo, Porto e Norte de Portugal
+- **Horário:** Segunda a sexta 08:00–17:00; Sábado 09:00–13:00
+- **Telefone:** +351 934 644 142
+- **Email:** xmotionwrap@gmail.com
+- **Instagram:** https://www.instagram.com/x_motion.wrap/
+- **Site oficial:** https://x-flow-b8rt.vercel.app
+
+## Serviços Principais
+- **PPF (Paint Protection Film):** [/servicos/ppf](https://x-flow-b8rt.vercel.app/servicos/ppf) — Película transparente autorreparável para proteger a pintura contra gravilha, insetos e pequenos riscos (Pack Frontal ou Cobertura Integral, acabamento brilho ou mate/acetinado, proteção de óticas e consolas interiores).
+- **Car Wrap:** [/servicos/car-wrap](https://x-flow-b8rt.vercel.app/servicos/car-wrap) — Mudança integral ou parcial de cor e textura em vinil automóvel, reversível, com preparação técnica da pintura e acabamento limpo nos contornos.
+- **Color PPF:** [/servicos/color-ppf](https://x-flow-b8rt.vercel.app/servicos/color-ppf) — Película de proteção pigmentada que combina mudança de cor com maior resistência a impactos numa única aplicação.
+- **Detalhes, Chrome Delete & Motas:** [/servicos/detalhes](https://x-flow-b8rt.vercel.app/servicos/detalhes) — Chrome Delete (preto brilho ou mate), escurecimento de óticas, aplicações parciais, pintura de pinças e proteção/wrap de motas.
+
+## Ações e Páginas Úteis
+- **Pedir orçamento personalizado (avaliação gratuita após análise da viatura):** https://x-flow-b8rt.vercel.app/orcamento
+- **Portfólio de trabalhos reais (14 projetos publicados):** https://x-flow-b8rt.vercel.app/projetos
+- **Estúdio de cor interativo:** https://x-flow-b8rt.vercel.app/estudio
+- **Sobre o espaço e método de trabalho:** https://x-flow-b8rt.vercel.app/sobre
+- **Contactos e localização:** https://x-flow-b8rt.vercel.app/contactos

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { BudgetFunnel } from "@/components/budget-funnel";
 import { resolveBudgetInitialParams } from "@/lib/proposal";
-import { studioColors, studioFinishes } from "@/lib/studio";
+import { studioColors, studioFinishes, turboXColors, turboXFinishes } from "@/lib/studio";
 
 export const metadata: Metadata = {
   title: "Pedir orçamento",
@@ -21,8 +21,12 @@ export const metadata: Metadata = {
 type OrcamentoPageProps = {
   searchParams: Promise<{
     servico?: string | string[];
+    revestimento?: string | string[];
     cor?: string | string[];
     acabamento?: string | string[];
+    oticas?: string | string[];
+    chrome?: string | string[];
+    chromeAcab?: string | string[];
     origem?: string | string[];
   }>;
 };
@@ -31,8 +35,8 @@ export default async function OrcamentoPage({ searchParams }: OrcamentoPageProps
   const params = await searchParams;
   const { initialService, initialMessage, initialSource } = resolveBudgetInitialParams(
     params,
-    studioColors,
-    studioFinishes,
+    [...studioColors, ...turboXColors],
+    [...studioFinishes, ...turboXFinishes],
   );
 
   return (

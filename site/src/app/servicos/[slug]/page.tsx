@@ -83,10 +83,10 @@ export default async function ServicePage({ params }: ServicePageProps) {
             addressCountry: siteConfig.address.country,
           },
         },
-        areaServed: {
+        areaServed: siteConfig.serviceAreas.map((city) => ({
           "@type": "City",
-          name: siteConfig.locality,
-        },
+          name: city,
+        })),
       },
       {
         "@type": "BreadcrumbList",

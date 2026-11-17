@@ -1,7 +1,7 @@
 import { MapPin, Phone } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { FacebookIcon, InstagramIcon } from "@/components/brand-icons";
+import { FacebookIcon, InstagramIcon, WhatsAppIcon } from "@/components/brand-icons";
 import { navItems, siteConfig } from "@/lib/site-config";
 
 export function SiteFooter() {
@@ -20,6 +20,14 @@ export function SiteFooter() {
         </Link>
         <span>Proteção. Personalização. Precisão.</span>
         <div className="footer-social">
+          <a
+            href={siteConfig.whatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="WhatsApp da X-Motion"
+          >
+            <WhatsAppIcon size={20} />
+          </a>
           <a
             href={siteConfig.instagram}
             target="_blank"

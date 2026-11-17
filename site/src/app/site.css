@@ -457,3 +457,22 @@ h1,h2{text-wrap:balance}
 
 
 
+/* Botões e atalho flutuante de WhatsApp */
+.home-contact-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:32px}
+.home-contact-actions .button{margin-top:0}
+.whatsapp-button{gap:12px;border-color:rgba(197,170,121,.45);color:var(--paper)}
+.whatsapp-button svg{color:#25d366;flex-shrink:0}
+.whatsapp-button:hover{border-color:#25d366;background:rgba(37,211,102,.1)}
+
+.whatsapp-float{position:fixed;right:22px;bottom:22px;z-index:45;display:inline-flex;align-items:center;justify-content:center;gap:0;width:54px;height:54px;border-radius:999px;background:rgba(16,18,17,.92);border:1px solid rgba(197,170,121,.55);color:var(--paper);box-shadow:0 12px 32px rgba(0,0,0,.48);backdrop-filter:blur(10px);transition:transform .22s,border-color .22s,box-shadow .22s,background-color .22s}
+.whatsapp-float-icon{color:#25d366;flex-shrink:0}
+.whatsapp-float-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.whatsapp-float:hover{transform:translateY(-2px);border-color:#25d366;background:rgba(20,24,21,.98);box-shadow:0 16px 36px rgba(0,0,0,.6)}
+
+@media (max-width:560px){
+ .home-contact-actions{flex-direction:column;align-items:stretch}
+ .whatsapp-float{right:16px;bottom:16px;width:48px;height:48px}
+ .hero-bottom{padding-right:56px}
+ .hero-controls>span{white-space:nowrap}
+ .hero-controls button{width:24px}
+}

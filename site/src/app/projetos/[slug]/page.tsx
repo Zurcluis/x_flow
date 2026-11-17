@@ -32,15 +32,15 @@ export async function generateMetadata({ params }: ProjectPageProps): Promise<Me
   }
 
   return {
-    title: project.title,
-    description: project.description,
+    title: `${project.title} — ${project.subtitle}`,
+    description: `${project.description} Trabalho realizado no espaço X-Motion em Barcelos, Portugal.`,
     alternates: {
       canonical: `/projetos/${project.slug}`,
     },
     openGraph: {
       url: `/projetos/${project.slug}`,
-      title: `${project.title} | X-Motion`,
-      description: project.description,
+      title: `${project.title} — ${project.subtitle} | X-Motion`,
+      description: `${project.description} Trabalho realizado no espaço X-Motion em Barcelos, Portugal.`,
       images: [
         {
           url: project.image,

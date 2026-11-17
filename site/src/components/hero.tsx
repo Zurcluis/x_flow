@@ -7,6 +7,24 @@ import { useEffect, useState } from "react";
 
 const slides = [
   {
+    src: "/images/hero/lambo.webp",
+    width: 1600,
+    height: 1067,
+    title: "Lamborghini Huracán",
+    finish: "Preto profundo",
+    alt: "Lamborghini Huracán em preto profundo, no espaço X-Motion",
+    position: "50% 50%",
+  },
+  {
+    src: "/images/hero/ferrari.webp",
+    width: 1600,
+    height: 1067,
+    title: "Ferrari 458 Speciale",
+    finish: "Proteção PPF",
+    alt: "Ferrari 458 Speciale com proteção PPF, no espaço X-Motion",
+    position: "50% 50%",
+  },
+  {
     src: "/images/hero/m3.webp",
     width: 1600,
     height: 1067,
@@ -22,24 +40,6 @@ const slides = [
     title: "BMW M4",
     finish: "Areia clara",
     alt: "BMW M4 em tom areia clara, no espaço X-Motion",
-    position: "50% 50%",
-  },
-  {
-    src: "/images/hero/ferrari.webp",
-    width: 1600,
-    height: 1067,
-    title: "Ferrari 458 Speciale",
-    finish: "Proteção PPF",
-    alt: "Ferrari 458 Speciale com proteção PPF, no espaço X-Motion",
-    position: "50% 50%",
-  },
-  {
-    src: "/images/hero/lambo.webp",
-    width: 1600,
-    height: 1067,
-    title: "Lamborghini Huracán",
-    finish: "Preto profundo",
-    alt: "Lamborghini Huracán em preto profundo, no espaço X-Motion",
     position: "50% 50%",
   },
 ];
@@ -101,9 +101,8 @@ export function Hero() {
           <em>expressão.</em>
         </h1>
         <p>
-          Proteção e personalização automóvel.
-          <br />
-          O cuidado está em cada detalhe.
+          Aplicação especializada de PPF, Car Wrap, Color PPF e Chrome Delete em Barcelos,
+          para clientes de Braga, Porto e todo o Norte.
         </p>
         <div className="hero-actions">
           <Link href="/orcamento" className="button gold">

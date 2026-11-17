@@ -1,6 +1,6 @@
 import { ArrowUpRight, Clock, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
-import { FacebookIcon, InstagramIcon } from "@/components/brand-icons";
+import { FacebookIcon, InstagramIcon, WhatsAppIcon } from "@/components/brand-icons";
 import { siteConfig } from "@/lib/site-config";
 
 export function HomeContactCta() {
@@ -20,10 +20,21 @@ export function HomeContactCta() {
           <br />
           Nós ajudamos a dar-lhe forma.
         </p>
-        <Link href="/orcamento" className="button gold">
-          Pedir orçamento
-          <ArrowUpRight size={18} aria-hidden="true" />
-        </Link>
+        <div className="home-contact-actions">
+          <Link href="/orcamento" className="button gold">
+            Pedir orçamento
+            <ArrowUpRight size={18} aria-hidden="true" />
+          </Link>
+          <a
+            href={siteConfig.whatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="button outline whatsapp-button"
+          >
+            <WhatsAppIcon size={18} />
+            Falar no WhatsApp
+          </a>
+        </div>
       </div>
       <div className="home-contact-details">
         <span className="eyebrow">CONTACTOS</span>
@@ -47,6 +58,15 @@ export function HomeContactCta() {
           </span>
         </div>
         <div className="contact-direct" style={{ marginTop: 12 }}>
+          <a
+            className="text-link"
+            href={siteConfig.whatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <WhatsAppIcon size={16} /> WhatsApp
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </a>
           <a
             className="text-link"
             href={siteConfig.instagram}

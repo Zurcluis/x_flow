@@ -3,7 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { projects, type Project } from "@/lib/projects";
 
-const featuredSlugs = ["bmw-m3", "ferrari-458-speciale", "lamborghini-huracan"];
+const featuredSlugs = [
+  "lamborghini-huracan",
+  "ferrari-458-speciale",
+  "porsche-911-gt3",
+  "aston-martin-vantage-f1",
+  "bmw-m3",
+  "barco-ppf",
+];
 
 const featuredProjects = featuredSlugs
   .map((slug) => projects.find((project) => project.slug === slug))
