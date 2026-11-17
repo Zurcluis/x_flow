@@ -1,7 +1,7 @@
 import { QuotesView } from "./QuotesView";
 import { countQuotesWaitingOverFourDays, listQuotes } from "@/server/quotes";
 import { requireRole } from "@/server/auth";
-import { SCHEDULING_ROLES } from "@/lib/roles";
+import { canSeeFinancials, SCHEDULING_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,7 @@ export default async function QuotesPage() {
     <QuotesView
       initialQuotes={quotes}
       waitingOverFourDays={waitingOverFourDays}
+      canUseCalculator={canSeeFinancials(auth.role)}
     />
   );
 }

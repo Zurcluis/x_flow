@@ -50,6 +50,7 @@ import { VEHICLE_SEGMENT_MULTIPLIERS } from "@/domains/catalog/types";
 import { formatCurrency } from "@/lib/formatting";
 import { createQuoteAction, updateDraftQuoteAction } from "@/app/actions/quotes";
 import type { PricingContextData } from "@/server/pricing";
+import type { QuickCalculatorPrefill } from "@/domains/pricing/quick-calculator";
 
 type QuoteMode = "flexible" | "configurator";
 type CostTab = "material" | "kit" | "sublet" | "extra";
@@ -96,6 +97,7 @@ export function NewQuoteView({
   simRef,
   draftQuote,
   draftRequested,
+  calculatorPrefill,
 }: {
   vehicles: Vehicle[];
   customers: Customer[];
@@ -105,6 +107,7 @@ export function NewQuoteView({
   simRef?: { finish: string; coverageLabel: string } | null;
   draftQuote?: DraftQuoteData | null;
   draftRequested?: boolean;
+  calculatorPrefill?: QuickCalculatorPrefill | null;
 }) {
   const router = useRouter();
 
@@ -171,6 +174,9 @@ export function NewQuoteView({
     if (draftQuoteId) {
       return draftEdit?.kind === "configurator" ? "configurator" : "flexible";
     }
+    if (calculatorPrefill && hasPolicy) {
+      return "flexible";
+    }
     return hasPolicy ? "flexible" : "configurator";
   });
 
@@ -226,20 +232,36 @@ export function NewQuoteView({
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(() =>
     draftFlexibleState
       ? draftFlexibleState.serviceLines
+      : calculatorPrefill
+      ? calculatorPrefill.serviceLines
       : [{ name: "", description: null, mode: "complete", hours: 0, notes: null, sortOrder: 0 }]
   );
   const [costLines, setCostLines] = useState<QuoteCostLine[]>(
-    () => draftFlexibleState?.costLines ?? []
+    () => draftFlexibleState?.costLines ?? calculatorPrefill?.costLines ?? []
   );
   const [costTab, setCostTab] = useState<CostTab>("material");
-  const [notes, setNotes] = useState(() => draft?.notes ?? "");
-  const [adjustKind, setAdjustKind] = useState<AdjustKind>(() =>
-    draftFlexibleState && draftFlexibleState.finalPriceInput !== "" ? "manual_price" : "none"
+  const [notes, setNotes] = useState(
+    () => draft?.notes ?? calculatorPrefill?.notes ?? ""
   );
-  const [finalPriceInput, setFinalPriceInput] = useState(
-    () => draftFlexibleState?.finalPriceInput ?? ""
+  const [adjustKind, setAdjustKind] = useState<AdjustKind>(() => {
+    if (draftFlexibleState && draftFlexibleState.finalPriceInput !== "") {
+      return "manual_price";
+    }
+    if (calculatorPrefill && calculatorPrefill.finalPriceBeforeVat > 0) {
+      return "manual_price";
+    }
+    return "none";
+  });
+  const [finalPriceInput, setFinalPriceInput] = useState(() => {
+    if (draftFlexibleState) return draftFlexibleState.finalPriceInput;
+    if (calculatorPrefill && calculatorPrefill.finalPriceBeforeVat > 0) {
+      return String(calculatorPrefill.finalPriceBeforeVat);
+    }
+    return "";
+  });
+  const [adjustReason, setAdjustReason] = useState(
+    () => draftFlexibleState?.adjustReason ?? calculatorPrefill?.adjustReason ?? ""
   );
-  const [adjustReason, setAdjustReason] = useState(() => draftFlexibleState?.adjustReason ?? "");
   const [manualTouched, setManualTouched] = useState(false);
   const [selectedSupplierServiceId, setSelectedSupplierServiceId] = useState("");
   const [submitting, setSubmitting] = useState<"draft" | "send" | null>(null);

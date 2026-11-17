@@ -61,6 +61,18 @@ console.log(
   foreignInboxMessages.rows[0].n,
   "(devia ser 0 — RLS isolou)"
 );
+const foreignSocialPosts = await client.query("SELECT count(*)::int AS n FROM social_posts");
+console.log(
+  "6f. SELECT social_posts com GUC de outra org:",
+  foreignSocialPosts.rows[0].n,
+  "(devia ser 0 — RLS isolou)"
+);
+const foreignSocialProfiles = await client.query("SELECT count(*)::int AS n FROM social_instagram_profiles");
+console.log(
+  "6g. SELECT social_instagram_profiles com GUC de outra org:",
+  foreignSocialProfiles.rows[0].n,
+  "(devia ser 0 — RLS isolou)"
+);
 await client.query(
   "SELECT set_config('app.current_organization_id', $1, false)",
   [org.rows[0].org_id]
@@ -87,6 +99,8 @@ const deniedLeads = await client.query("SELECT count(*)::int AS n FROM website_l
 console.log("10b. SELECT website_leads SEM GUC org:", deniedLeads.rows[0].n, "(devia ser 0 — RLS bloqueou)");
 const deniedInboxThreads = await client.query("SELECT count(*)::int AS n FROM inbox_threads");
 console.log("10c. SELECT inbox_threads SEM GUC org:", deniedInboxThreads.rows[0].n, "(devia ser 0 — RLS bloqueou)");
+const deniedSocialPosts = await client.query("SELECT count(*)::int AS n FROM social_posts");
+console.log("10d. SELECT social_posts SEM GUC org:", deniedSocialPosts.rows[0].n, "(devia ser 0 — RLS bloqueou)");
 
 await client.end();
 console.log("\nRLS verificada com a role xflow_app.");

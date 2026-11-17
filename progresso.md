@@ -1,5 +1,6 @@
 # Progresso — X-Flow
 
+_Última atualização: 17/11/2026 (Módulo Marketing e Simulador Instagram `/marketing` implementado: DB+RLS migração 34, sincronização real `@x_motion.wrap` via Composio, simulador de perfil/bio/destaques/grelha 3:4, calendário mensal e plano de dezembro importável). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 _Última atualização: 16/11/2026 (Caixa Unificada Fases 1–4 concluída: DB+RLS, /inbox split-view, resposta bidirecional Gmail+Instagram com confirmação humana, Vercel Cron e integração X-Flow AI). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 _Última atualização: 14/11/2026 (Instalação da skill mestre-dos-sites; reinício do opencode para registar a skill). Ficheiro de continuação de sessão — dizer ao agente: "Lê progresso.md e continua"._
 
@@ -18,6 +19,22 @@ _Última atualização: 14/11/2026 (Instalação da skill mestre-dos-sites; rein
   - **Instagram**: conta **@x_motion.wrap** (id `29742029738736301`) ativa no Composio (business/creator).
   - **Facebook**: conta de Luís Cruz com 4 ligações e página **X_Motion** (`114610198384425`) ativa.
 - **Skills do projeto**: `.opencode/skills/` com `copy-de-oferta`, `roteiro-reels`, `raio-x-do-instagram` e `mestre-dos-sites`; `.agents/skills/` com `deploy-to-vercel`, `vercel-composition-patterns`, `vercel-optimize`, `vercel-react-best-practices`, `web-design-guidelines` e `mestre-dos-sites`.
+
+## Sessão 17/11/2026 — Módulo Marketing e Simulador Instagram (`/marketing`)
+
+- **Âmbito**: criar secção dedicada ao marketing e planeamento de conteúdo no X-Flow com simulador de perfil/grelha do Instagram (`3:4`) sobre as últimas publicações reais de `@x_motion.wrap`, editor de peças, apoio opcional X-Flow AI e calendário mensal (com importação em 1 clique do plano de dezembro de 2026).
+- **Base de dados & RLS ([`supabase/migrations/20260828000034_social_studio.sql`](file:///c:/Projetos/x_flow/supabase/migrations/20260828000034_social_studio.sql))**:
+  - Tabelas `social_instagram_profiles`, `social_instagram_published_posts` e `social_posts` com `organization_id`, RLS ativa e `GRANT` a `xflow_app`.
+  - [`scripts/migrate.mjs`](file:///c:/Projetos/x_flow/scripts/migrate.mjs) e [`scripts/verify-rls.mjs`](file:///c:/Projetos/x_flow/scripts/verify-rls.mjs) atualizados e verificados (**68 tabelas com RLS, 72 políticas**).
+- **Domínio, Servidor & Composio**:
+  - [`src/domains/marketing/types.ts`](file:///c:/Projetos/x_flow/src/domains/marketing/types.ts), [`src/domains/marketing/rules.ts`](file:///c:/Projetos/x_flow/src/domains/marketing/rules.ts) e [`src/domains/marketing/december-seed.ts`](file:///c:/Projetos/x_flow/src/domains/marketing/december-seed.ts).
+  - [`src/server/marketing/composio-instagram.ts`](file:///c:/Projetos/x_flow/src/server/marketing/composio-instagram.ts): paginação em lotes de 5 (evitando truncamento `data_preview` do Composio) + fallback individual por ID para obter URLs completos de `@x_motion.wrap`.
+  - [`src/server/marketing/repository.ts`](file:///c:/Projetos/x_flow/src/server/marketing/repository.ts), [`src/server/marketing/ai.ts`](file:///c:/Projetos/x_flow/src/server/marketing/ai.ts) e [`src/app/actions/marketing.ts`](file:///c:/Projetos/x_flow/src/app/actions/marketing.ts) protegidos por `MANAGEMENT_ROLES`.
+- **Interface & Navegação**:
+  - [`src/app/marketing/page.tsx`](file:///c:/Projetos/x_flow/src/app/marketing/page.tsx), [`MarketingView.tsx`](file:///c:/Projetos/x_flow/src/app/marketing/MarketingView.tsx), [`InstagramSimulator.tsx`](file:///c:/Projetos/x_flow/src/components/xflow/marketing/InstagramSimulator.tsx), [`MonthlyCalendar.tsx`](file:///c:/Projetos/x_flow/src/components/xflow/marketing/MonthlyCalendar.tsx), [`MarketingPostModal.tsx`](file:///c:/Projetos/x_flow/src/components/xflow/marketing/MarketingPostModal.tsx) e [`InstagramPostPreviewModal.tsx`](file:///c:/Projetos/x_flow/src/components/xflow/marketing/InstagramPostPreviewModal.tsx).
+  - [`Sidebar.tsx`](file:///c:/Projetos/x_flow/src/components/xflow/Sidebar.tsx) e [`SettingsView.tsx`](file:///c:/Projetos/x_flow/src/app/settings/SettingsView.tsx): entrada **«Marketing»** (`/marketing`) em Negócio, restrita a gestão e configurável em `/settings`.
+- **Verificação**:
+  - `npm run db:migrate` e `npm run db:verify` (**68 tabelas RLS, 0 linhas fora de org**), `npm run typecheck` OK, `npm run lint` (0 erros), `npx vitest run --dir tests` (**62/62 ficheiros, 423/423 testes**), `npm run build` OK e Playwright E2E real sobre `next start` (**12/12 checks PASS**, `1440px` e `390px`, sincronização `@x_motion.wrap` real e `0` erros de consola).
 
 ## Sessão 16/11/2026 — Fase 4 da Caixa Unificada (Cron Background + Camada X-Flow AI)
 

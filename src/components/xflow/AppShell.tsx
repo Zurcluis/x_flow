@@ -13,6 +13,7 @@ import {
   X,
   Globe,
   ExternalLink,
+  Calculator,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,7 +25,7 @@ import { Topbar } from "@/components/xflow/Topbar";
 import { Logo } from "@/components/xflow/Logo";
 import { AssistantPanel } from "@/components/xflow/ai/AssistantPanel";
 import type { ShellUser } from "@/components/xflow/Topbar";
-import { canUseAssistant } from "@/lib/roles";
+import { canSeeFinancials, canUseAssistant } from "@/lib/roles";
 import { publicSiteUrl } from "@/lib/site-link";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,7 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const assistantEnabled = Boolean(user && canUseAssistant(user.role));
+  const calculatorEnabled = Boolean(user && canSeeFinancials(user.role));
   const openAssistant = useCallback(() => setAssistantOpen(true), []);
   const closeAssistant = useCallback(() => setAssistantOpen(false), []);
   const sections = navSectionsForRole(user?.role, hiddenHrefs);
@@ -95,7 +97,22 @@ export function AppShell({
           <Link href="/" aria-label="X-Flow Início">
             <Logo variant="full" size="sm" />
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {calculatorEnabled ? (
+              <Link
+                href="/quotes/calculator"
+                className={cn(
+                  "inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg border text-xs font-semibold transition-colors",
+                  pathname === "/quotes/calculator"
+                    ? "bg-[#1f1b14] border-[#d3a548] text-[#f7d46d]"
+                    : "bg-[#101314] border-white/[0.1] text-[#f1ede5] hover:border-[#d3a548]/50 hover:text-[#f7d46d]"
+                )}
+                aria-label="Calculadora Rápida"
+              >
+                <Calculator className="h-4 w-4 text-[#d3a548]" />
+                <span>Calc</span>
+              </Link>
+            ) : null}
             {assistantEnabled ? (
               <button
                 type="button"
@@ -132,6 +149,21 @@ export function AppShell({
               </button>
             </div>
             <nav className="flex flex-col py-6 overflow-y-auto">
+              {calculatorEnabled && (
+                <Link
+                  href="/quotes/calculator"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-[#1f1b14] to-[#15191a] border border-[#d3a548]/50 px-4 py-3.5 text-base font-semibold text-[#f7d46d]"
+                >
+                  <span className="flex items-center gap-3">
+                    <Calculator className="h-5 w-5 text-[#d3a548]" />
+                    <span>Calculadora Rápida</span>
+                  </span>
+                  <span className="text-[11px] uppercase tracking-wider text-[#d3a548]">
+                    Acesso rápido
+                  </span>
+                </Link>
+              )}
               {MAIN_NAV.map((item) => (
                 <DrawerLink key={item.href} item={item} onNavigate={() => setMobileMenuOpen(false)} />
               ))}

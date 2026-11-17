@@ -325,7 +325,7 @@ export async function createCustomer(
     await client.query("COMMIT");
     return customer;
   } catch (e) {
-    await client.query("ROLLBACK").catch(() => {});
+    await client.query("ROLLBACK").catch(() => { });
     throw e;
   } finally {
     client.release();

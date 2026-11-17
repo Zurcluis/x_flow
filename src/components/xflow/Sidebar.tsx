@@ -31,6 +31,8 @@ import {
   Globe,
   ExternalLink,
   MessageSquare,
+  Calculator,
+  Megaphone,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/xflow/Logo";
@@ -71,9 +73,11 @@ export const NAV_SECTIONS: NavSection[] = [
     label: "Negócio",
     items: [
       { label: "Mensagens", href: "/inbox", icon: MessageSquare },
+      { label: "Marketing", href: "/marketing", icon: Megaphone },
       { label: "Clientes", href: "/customers", icon: Users },
       { label: "Viaturas", href: "/vehicles", icon: Car },
       { label: "Orçamentos", href: "/quotes", icon: FileText },
+      { label: "Calculadora", href: "/quotes/calculator", icon: Calculator },
       { label: "Portal B2B", href: "/b2b", icon: Building2 },
       { label: "Entregas", href: "/deliveries", icon: Key },
     ],
@@ -97,9 +101,9 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-const FINANCIAL_HREFS = new Set(["/finance", "/reports"]);
+const FINANCIAL_HREFS = new Set(["/finance", "/reports", "/quotes/calculator"]);
 const ADMIN_HREFS = new Set(["/settings"]);
-const MANAGEMENT_HREFS = new Set(["/b2b", "/inbox"]);
+const MANAGEMENT_HREFS = new Set(["/b2b", "/inbox", "/marketing"]);
 
 export function navSectionsForRole(role?: string, hiddenHrefs?: string[] | Set<string>): NavSection[] {
   const hideFinancials = role !== "admin" && role !== "workshop_manager";

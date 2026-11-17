@@ -12,21 +12,21 @@
   aplicações parciais) e projetos em duas rodas.
 - **Preço:** não divulgar. O valor é definido por proposta, após avaliação da viatura.
 - **Link da bio:** https://x-flow-b8rt.vercel.app (site oficial; link da bio a confirmar)
-- **Contactos públicos:** telefone +351 934 644 142; atelier em Barcelos.
+- **Contactos públicos:** telefone +351 934 644 142; espaço físico em Barcelos.
 
 ## Provas reais (só o que é verdade e pode ser mostrado)
 
-- Atelier físico em Barcelos, com trabalhos reais publicados no site.
+- Espaço físico em Barcelos, com trabalhos reais publicados no site.
 - Sete projetos publicados: BMW M3, Ferrari 458 Speciale (PPF), BMW M4,
   Lamborghini Huracán, Mercedes-Maybach, BMW S1000RR (mota) e Mercedes CLE 300.
-- Avaliação feita no atelier e confirmação de cor/acabamento em amostra física.
+- Avaliação feita no nosso espaço e confirmação de cor/acabamento em amostra física.
 - Fotografias e vídeos do processo e do resultado, com autorização do proprietário.
 
 ## Pilares de conteúdo (3)
 
 1. **Proteção (PPF):** o que a película protege, o que não protege e quando faz sentido.
 2. **Transformação (Car Wrap / Color PPF):** cor, textura e antes/depois com trabalho real.
-3. **Processo e cuidado:** preparação, contornos, acabamento e bastidores do atelier.
+3. **Processo e cuidado:** preparação, contornos, acabamento e bastidores do nosso espaço.
 
 ## Frequência
 

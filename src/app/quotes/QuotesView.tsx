@@ -10,6 +10,7 @@ import {
   Clock,
   TrendingUp,
   AlertTriangle,
+  Calculator,
 } from "lucide-react";
 import { buttonStyles } from "@/components/ui/button";
 import { QuoteCard } from "@/components/xflow/quotes/QuoteCard";
@@ -19,11 +20,16 @@ import { formatCurrency } from "@/lib/formatting";
 interface QuotesViewProps {
   initialQuotes: Quote[];
   waitingOverFourDays: number;
+  canUseCalculator?: boolean;
 }
 
 const subscribeToOrigin = () => () => {};
 
-export function QuotesView({ initialQuotes, waitingOverFourDays }: QuotesViewProps) {
+export function QuotesView({
+  initialQuotes,
+  waitingOverFourDays,
+  canUseCalculator = false,
+}: QuotesViewProps) {
   const [quotes] = useState<Quote[]>(initialQuotes);
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "draft">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,16 +96,28 @@ export function QuotesView({ initialQuotes, waitingOverFourDays }: QuotesViewPro
           </h1>
         </div>
 
-        <Link
-          href="/quotes/new"
-          className={buttonStyles({
-            variant: "primary",
-            className: "self-start sm:self-auto",
-          })}
-        >
-          <Plus className="h-4 w-4" />
-          <span>Novo Orçamento</span>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {canUseCalculator && (
+            <Link
+              href="/quotes/calculator"
+              className={buttonStyles({
+                variant: "outline",
+              })}
+            >
+              <Calculator className="h-4 w-4 text-[#d3a548]" />
+              <span>Calculadora</span>
+            </Link>
+          )}
+          <Link
+            href="/quotes/new"
+            className={buttonStyles({
+              variant: "primary",
+            })}
+          >
+            <Plus className="h-4 w-4" />
+            <span>Novo Orçamento</span>
+          </Link>
+        </div>
       </div>
 
       {copiedToken && (

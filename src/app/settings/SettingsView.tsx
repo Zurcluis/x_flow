@@ -44,6 +44,8 @@ const ALL_SIDEBAR_ITEMS: Array<{ href: string; label: string; section: string }>
   { href: "/simulator", label: "Simulador 3D", section: "Operação" },
   { href: "/stock", label: "Stock e Materiais", section: "Operação" },
   { href: "/tools", label: "Ferramentas", section: "Operação" },
+  { href: "/inbox", label: "Mensagens", section: "Negócio" },
+  { href: "/marketing", label: "Marketing", section: "Negócio" },
   { href: "/customers", label: "Clientes", section: "Negócio" },
   { href: "/vehicles", label: "Viaturas / Itens", section: "Negócio" },
   { href: "/quotes", label: "Orçamentos", section: "Negócio" },

@@ -5,6 +5,7 @@ import { requireRole } from "@/server/auth";
 import { SCHEDULING_ROLES } from "@/lib/roles";
 import { loadPricingContext } from "@/server/pricing";
 import { loadDraftQuote } from "@/server/quotes";
+import { decodeQuickCalculatorPrefill } from "@/domains/pricing/quick-calculator";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,10 @@ export default async function NewQuotePage({
   const sp = await searchParams;
   const organizationId = auth.organizationId;
   const draftParam = typeof sp.draft === "string" ? sp.draft : undefined;
+  const calcParam = typeof sp.calc === "string" ? sp.calc : undefined;
+  const calculatorPrefill = calcParam
+    ? decodeQuickCalculatorPrefill(calcParam)
+    : null;
   const [vehicles, customers, pricingContext, draftQuote] = await Promise.all([
     listVehicles(organizationId),
     listCustomers(organizationId),
@@ -38,6 +43,7 @@ export default async function NewQuotePage({
       initialCustomerId={customerParam}
       draftQuote={draftQuote}
       draftRequested={Boolean(draftParam)}
+      calculatorPrefill={calculatorPrefill}
       simRef={
         finishParam
           ? {

@@ -364,6 +364,22 @@ if (
   console.log("20260828000033 já aplicada.");
 }
 
+// 000034 — social studio / marketing (simulador Instagram + calendário mensal)
+if (
+  !(await hasTable("social_instagram_profiles")) ||
+  !(await hasTable("social_instagram_published_posts")) ||
+  !(await hasTable("social_posts"))
+) {
+  const migration34 = fs.readFileSync(
+    new URL("../supabase/migrations/20260828000034_social_studio.sql", import.meta.url),
+    "utf8"
+  );
+  await client.query(migration34);
+  console.log("OK: 20260828000034");
+} else {
+  console.log("20260828000034 já aplicada.");
+}
+
 // Backfill de passwords demo (idempotente): só preenche password_hash IS NULL
 const teamEmails = [
   "luis@xmotion.pt",
