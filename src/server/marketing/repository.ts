@@ -506,7 +506,7 @@ export async function importDecember2026Plan(
            scheduled_for, scheduled_time, grid_order, is_pinned,
            hook, caption, script_notes, cta, media_items, owner_consent,
            published_permalink, created_by
-         ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, '[]'::jsonb, $14, NULL, $15)`,
+         ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, NULL, $16)`,
         [
           organizationId,
           item.title,
@@ -521,6 +521,7 @@ export async function importDecember2026Plan(
           item.caption,
           item.scriptNotes,
           item.cta,
+          JSON.stringify(item.mediaItems ?? []),
           item.ownerConsent,
           createdByProfileId,
         ]

@@ -6,6 +6,57 @@ export function buildDecember2026SeedPosts(): SeedSocialPostItem[] {
   return [
     {
       vehicleId: null,
+      title: "Carrossel: Muda a cor. Preserva a origem.",
+      format: "carousel",
+      pillar: "wrap",
+      status: "ready",
+      scheduledFor: "2026-11-20",
+      scheduledTime: "18:00",
+      isPinned: true,
+      gridOrder: 5,
+      hook: "Muda a cor. Preserva a origem. Transforma o teu carro sem pintar por cima da tinta de fábrica.",
+      caption:
+        "Queres mudar a cor do teu carro sem tocar na pintura de origem?\n\nTanto o Car Wrap em vinil como o Color PPF permitem renovar o visual completo do carro e voltar atrás quando quiseres, preservando o verniz de fábrica.\n\nSe procuras centenas de tons, acetinados ou efeitos específicos, o Car Wrap dá-te liberdade total. Se queres nova cor com uma película mais espessa contra gravilha e riscos, o Color PPF é o caminho.\n\nQual é o carro e que cor gostavas de ver nele? Envia-nos «COR» por mensagem com o modelo e o ano e ajudamos-te a escolher.\n\n#Xmotion #CarWrap #ColorPPF #PPFPortugal #Barcelos #Braga",
+      scriptNotes:
+        "Carrossel editorial 5 slides 4:5 (1080x1350): 1) BMW M4 Areia Clara (capa); 2) Yamaha MT-10 macro reversível; 3) Lamborghini Huracán vs Corvette Z06 (Vinil ou Color PPF); 4) Mercedes-AMG GT 63 (Integral ou detalhes); 5) BMW M4 CTA «COR».",
+      cta: "Envia «COR» por mensagem com modelo e ano",
+      mediaItems: [
+        {
+          id: "car-wrap-01-slide-1",
+          dataUrl: "/conteudos/carrossel-01-car-wrap/01-mudar-de-cor.png",
+          mimeType: "image/png",
+          alt: "Capa do carrossel: BMW M4 Areia Clara — Muda a cor. Preserva a origem.",
+        },
+        {
+          id: "car-wrap-01-slide-2",
+          dataUrl: "/conteudos/carrossel-01-car-wrap/02-acabamento-reversivel.png",
+          mimeType: "image/png",
+          alt: "Detalhe macro Yamaha MT-10 — Acabamento reversível sem alterar o verniz original",
+        },
+        {
+          id: "car-wrap-01-slide-3",
+          dataUrl: "/conteudos/carrossel-01-car-wrap/03-vinil-ou-color-ppf.png",
+          mimeType: "image/png",
+          alt: "Lamborghini Huracán acetinado e Corvette Z06 brilho profundo — Vinil ou Color PPF",
+        },
+        {
+          id: "car-wrap-01-slide-4",
+          dataUrl: "/conteudos/carrossel-01-car-wrap/04-integral-ou-detalhes.png",
+          mimeType: "image/png",
+          alt: "Mercedes-AMG GT 63 em Car Wrap azul acetinado — Integral ou detalhes",
+        },
+        {
+          id: "car-wrap-01-slide-5",
+          dataUrl: "/conteudos/carrossel-01-car-wrap/05-pedir-proposta.png",
+          mimeType: "image/png",
+          alt: "Slide final — Envia «COR» por mensagem para proposta à medida",
+        },
+      ],
+      ownerConsent: true,
+      publishedPermalink: null,
+    },
+    {
+      vehicleId: null,
       title: "Stories: Reabertura de dezembro + sondagem",
       format: "story",
       pillar: "process",

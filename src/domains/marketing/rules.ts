@@ -25,6 +25,7 @@ const STATUSES = new Set<SocialPostStatus>(["idea", "production", "ready", "sche
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATA_IMAGE_RE = /^data:image\/(jpeg|jpg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/i;
+const LOCAL_CONTENT_IMAGE_RE = /^\/conteudos\/[A-Za-z0-9/_-]+\.(png|jpe?g|webp)$/i;
 
 export class MarketingValidationError extends Error {
   constructor(message: string) {
@@ -50,6 +51,19 @@ export function validateMediaItems(items: unknown): SocialMediaItem[] {
       throw new MarketingValidationError("Imagem inválida na publicação.");
     }
     const dataUrl = typeof raw.dataUrl === "string" ? raw.dataUrl.trim() : "";
+    const localMatch = !dataUrl.includes("..") ? LOCAL_CONTENT_IMAGE_RE.exec(dataUrl) : null;
+    if (localMatch) {
+      const ext = localMatch[1].toLowerCase();
+      const mimeType = `image/${ext === "jpg" ? "jpeg" : ext}`;
+      normalized.push({
+        id: typeof raw.id === "string" && raw.id.trim() ? raw.id.trim().slice(0, 60) : `slide-${i + 1}`,
+        dataUrl,
+        mimeType,
+        alt: typeof raw.alt === "string" ? raw.alt.trim().slice(0, 200) : "",
+      });
+      continue;
+    }
+
     const match = DATA_IMAGE_RE.exec(dataUrl);
     if (!match) {
       throw new MarketingValidationError("Formato de imagem inválido (use JPEG, PNG ou WebP).");

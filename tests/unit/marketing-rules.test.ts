@@ -202,7 +202,8 @@ describe("marketing rules", () => {
 
   it("seed posts pass strict validation, contain no emojis, never use atelier, and use direct tu form", () => {
     const seed = buildDecember2026SeedPosts();
-    expect(seed).toHaveLength(18);
+    expect(seed).toHaveLength(19);
+    expect(seed[0].mediaItems).toHaveLength(5);
     const emojiRegex = /\p{Extended_Pictographic}/u;
     const forbiddenPlaceRegex = /ateli[eê]/i;
     const formalThirdPersonRegex = /\b(gostaria|preferia|o seu carro|peça a sua|envie-nos|partilhe|comente|guarde)\b/i;
@@ -222,5 +223,41 @@ describe("marketing rules", () => {
       expect(formalThirdPersonRegex.test(item.caption)).toBe(false);
       expect(formalThirdPersonRegex.test(item.cta)).toBe(false);
     }
+  });
+
+  it("allows internal /conteudos/ image paths and blocks path traversal", () => {
+    const valid = validateSocialPostInput({
+      title: "Carrossel com criativos locais",
+      format: "carousel",
+      pillar: "wrap",
+      status: "ready",
+      mediaItems: [
+        {
+          id: "slide-1",
+          dataUrl: "/conteudos/carrossel-01-car-wrap/01-mudar-de-cor.png",
+          mimeType: "image/png",
+          alt: "Capa",
+        },
+      ],
+    });
+    expect(valid.mediaItems).toHaveLength(1);
+    expect(valid.mediaItems[0].mimeType).toBe("image/png");
+
+    expect(() =>
+      validateSocialPostInput({
+        title: "Traversal bloqueado",
+        format: "carousel",
+        pillar: "wrap",
+        status: "ready",
+        mediaItems: [
+          {
+            id: "bad",
+            dataUrl: "/conteudos/../secret.png",
+            mimeType: "image/png",
+            alt: "Bad",
+          },
+        ],
+      })
+    ).toThrow(MarketingValidationError);
   });
 });
